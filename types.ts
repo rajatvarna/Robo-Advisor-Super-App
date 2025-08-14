@@ -228,3 +228,18 @@ export interface TaxLossOpportunity {
     currentValue: number;
     explanation: string;
 }
+
+// --- RESEARCH PAGE ---
+export interface StockComparisonItem {
+    ticker: string;
+    companyName: string;
+    marketCap: number;
+    peRatio: number | null;
+    dividendYield: number | null;
+    analystRating: string;
+    bullCase: string;
+    bearCase: string;
+    financialHealthSummary: string;
+}
+
+export type StockComparisonData = StockComparisonItem[];

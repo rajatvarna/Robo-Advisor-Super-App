@@ -10,9 +10,11 @@ import Spinner from './icons/Spinner';
 import StockAnalysis from './StockAnalysis';
 import StarIcon from './icons/StarIcon';
 import StarSolidIcon from './icons/StarSolidIcon';
+import StockComparison from './StockComparison';
+import XCircleIcon from './icons/XCircleIcon';
 import { getFilings } from '../services/secDataService';
-import { generateFinancials, generateTranscripts, generateStockAnalysis } from '../services/geminiService';
-import type { SecFiling, FinancialStatementsData, TranscriptsData, StockAnalysisData } from '../types';
+import { generateFinancials, generateTranscripts, generateStockAnalysis, generateStockComparison } from '../services/geminiService';
+import type { SecFiling, FinancialStatementsData, TranscriptsData, StockAnalysisData, StockComparisonData } from '../types';
 import { useApi } from '../contexts/ApiContext';
 
 type DashboardTab = 'overview' | 'financials' | 'filings' | 'transcripts';
@@ -54,6 +56,12 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
   const [transcriptsData, setTranscriptsData] = React.useState<TranscriptsData | null>(null);
   const [analysis, setAnalysis] = React.useState<StockAnalysisData | null>(null);
   
+  const [comparisonTickers, setComparisonTickers] = React.useState<string[]>([]);
+  const [comparisonData, setComparisonData] = React.useState<StockComparisonData | null>(null);
+  const [isComparing, setIsComparing] = React.useState<boolean>(false);
+  const [comparisonError, setComparisonError] = React.useState<string | null>(null);
+  const [comparisonInput, setComparisonInput] = React.useState('');
+
   const { apiMode, setApiMode } = useApi();
 
   const handleApiError = (err: any) => {
@@ -143,6 +151,39 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
   
   const isWatched = ticker ? watchlist.includes(ticker) : false;
 
+  const handleAddComparisonTicker = (e: React.FormEvent) => {
+    e.preventDefault();
+    const tickerToAdd = comparisonInput.trim().toUpperCase();
+    if (tickerToAdd && !comparisonTickers.includes(tickerToAdd) && comparisonTickers.length < 3) {
+        setComparisonTickers([...comparisonTickers, tickerToAdd]);
+        setComparisonInput('');
+    }
+  };
+
+  const handleRemoveComparisonTicker = (tickerToRemove: string) => {
+      setComparisonTickers(comparisonTickers.filter(t => t !== tickerToRemove));
+  };
+
+  const handleRunComparison = async () => {
+      if (comparisonTickers.length < 2) return;
+      setIsComparing(true);
+      setComparisonError(null);
+      setComparisonData(null);
+      try {
+          const data = await generateStockComparison(comparisonTickers, apiMode);
+          setComparisonData(data);
+      } catch (err: any) {
+          if (err.message.includes('QUOTA_EXCEEDED')) {
+              setApiMode('opensource');
+              setComparisonError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
+          } else {
+              setComparisonError(err.message || 'An unexpected error occurred while fetching comparison data.');
+          }
+      } finally {
+          setIsComparing(false);
+      }
+  };
+
   return (
     <div className="container mx-auto">
       <TickerInput onTickerSubmit={fetchInitialData} isLoading={isLoading} />
@@ -196,6 +237,56 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
           <p className="text-lg mt-2 max-w-lg mx-auto">Enter a stock ticker (e.g., AAPL, GOOGL) to view its performance chart, financial statements, and recent SEC filings.</p>
         </div>
       )}
+
+      <div className="mt-12 pt-8 border-t border-brand-border">
+          <h2 className="text-2xl font-bold text-brand-text">Compare Stocks</h2>
+          <p className="mt-1 text-brand-text-secondary">Add up to 3 tickers to generate a side-by-side analysis powered by AI.</p>
+
+          <div className="mt-4 bg-brand-secondary p-4 rounded-lg border border-brand-border">
+              <form onSubmit={handleAddComparisonTicker} className="flex items-center gap-2">
+                  <input
+                      type="text"
+                      value={comparisonInput}
+                      onChange={(e) => setComparisonInput(e.target.value)}
+                      placeholder="Enter Ticker to Add"
+                      className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent transition"
+                      disabled={isComparing || comparisonTickers.length >= 3}
+                  />
+                  <button
+                      type="submit"
+                      disabled={isComparing || comparisonTickers.length >= 3 || !comparisonInput.trim()}
+                      className="px-4 py-2 font-semibold rounded-lg bg-brand-primary border border-brand-border text-brand-text-secondary hover:bg-brand-border transition-colors disabled:opacity-50"
+                  >
+                      Add
+                  </button>
+              </form>
+
+              <div className="flex flex-wrap gap-2 mt-4 min-h-[36px]">
+                  {comparisonTickers.map(ticker => (
+                      <div key={ticker} className="flex items-center gap-2 bg-brand-accent/20 text-brand-accent font-semibold px-3 py-1 rounded-full text-sm animate-fade-in">
+                          <span>{ticker}</span>
+                          <button onClick={() => handleRemoveComparisonTicker(ticker)} disabled={isComparing}>
+                              <XCircleIcon className="w-4 h-4 text-brand-accent/70 hover:text-brand-accent" />
+                          </button>
+                      </div>
+                  ))}
+              </div>
+
+              {comparisonTickers.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-brand-border flex justify-end">
+                      <button
+                          onClick={handleRunComparison}
+                          disabled={isComparing || comparisonTickers.length < 2}
+                          className="px-6 py-2 rounded-md text-sm font-semibold bg-brand-accent hover:bg-brand-accent-hover text-white transition-colors disabled:bg-brand-accent/50 flex items-center gap-2"
+                      >
+                          {isComparing && <Spinner />}
+                          Compare {comparisonTickers.length > 1 ? `${comparisonTickers.length} Stocks` : ''}
+                      </button>
+                  </div>
+              )}
+          </div>
+          <StockComparison data={comparisonData} isLoading={isComparing} error={comparisonError} />
+      </div>
     </div>
   );
 };

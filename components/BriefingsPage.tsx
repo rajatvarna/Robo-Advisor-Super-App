@@ -1,5 +1,4 @@
 
-
 import * as React from 'react';
 import { generateVideoBriefing, getVideoOperationStatus } from '../services/geminiService';
 import type { Holding, ApiMode } from '../types';
@@ -18,7 +17,7 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
     const [error, setError] = React.useState<string | null>(null);
     const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
     const [loadingMessage, setLoadingMessage] = React.useState('');
-    const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
+    const intervalRef = React.useRef<number | null>(null);
     const { apiMode, setApiMode, isFallbackMode } = useApi();
 
     const loadingMessages = [
@@ -52,11 +51,17 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
         let messageIndex = 0;
         setLoadingMessage(loadingMessages[messageIndex]);
 
-        intervalRef.current = setInterval(async () => {
+        // Clear any existing interval before starting a new one.
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+        }
+
+        const newIntervalId = setInterval(async () => {
             try {
                 const updatedOperation = await getVideoOperationStatus(operation, currentApiMode);
                 if (updatedOperation.done) {
-                    clearInterval(intervalRef.current!);
+                    clearInterval(newIntervalId);
+                    intervalRef.current = null;
                     const downloadLink = updatedOperation.response?.generatedVideos?.[0]?.video?.uri;
                     if (downloadLink) {
                         setVideoUrl(`${downloadLink}&key=${API_KEY}`);
@@ -72,10 +77,13 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
                     setLoadingMessage(loadingMessages[messageIndex]);
                 }
             } catch (err: any) {
-                clearInterval(intervalRef.current!);
+                clearInterval(newIntervalId);
+                intervalRef.current = null;
                 handleApiError(err);
             }
         }, 10000);
+
+        intervalRef.current = newIntervalId;
     };
 
     const handleGenerateVideo = async (type: 'daily' | 'weekly') => {
@@ -85,7 +93,7 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
 
         let prompt = '';
         if (type === 'daily') {
-            prompt = `Create a 60-second daily market briefing video for today. Cover the main indices (S&P 500, Nasdaq, Dow Jones), highlight key market-moving news, and mention one or two top-performing sectors. Use a professional, news-anchor style. Use dynamic charts and graphics.`;
+            prompt = `Create a simulated 60-second "daily market briefing" style video for a fictional news channel. Cover the general performance of major US indices like the S&P 500 and Nasdaq, highlight one or two key fictional market-moving news events, and mention a top-performing sector. Use a professional, news-anchor style with dynamic charts and graphics.`;
         } else {
             const holdingTickers = holdings.map(h => h.ticker).join(', ');
             prompt = `Create a 60-second personalized weekly portfolio review video. The portfolio consists of these stocks: ${holdingTickers}. Summarize the overall weekly performance of this specific portfolio, highlight the best and worst performing stocks within it, and mention one key news item that affected one of the holdings. Use a friendly and encouraging tone.`;

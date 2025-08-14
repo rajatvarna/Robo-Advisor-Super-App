@@ -1,7 +1,7 @@
 
 
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
-import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData } from '../types';
+import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData } from '../types';
 import * as FallbackData from './fallbackData';
 
 const API_KEY = process.env.API_KEY;
@@ -251,3 +251,27 @@ export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): P
         return { ...parsedJson, sources: groundingSources };
     } catch (error) { throw handleApiError(error, `stock analysis for ${ticker}`); }
 }
+
+export const generateStockComparison = async (tickers: string[], apiMode: ApiMode): Promise<StockComparisonData> => {
+    if (apiMode === 'opensource') return FallbackData.generateStockComparison(tickers);
+    const prompt = `Act as a senior stock analyst. Provide a detailed, side-by-side comparison for the following stock tickers: ${tickers.join(', ')}. For each ticker, provide its company name, market cap in billions, P/E ratio, dividend yield, consensus analyst rating, a brief bull case, a brief bear case, and a one-sentence financial health summary. Provide the response in the specified JSON format. If a value like P/E or dividend yield isn't applicable, use null.`;
+
+    const schema = {
+        type: Type.ARRAY,
+        items: FallbackData.stockComparisonItemSchema,
+    };
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: schema,
+            },
+        });
+        return JSON.parse(response.text.trim()) as StockComparisonData;
+    } catch (error) {
+        throw handleApiError(error, `stock comparison for ${tickers.join(', ')}`);
+    }
+};

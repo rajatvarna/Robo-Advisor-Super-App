@@ -1,6 +1,6 @@
 import { Type } from "@google/genai";
 import type { Chat } from '@google/genai';
-import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource } from '../types';
+import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData } from '../types';
 
 // --- Achievements ---
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -112,6 +112,22 @@ export const financialsSchema = {
         },
     },
     required: ["incomeStatement", "balanceSheet", "cashFlow"],
+};
+
+export const stockComparisonItemSchema = {
+    type: Type.OBJECT,
+    properties: {
+        ticker: { type: Type.STRING },
+        companyName: { type: Type.STRING },
+        marketCap: { type: Type.NUMBER, description: "Market capitalization in billions of USD." },
+        peRatio: { type: Type.NUMBER, description: "Price-to-Earnings ratio. Can be null if not applicable." },
+        dividendYield: { type: Type.NUMBER, description: "Dividend yield in percent. Can be null if not applicable." },
+        analystRating: { type: Type.STRING, description: "Consensus analyst rating, e.g., 'Buy', 'Hold', 'Strong Buy'." },
+        bullCase: { type: Type.STRING, description: "A brief summary of the bull case for the stock." },
+        bearCase: { type: Type.STRING, description: "A brief summary of the bear case for the stock." },
+        financialHealthSummary: { type: Type.STRING, description: "A one-sentence summary of the company's financial health." },
+    },
+    required: ["ticker", "companyName", "marketCap", "peRatio", "dividendYield", "analystRating", "bullCase", "bearCase", "financialHealthSummary"],
 };
 
 
@@ -273,3 +289,17 @@ export const getFilings = (ticker: string): SecFiling[] => ([
     { accessionNumber: '000-OFFLINE-10Q', filingDate: '2024-05-01', reportDate: '2024-03-31', form: '10-Q (Offline)', primaryDocument: 'doc.html', primaryDocDescription: 'Quarterly Report', url: '#' },
     { accessionNumber: '000-OFFLINE-8K', filingDate: '2024-04-15', reportDate: '2024-04-15', form: '8-K (Offline)', primaryDocument: 'doc.html', primaryDocDescription: 'Current Event', url: '#' }
 ]);
+
+export const generateStockComparison = (tickers: string[]): StockComparisonData => {
+    return tickers.map(ticker => ({
+        ticker,
+        companyName: `${ticker} Inc. (Offline)`,
+        marketCap: Math.floor(Math.random() * 2000) + 100, // in billions
+        peRatio: Math.random() * 30 + 10,
+        dividendYield: Math.random() * 5,
+        analystRating: "Buy",
+        bullCase: `Strong growth potential in the offline market for ${ticker}.`,
+        bearCase: `Facing stiff competition from other offline providers for ${ticker}.`,
+        financialHealthSummary: `Solid balance sheet with consistent offline revenue.`,
+    }));
+};

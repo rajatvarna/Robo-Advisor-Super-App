@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import type { DashboardData } from '../types';
 import EmptyState from './EmptyState';
@@ -42,16 +43,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, onGenerateDemo, onA
         <h1 className="text-3xl font-bold text-brand-text">Welcome back, {user.name.split(' ')[0]}!</h1>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard title="Net Worth" value={formatCurrency(netWorth)} />
+            <div id="net-worth-card">
+              <StatCard title="Net Worth" value={formatCurrency(netWorth)} />
+            </div>
             <StatCard title="Day's Gain / Loss" value={formatCurrency(dayGain)} change={dayGainPercent} />
             <StatCard title="Holdings" value={holdings.length.toString()} />
-            <PortfolioScoreCard score={portfolioScore} />
+            <div id="portfolio-score-card">
+              <PortfolioScoreCard score={portfolioScore} />
+            </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-                 <PersonalizedNewsFeed news={personalizedNews || []} />
-                 <AchievementsList achievements={achievements || []} />
+                <div id="personalized-news-feed">
+                  <PersonalizedNewsFeed news={personalizedNews || []} />
+                </div>
+                <div id="achievements-list">
+                  <AchievementsList achievements={achievements || []} />
+                </div>
             </div>
             <div className="space-y-6">
                 <Watchlist stocks={watchlist || []} />

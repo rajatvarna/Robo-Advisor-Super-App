@@ -21,6 +21,7 @@ import { ApiProvider, useApi } from './contexts/ApiContext';
 import ApiStatusBanner from './components/ApiStatusBanner';
 import DonationPage from './components/DonationPage';
 import { ALL_ACHIEVEMENTS } from './services/fallbackData';
+import OnboardingTour from './components/OnboardingTour';
 
 
 const AppContent: React.FC = () => {
@@ -34,7 +35,8 @@ const AppContent: React.FC = () => {
   const [watchlist, setWatchlist] = React.useState<string[]>([]);
   const [achievements, setAchievements] = React.useState<Achievement[]>([]);
   const [lastUnlockedAchievement, setLastUnlockedAchievement] = React.useState<Achievement | null>(null);
-  
+  const [runTour, setRunTour] = React.useState(false);
+
   const { apiMode, setApiMode, isFallbackMode } = useApi();
 
   // --- PERSISTENCE ---
@@ -192,6 +194,11 @@ const AppContent: React.FC = () => {
         setAchievements(fullData.achievements);
         saveDataToLocalStorage(fullData, fullData.watchlist?.map(w => w.ticker) || [], fullData.achievements);
 
+        const tourCompleted = localStorage.getItem('robo-advisor-tour-completed');
+        if (!tourCompleted) {
+          setTimeout(() => setRunTour(true), 500); // Delay to allow UI to render
+        }
+
       } catch (err: any) {
         if (err.message.includes('QUOTA_EXCEEDED')) {
             setApiMode('opensource');
@@ -202,6 +209,11 @@ const AppContent: React.FC = () => {
       } finally {
         setIsLoading(false);
       }
+  };
+
+  const handleTourEnd = () => {
+    setRunTour(false);
+    localStorage.setItem('robo-advisor-tour-completed', 'true');
   };
   
   const handleAddHolding = async (userHolding: UserHolding) => {
@@ -375,6 +387,7 @@ const AppContent: React.FC = () => {
       <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full flex-grow">
         {renderView()}
       </main>
+      {isAuthenticated && dashboardData && <OnboardingTour run={runTour} onTourEnd={handleTourEnd} />}
       {isModalOpen && (
           <AddHoldingModal 
               onClose={() => setIsModalOpen(false)}

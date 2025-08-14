@@ -35,28 +35,28 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
           </div>
           <div className="flex items-center">
             <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-              <a onClick={() => setView('dashboard')} className={navLinkClasses('dashboard')}>
+              <a id="dashboard-nav-link" onClick={() => setView('dashboard')} className={navLinkClasses('dashboard')}>
                 Dashboard
               </a>
-               <a onClick={() => setView('portfolio')} className={navLinkClasses('portfolio')}>
+               <a id="portfolio-nav-link" onClick={() => setView('portfolio')} className={navLinkClasses('portfolio')}>
                 Portfolio
               </a>
-               <a onClick={() => setView('briefings')} className={navLinkClasses('briefings')}>
+               <a id="briefings-nav-link" onClick={() => setView('briefings')} className={navLinkClasses('briefings')}>
                 <VideoIcon className="w-4 h-4" /> Briefings
               </a>
-               <a onClick={() => setView('analytics')} className={navLinkClasses('analytics')}>
+               <a id="analytics-nav-link" onClick={() => setView('analytics')} className={navLinkClasses('analytics')}>
                 <AnalyticsIcon className="w-4 h-4" /> Analytics
               </a>
-              <a onClick={() => setView('research')} className={navLinkClasses('research')}>
+              <a id="research-nav-link" onClick={() => setView('research')} className={navLinkClasses('research')}>
                 Research
               </a>
                <a onClick={() => setView('screener')} className={navLinkClasses('screener')}>
                 Screener
               </a>
-              <a onClick={() => setView('advisor')} className={navLinkClasses('advisor')}>
+              <a id="advisor-nav-link" onClick={() => setView('advisor')} className={navLinkClasses('advisor')}>
                 AI Advisor
               </a>
-              <a onClick={() => setView('chatbot')} className={navLinkClasses('chatbot')}>
+              <a id="chatbot-nav-link" onClick={() => setView('chatbot')} className={navLinkClasses('chatbot')}>
                 Chatbot
               </a>
               <a onClick={() => setView('education')} className={navLinkClasses('education')}>
