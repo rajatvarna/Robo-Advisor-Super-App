@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 
 // This is a type assertion for the global TradingView object
@@ -35,29 +36,36 @@ const StockChart: React.FC<StockChartProps> = ({ ticker }) => {
         calendar: true,
       };
 
-      // Clear any existing widget
-      chartContainerRef.current.innerHTML = '';
-      
       // Create a new widget instance
       widgetInstanceRef.current = new TradingView.widget(widgetOptions);
     };
 
     if (ticker) {
-      if (document.readyState === 'complete') {
+      // The TradingView script should be loaded, but this is a safe check.
+      if (typeof TradingView !== 'undefined' && TradingView.widget) {
         createWidget();
       } else {
         window.addEventListener('load', createWidget);
       }
     }
     
+    // Capture the container for cleanup check
+    const container = chartContainerRef.current;
+
     return () => {
        window.removeEventListener('load', createWidget);
        if (widgetInstanceRef.current) {
           try {
-             widgetInstanceRef.current.remove();
-             widgetInstanceRef.current = null;
+             // Only try to remove if the container is still mounted in the DOM
+             if (container && document.body.contains(container)) {
+                widgetInstanceRef.current.remove();
+             }
           } catch (error) {
+             // The error from the user log is caught here. We can just log it.
              console.error("Error removing TradingView widget:", error);
+          } finally {
+             // Always clear the ref to prevent memory leaks
+             widgetInstanceRef.current = null;
           }
        }
     };

@@ -14,11 +14,9 @@ if (!API_KEY) {
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const checkIsQuotaError = (error: any): boolean => {
-    if(error instanceof Error) {
-        return error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED');
-    }
-    return false;
-}
+    const message = JSON.stringify(error).toLowerCase();
+    return message.includes('429') || message.includes('resource_exhausted') || message.includes('quota');
+};
 
 const handleApiError = (error: any, context: string): Error => {
     console.error(`Error in ${context}:`, error);

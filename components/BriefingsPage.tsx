@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import { generateVideoBriefing, getVideoOperationStatus } from '../services/geminiService';
 import type { Holding, ApiMode } from '../types';
@@ -96,7 +97,7 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
             prompt = `Create a simulated 60-second "daily market briefing" style video for a fictional news channel. Cover the general performance of major US indices like the S&P 500 and Nasdaq, highlight one or two key fictional market-moving news events, and mention a top-performing sector. Use a professional, news-anchor style with dynamic charts and graphics.`;
         } else {
             const holdingTickers = holdings.map(h => h.ticker).join(', ');
-            prompt = `Create a 60-second personalized weekly portfolio review video. The portfolio consists of these stocks: ${holdingTickers}. Summarize the overall weekly performance of this specific portfolio, highlight the best and worst performing stocks within it, and mention one key news item that affected one of the holdings. Use a friendly and encouraging tone.`;
+            prompt = `Create a 60-second, friendly, and encouraging video that simulates a personalized weekly portfolio review. The video should be styled like a financial update for a user. Base the simulation on a fictional portfolio containing these stocks: ${holdingTickers}. The script should invent a plausible summary of the portfolio's weekly performance, highlighting one or two fictional best and worst performers. It can also mention a fictional key news item that might have affected one of the holdings. The goal is to create an illustrative, engaging video, not real-time financial advice.`;
         }
         
         try {
