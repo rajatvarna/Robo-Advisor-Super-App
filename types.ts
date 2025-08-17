@@ -1,6 +1,6 @@
 
 
-export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'briefings';
+export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto';
 export type ApiMode = 'gemini' | 'opensource';
 
 export interface ChatMessage {
@@ -271,3 +271,12 @@ export interface StockComparisonItem {
 }
 
 export type StockComparisonData = StockComparisonItem[];
+
+// --- CRYPTO PAGE ---
+export interface CryptoData {
+    name: string;
+    symbol: string;
+    price: number;
+    change24h: number; // As a percentage
+    marketCap: number;
+}

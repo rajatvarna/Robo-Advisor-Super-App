@@ -1,7 +1,7 @@
 
 
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
-import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist } from '../types';
+import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData } from '../types';
 import * as FallbackData from './fallbackData';
 import { cacheService } from './cacheService';
 import * as financialDataService from './financialDataService';
@@ -86,12 +86,47 @@ export const getTopBusinessNews = async (apiMode: ApiMode): Promise<NewsItem[]> 
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const news = parseJsonFromText(response.text, "top business news");
-        cacheService.set(cacheKey, news, 60 * 60 * 1000); // Cache for 1 hour
+        cacheService.set(cacheKey, news, 15 * 60 * 1000); // Cache for 15 minutes
         return news;
     } catch (error) {
         throw handleApiError(error, "top business news");
     }
 };
+
+export const getCryptoNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
+    const cacheKey = 'crypto_news';
+    const cached = cacheService.get<NewsItem[]>(cacheKey);
+    if (cached) return cached;
+    
+    if (apiMode === 'opensource') return FallbackData.getCryptoNews();
+    const prompt = `Act as a crypto news aggregator. Use Google Search to find 10 significant, recent news stories about cryptocurrency from reputable sources like Coindesk, Cointelegraph, and The Block. For each story, provide the headline, a concise one-sentence summary, the source name, and the direct URL to the article. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", and "url". Do not include any text outside the JSON array.`;
+    try {
+        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
+        const news = parseJsonFromText(response.text, "crypto news");
+        cacheService.set(cacheKey, news, 15 * 60 * 1000); // Cache for 15 minutes
+        return news;
+    } catch (error) {
+        throw handleApiError(error, "crypto news");
+    }
+};
+
+export const getTopCryptos = async (apiMode: ApiMode): Promise<CryptoData[]> => {
+    const cacheKey = 'top_cryptos';
+    const cached = cacheService.get<CryptoData[]>(cacheKey);
+    if (cached) return cached;
+
+    if (apiMode === 'opensource') return FallbackData.getTopCryptos();
+    const prompt = `Act as a cryptocurrency data API. Use Google Search to find the top 25 cryptocurrencies by market capitalization from sites like Coinbase or CoinMarketCap. For each, provide its name, symbol (ticker), current price in USD, 24-hour percentage change, and market cap in USD. Respond with ONLY a valid JSON array of objects with keys "name", "symbol", "price", "change24h", and "marketCap". Market cap must be a number, not a string.`;
+    try {
+        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
+        const cryptos = parseJsonFromText(response.text, "top cryptos");
+        cacheService.set(cacheKey, cryptos, 15 * 60 * 1000); // Cache for 15 minutes
+        return cryptos;
+    } catch (error) {
+        throw handleApiError(error, "top cryptos");
+    }
+};
+
 
 export const calculatePortfolioScore = async (holdings: Holding[], apiMode: ApiMode): Promise<PortfolioScore> => {
     if (apiMode === 'opensource') return FallbackData.calculatePortfolioScore(holdings);

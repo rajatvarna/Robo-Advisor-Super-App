@@ -173,6 +173,14 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
                 <h1 className="text-3xl font-bold text-brand-text">AI Video Briefings</h1>
                 <p className="mt-2 text-brand-text-secondary">Your personalized market news, generated on-demand by AI.</p>
             </div>
+
+            <div className="p-3 bg-brand-primary border border-brand-border rounded-lg text-sm text-brand-text-secondary flex gap-3 items-start">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-brand-accent flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p><strong>Please note:</strong> AI video generation is a complex process and can take a few minutes to complete. Please be patient while we create your personalized briefing.</p>
+            </div>
+
             <div className="bg-brand-secondary p-6 rounded-lg border border-brand-border shadow-lg">
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <button

@@ -12,11 +12,11 @@ import DashboardPage from './components/DashboardPage';
 import PortfolioPage from './components/PortfolioPage';
 import TopNewsPage from './components/TopNewsPage';
 import AnalyticsPage from './components/AnalyticsPage';
-import BriefingsPage from './components/BriefingsPage';
+import CryptoPage from './components/CryptoPage';
 import AddHoldingModal from './components/AddHoldingModal';
 import AchievementToast from './components/AchievementToast';
 import Spinner from './components/icons/Spinner';
-import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements } from './services/geminiService';
+import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements, getTopBusinessNews } from './services/geminiService';
 import * as financialDataService from './services/financialDataService';
 import type { View, DashboardData, Holding, Transaction, AddHoldingData, Achievement, UserWatchlist, InvestmentGoal, Quote } from './types';
 import { ApiProvider, useApi } from './contexts/ApiContext';
@@ -385,16 +385,18 @@ const AppContent: React.FC = () => {
         }
     };
   
-  // --- DATA REFRESHING ---
+  // --- DATA REFRESHING & POLLING ---
   React.useEffect(() => {
     if (isAuthenticated && dashboardData) {
         const refreshData = async () => {
           try {
+            // Fetch portfolio-dependent data
             const allWatchlistTickers = dashboardData.watchlists.flatMap(wl => wl.tickers);
             const [news, score] = await Promise.all([
                 generatePersonalizedNews(dashboardData.holdings, allWatchlistTickers, apiMode),
                 calculatePortfolioScore(dashboardData.holdings, apiMode),
             ]);
+
             setDashboardData(d => {
                 if(!d) return null;
                 const newData = {...d, personalizedNews: news, portfolioScore: score };
@@ -402,15 +404,22 @@ const AppContent: React.FC = () => {
                 return newData;
             });
             checkAndUnlockAchievements('portfolio_score', { score: score.score });
+            
+            // Fetch general data that should be refreshed
+            await getTopBusinessNews(apiMode);
+
           } catch(err: any) {
               if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
               else console.error("Data refresh failed", err.message);
           }
         };
-        const timeoutId = setTimeout(refreshData, 500);
-        return () => clearTimeout(timeoutId);
+
+        refreshData(); // Initial call
+        const intervalId = setInterval(refreshData, 5 * 60 * 1000); // Refresh every 5 minutes
+
+        return () => clearInterval(intervalId);
     }
-  }, [dashboardData?.holdings.length, dashboardData?.watchlists, isAuthenticated, apiMode, setApiMode, checkAndUnlockAchievements, saveDataToLocalStorage]);
+  }, [dashboardData?.holdings.length, dashboardData?.watchlists.length, isAuthenticated, apiMode, setApiMode, checkAndUnlockAchievements, saveDataToLocalStorage]);
 
 
   if (!isAuthenticated) {
@@ -449,8 +458,8 @@ const AppContent: React.FC = () => {
         return <AnalyticsPage data={dashboardData} />;
       case 'news':
         return <TopNewsPage />;
-      case 'briefings':
-        return dashboardData?.holdings ? <BriefingsPage holdings={dashboardData.holdings} /> : <div className="text-center mt-12 text-brand-text-secondary">Please add holdings or generate demo data to use Video Briefings.</div>;
+      case 'crypto':
+        return <CryptoPage />;
       case 'support':
         return <DonationPage />;
       default:

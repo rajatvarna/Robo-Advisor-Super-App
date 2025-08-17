@@ -1,6 +1,7 @@
+
 import { Type } from "@google/genai";
 import type { Chat } from '@google/genai';
-import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist } from '../types';
+import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist, CryptoData } from '../types';
 
 // --- Achievements ---
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -254,6 +255,23 @@ export const getTopBusinessNews = (): NewsItem[] => ([
     { headline: 'Tech Sector Faces New Regulatory Scrutiny', url: '#', source: 'WSJ', summary: 'Governments worldwide are increasing their focus on regulating major technology firms, potentially impacting future growth.' },
     { headline: 'Oil Prices Surge on Supply Chain Worries', url: '#', source: 'Bloomberg', summary: 'Disruptions in the global supply chain have caused a significant increase in crude oil prices, affecting energy markets.' },
 ]);
+
+export const getCryptoNews = (): NewsItem[] => ([
+    { headline: 'Bitcoin Surges Past Fictional Milestone', url: '#', source: 'CoinDesk', summary: 'Bitcoin reached a new simulated all-time high as institutional interest continues to grow.' },
+    { headline: 'Ethereum "Merge" Upgrade Successful in Testnet', url: '#', source: 'The Block', summary: 'A key test for Ethereum\'s transition to Proof-of-Stake has completed successfully, developers report.' },
+    { headline: 'DeFi Sector Sees Record Inflows', url: '#', source: 'Cointelegraph', summary: 'Decentralized Finance protocols have attracted a record amount of capital in the last month, data shows.' },
+]);
+
+export const getTopCryptos = (): CryptoData[] => ([
+    { name: 'Bitcoin', symbol: 'BTC', price: 68050.55, change24h: 2.1, marketCap: 1340000000000 },
+    { name: 'Ethereum', symbol: 'ETH', price: 3550.78, change24h: 1.5, marketCap: 426000000000 },
+    { name: 'Tether', symbol: 'USDT', price: 1.00, change24h: 0.0, marketCap: 110000000000 },
+    { name: 'BNB', symbol: 'BNB', price: 601.10, change24h: -0.5, marketCap: 90000000000 },
+    { name: 'Solana', symbol: 'SOL', price: 150.25, change24h: 5.3, marketCap: 67000000000 },
+    { name: 'XRP', symbol: 'XRP', price: 0.52, change24h: -1.2, marketCap: 28000000000 },
+    { name: 'Cardano', symbol: 'ADA', price: 0.45, change24h: 3.0, marketCap: 16000000000 },
+]);
+
 
 export const calculatePortfolioScore = (holdings: Holding[]): PortfolioScore => ({
     score: 78, summary: 'A well-diversified portfolio with solid holdings.'
