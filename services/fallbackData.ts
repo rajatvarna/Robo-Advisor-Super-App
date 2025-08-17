@@ -336,31 +336,3 @@ export const generateStockComparison = (tickers: string[]): StockComparisonData 
         financialHealthSummary: `Solid balance sheet with consistent offline revenue.`,
     }));
 };
-
-export const generateVideoBriefing = (prompt: string): any => {
-    // Return a mock operation that will resolve in the next step
-    return {
-        name: 'fallback-operation-123',
-        done: false,
-        metadata: {},
-        response: null,
-        error: null,
-    };
-};
-
-export const getVideoOperationStatus = (operation: any): any => {
-    // Return a mock "done" operation with a link to a sample video.
-    return {
-        ...operation,
-        done: true,
-        response: {
-            generatedVideos: [
-                {
-                    video: {
-                        uri: 'https://storage.googleapis.com/generative-ai-vision/veo-demo-videos/prompt-with-video/a_cinematic_shot_of_a_woman_walking_through_a_paddy_field_in_the_paddy_field.mp4'
-                    }
-                }
-            ]
-        }
-    };
-};

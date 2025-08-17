@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData } from '../types';
 import * as FallbackData from './fallbackData';
@@ -327,16 +328,18 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
 
 export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
     if (apiMode === 'opensource') {
-        return FallbackData.generateVideoBriefing(prompt);
+        // In fallback mode, the component logic directly sets a static video URL.
+        // To satisfy the polling logic, we can return a "done" operation.
+        // The component will see it's fallback and use its hardcoded URL.
+        return { done: true };
     }
-    
     try {
         const operation = await ai.models.generateVideos({
             model: 'veo-2.0-generate-001',
             prompt: prompt,
             config: {
-                numberOfVideos: 1
-            }
+                numberOfVideos: 1,
+            },
         });
         return operation;
     } catch (error) {
@@ -346,13 +349,13 @@ export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): P
 
 export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
     if (apiMode === 'opensource') {
-        return FallbackData.getVideoOperationStatus(operation);
+        // This should ideally not be called if the initial op is `done: true`.
+        return { ...operation, done: true };
     }
-
     try {
-        const updatedOperation = await ai.operations.getVideosOperation({ operation });
+        const updatedOperation = await ai.operations.getVideosOperation({ operation: operation });
         return updatedOperation;
     } catch (error) {
-        throw handleApiError(error, 'video operation status check');
+        throw handleApiError(error, 'video operation status');
     }
 };

@@ -1,5 +1,6 @@
 
-export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'briefings';
+
+export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news';
 export type ApiMode = 'gemini' | 'opensource';
 
 export interface ChatMessage {

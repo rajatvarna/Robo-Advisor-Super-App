@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import Joyride, { Step } from 'react-joyride';
 
@@ -42,11 +43,6 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ run, onTourEnd }) => {
         {
             target: '#research-nav-link',
             content: 'Ready to find your next investment? Use our powerful Research page to analyze any stock with AI.',
-            placement: 'bottom',
-        },
-        {
-            target: '#briefings-nav-link',
-            content: 'Get your daily or weekly market summary in a video format, generated on-demand by our AI!',
             placement: 'bottom',
         },
         {

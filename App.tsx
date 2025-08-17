@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -11,7 +12,6 @@ import DashboardPage from './components/DashboardPage';
 import PortfolioPage from './components/PortfolioPage';
 import TopNewsPage from './components/TopNewsPage';
 import AnalyticsPage from './components/AnalyticsPage';
-import BriefingsPage from './components/BriefingsPage';
 import AddHoldingModal from './components/AddHoldingModal';
 import AchievementToast from './components/AchievementToast';
 import Spinner from './components/icons/Spinner';
@@ -370,8 +370,6 @@ const AppContent: React.FC = () => {
         return <AnalyticsPage holdings={dashboardData?.holdings || []} />;
       case 'news':
         return <TopNewsPage />;
-      case 'briefings':
-        return <BriefingsPage holdings={dashboardData?.holdings || []} />;
       case 'support':
         return <DonationPage />;
       default:
