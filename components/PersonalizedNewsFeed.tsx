@@ -25,4 +25,4 @@ const PersonalizedNewsFeed: React.FC<{ news: NewsItem[] }> = ({ news }) => {
     );
 };
 
-export default PersonalizedNewsFeed;
+export default React.memo(PersonalizedNewsFeed);

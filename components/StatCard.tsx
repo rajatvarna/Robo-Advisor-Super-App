@@ -26,4 +26,4 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, change }) => {
     );
 };
 
-export default StatCard;
+export default React.memo(StatCard);

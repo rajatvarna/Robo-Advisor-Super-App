@@ -18,7 +18,10 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
     const [error, setError] = React.useState<string | null>(null);
     const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
     const [loadingMessage, setLoadingMessage] = React.useState('');
-    const intervalRef = React.useRef<number | null>(null);
+    
+    const pollingTimeoutRef = React.useRef<number | null>(null);
+    const messageIndexRef = React.useRef(0);
+
     const { apiMode, setApiMode, isFallbackMode } = useApi();
 
     const loadingMessages = [
@@ -32,8 +35,8 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
 
     React.useEffect(() => {
         return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
+            if (pollingTimeoutRef.current) {
+                clearTimeout(pollingTimeoutRef.current);
             }
         };
     }, []);
@@ -48,49 +51,47 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
         setIsLoading(false);
     };
 
-    const pollOperation = (operation: any, currentApiMode: ApiMode) => {
-        let messageIndex = 0;
-        setLoadingMessage(loadingMessages[messageIndex]);
+    const pollOperation = async (operation: any) => {
+        // Rotate and set the loading message
+        messageIndexRef.current = (messageIndexRef.current + 1) % loadingMessages.length;
+        setLoadingMessage(loadingMessages[messageIndexRef.current]);
 
-        // Clear any existing interval before starting a new one.
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-        }
+        try {
+            const updatedOperation = await getVideoOperationStatus(operation, apiMode);
 
-        const newIntervalId = setInterval(async () => {
-            try {
-                const updatedOperation = await getVideoOperationStatus(operation, currentApiMode);
-                if (updatedOperation.done) {
-                    clearInterval(newIntervalId);
-                    intervalRef.current = null;
-                    const downloadLink = updatedOperation.response?.generatedVideos?.[0]?.video?.uri;
-                    if (downloadLink) {
-                        setVideoUrl(`${downloadLink}&key=${API_KEY}`);
-                    } else if (isFallbackMode) {
-                        setVideoUrl('https://storage.googleapis.com/generative-ai-vision/veo-demo-videos/prompt-with-video/a_cinematic_shot_of_a_woman_walking_through_a_paddy_field_in_the_paddy_field.mp4');
-                    }
-                    else {
-                        setError("Video generation completed, but no video URL was returned.");
-                    }
-                    setIsLoading(false);
+            if (updatedOperation.done) {
+                const downloadLink = updatedOperation.response?.generatedVideos?.[0]?.video?.uri;
+                if (downloadLink) {
+                    setVideoUrl(`${downloadLink}&key=${API_KEY}`);
+                } else if (isFallbackMode) {
+                    setVideoUrl('https://storage.googleapis.com/generative-ai-vision/veo-demo-videos/prompt-with-video/a_cinematic_shot_of_a_woman_walking_through_a_paddy_field_in_the_paddy_field.mp4');
                 } else {
-                    messageIndex = (messageIndex + 1) % loadingMessages.length;
-                    setLoadingMessage(loadingMessages[messageIndex]);
+                    setError("Video generation completed, but no video URL was returned.");
                 }
-            } catch (err: any) {
-                clearInterval(newIntervalId);
-                intervalRef.current = null;
-                handleApiError(err);
+                setIsLoading(false);
+            } else {
+                // Not done, schedule the next poll with the *updated* operation object
+                pollingTimeoutRef.current = window.setTimeout(() => pollOperation(updatedOperation), 10000);
             }
-        }, 10000);
-
-        intervalRef.current = newIntervalId;
+        } catch (err: any) {
+            if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
+            handleApiError(err);
+        }
     };
+
 
     const handleGenerateVideo = async (type: 'daily' | 'weekly') => {
         setIsLoading(true);
         setError(null);
         setVideoUrl(null);
+        
+        // Clear any existing polling timeout before starting a new one
+        if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+        }
+
+        messageIndexRef.current = 0;
+        setLoadingMessage(loadingMessages[0]);
 
         let prompt = '';
         if (type === 'daily') {
@@ -102,7 +103,7 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
         
         try {
             const initialOperation = await generateVideoBriefing(prompt, apiMode);
-            pollOperation(initialOperation, apiMode);
+            pollOperation(initialOperation);
         } catch (err: any) {
             handleApiError(err);
         }

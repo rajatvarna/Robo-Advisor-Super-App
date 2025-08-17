@@ -60,4 +60,4 @@ const AllocationComparison: React.FC<AllocationComparisonProps> = ({ current, re
     );
 };
 
-export default AllocationComparison;
+export default React.memo(AllocationComparison);

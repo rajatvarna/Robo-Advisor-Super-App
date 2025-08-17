@@ -1,5 +1,6 @@
 
 
+
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -59,11 +60,11 @@ const AppContent: React.FC = () => {
     }
   }, []);
 
-  const saveDataToLocalStorage = (data: DashboardData | null, wl: string[], ach: Achievement[]) => {
+  const saveDataToLocalStorage = React.useCallback((data: DashboardData | null, wl: string[], ach: Achievement[]) => {
     if(data) localStorage.setItem('robo-advisor-data', JSON.stringify(data));
     localStorage.setItem('robo-advisor-watchlist', JSON.stringify(wl));
     localStorage.setItem('robo-advisor-achievements', JSON.stringify(ach));
-  };
+  }, []);
 
   // --- REAL-TIME PRICE SIMULATION ---
   React.useEffect(() => {
@@ -71,34 +72,34 @@ const AppContent: React.FC = () => {
       if (isAuthenticated && dashboardData && dashboardData.holdings.length > 0) {
         try {
             const holdingsToUpdate = [...dashboardData.holdings, ...(dashboardData.watchlist || [])];
+            if (holdingsToUpdate.length === 0) return;
+            
             const updatedPrices = await fetchUpdatedPrices(holdingsToUpdate.map(h => ({ ticker: h.ticker, currentPrice: h.currentPrice })), apiMode);
             
             setDashboardData(prevData => {
                 if (!prevData) return null;
 
-                const updatedHoldings = prevData.holdings.map(h => {
-                    const update = updatedPrices.find(p => p.ticker === h.ticker);
-                    if (update) {
+                const updateItem = (item: Holding): Holding => {
+                    const update = updatedPrices.find(p => p.ticker === item.ticker);
+                    if (update && update.currentPrice !== item.currentPrice) {
+                        const previousClose = item.currentPrice - item.dayChange;
+                        const newDayChange = update.currentPrice - previousClose;
+                        const newDayChangePercent = previousClose !== 0 ? (newDayChange / previousClose) * 100 : 0;
+                        
                         return { 
-                            ...h, 
-                            dayChange: h.dayChange + (update.currentPrice - h.currentPrice),
-                            dayChangePercent: (((h.currentPrice + (update.currentPrice - h.currentPrice)) / (h.currentPrice - h.dayChange)) - 1) * 100,
+                            ...item,
                             currentPrice: update.currentPrice,
-                            totalValue: update.currentPrice * h.shares,
-                            isUpdating: update.currentPrice !== h.currentPrice,
+                            dayChange: newDayChange,
+                            dayChangePercent: newDayChangePercent,
+                            totalValue: update.currentPrice * (item.shares || 0), // Watchlist items have 0 shares
+                            isUpdating: true,
                         };
                     }
-                    return {...h, isUpdating: false};
-                });
-                
-                const updatedWatchlist = (prevData.watchlist || []).map(w => {
-                    const update = updatedPrices.find(p => p.ticker === w.ticker);
-                     if (update) {
-                        return { ...w, currentPrice: update.currentPrice, dayChange: w.dayChange + (update.currentPrice - w.currentPrice), dayChangePercent: (((w.currentPrice + (update.currentPrice - w.currentPrice)) / (w.currentPrice - w.dayChange)) - 1) * 100, isUpdating: update.currentPrice !== w.currentPrice };
-                    }
-                    return {...w, isUpdating: false};
-                });
+                    return {...item, isUpdating: false};
+                };
 
+                const updatedHoldings = prevData.holdings.map(updateItem);
+                const updatedWatchlist = (prevData.watchlist || []).map(updateItem);
                 const newNetWorth = updatedHoldings.reduce((sum, h) => sum + h.totalValue, 0);
 
                 return {
@@ -106,7 +107,7 @@ const AppContent: React.FC = () => {
                     netWorth: newNetWorth,
                     holdings: updatedHoldings,
                     watchlist: updatedWatchlist,
-                }
+                };
             });
 
         } catch(err: any) {
@@ -120,22 +121,22 @@ const AppContent: React.FC = () => {
   }, [isAuthenticated, dashboardData, apiMode, setApiMode]);
   
   // --- USER ACTIONS ---
-  const handleLogin = () => {
+  const handleLogin = React.useCallback(() => {
     setIsAuthenticated(true);
     localStorage.setItem('robo-advisor-authenticated', 'true');
     setView('dashboard');
-  };
+  }, []);
   
-  const handleLogout = () => {
+  const handleLogout = React.useCallback(() => {
     setIsAuthenticated(false);
     setDashboardData(null);
     setWatchlist([]);
     setAchievements([]);
     localStorage.clear();
     setView('dashboard');
-  };
+  }, []);
 
-  const checkAndUnlockAchievements = async (action: string, data: any) => {
+  const checkAndUnlockAchievements = React.useCallback(async (action: string, data: any) => {
     const unlockedAchievementIds = achievements.filter(a => a.unlocked).map(a => a.id);
     try {
         const newAchievements = await checkForAchievements(action, data, unlockedAchievementIds, apiMode);
@@ -154,15 +155,14 @@ const AppContent: React.FC = () => {
          if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
          else console.error("Achievement check failed:", err.message);
     }
-  };
+  }, [achievements, apiMode, setApiMode, dashboardData, watchlist, saveDataToLocalStorage]);
 
-  const handleGenerateDemoData = async () => {
+  const handleGenerateDemoData = React.useCallback(async () => {
       setIsLoading(true);
       setError(null);
       try {
         const baseData = await generateDashboardData(apiMode);
         
-        // Construct the full DashboardData object from the base data
         const netWorth = baseData.holdings.reduce((sum, h) => sum + h.totalValue, 0);
 
         const allocationMap = new Map<string, number>();
@@ -209,14 +209,14 @@ const AppContent: React.FC = () => {
       } finally {
         setIsLoading(false);
       }
-  };
+  }, [apiMode, setApiMode, saveDataToLocalStorage]);
 
-  const handleTourEnd = () => {
+  const handleTourEnd = React.useCallback(() => {
     setRunTour(false);
     localStorage.setItem('robo-advisor-tour-completed', 'true');
-  };
+  }, []);
   
-  const handleAddHolding = async (userHolding: UserHolding) => {
+  const handleAddHolding = React.useCallback(async (userHolding: UserHolding) => {
       const stockDetails = await fetchStockDetailsForPortfolio(userHolding.ticker, apiMode);
 
       const newHolding: Holding = {
@@ -282,22 +282,9 @@ const AppContent: React.FC = () => {
       // Post-update: check for achievements and save
       await checkAndUnlockAchievements('add_holding', { holdingsCount: (dashboardData?.holdings.length || 0) + 1 });
       if(updatedData) saveDataToLocalStorage(updatedData, watchlist, achievements);
-  };
+  }, [apiMode, isFallbackMode, checkAndUnlockAchievements, dashboardData, watchlist, achievements, saveDataToLocalStorage]);
   
-  const handleToggleWatchlist = (ticker: string) => {
-    setWatchlist(prev => {
-        const newWatchlist = prev.includes(ticker) ? prev.filter(t => t !== ticker) : [...prev, ticker];
-        if (newWatchlist.length > prev.length) {
-            updateWatchlistDetails(newWatchlist);
-        } else {
-             setDashboardData(d => d ? ({ ...d, watchlist: d.watchlist?.filter(w => w.ticker !== ticker) }) : null);
-        }
-        if(dashboardData) saveDataToLocalStorage(dashboardData, newWatchlist, achievements);
-        return newWatchlist;
-    });
-  };
-  
-  const updateWatchlistDetails = async (tickers: string[]) => {
+  const updateWatchlistDetails = React.useCallback(async (tickers: string[]) => {
       if(!dashboardData) return;
       const newTickers = tickers.filter(t => !dashboardData.watchlist?.some(w => w.ticker === t));
       if (newTickers.length === 0) return;
@@ -309,11 +296,24 @@ const AppContent: React.FC = () => {
           if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
           else console.error("Update watchlist failed", err.message);
       }
-  };
+  }, [apiMode, setApiMode, dashboardData]);
 
-  const handleRunScreener = () => {
+  const handleToggleWatchlist = React.useCallback((ticker: string) => {
+    setWatchlist(prev => {
+        const newWatchlist = prev.includes(ticker) ? prev.filter(t => t !== ticker) : [...prev, ticker];
+        if (newWatchlist.length > prev.length) {
+            updateWatchlistDetails(newWatchlist);
+        } else {
+             setDashboardData(d => d ? ({ ...d, watchlist: d.watchlist?.filter(w => w.ticker !== ticker) }) : null);
+        }
+        if(dashboardData) saveDataToLocalStorage(dashboardData, newWatchlist, achievements);
+        return newWatchlist;
+    });
+  }, [dashboardData, achievements, updateWatchlistDetails, saveDataToLocalStorage]);
+  
+  const handleRunScreener = React.useCallback(() => {
       checkAndUnlockAchievements('run_screener', {});
-  };
+  }, [checkAndUnlockAchievements]);
 
   // --- DATA REFRESHING ---
   React.useEffect(() => {
@@ -334,7 +334,7 @@ const AppContent: React.FC = () => {
         const timeoutId = setTimeout(refreshData, 500);
         return () => clearTimeout(timeoutId);
     }
-  }, [dashboardData?.holdings.length, dashboardData?.watchlist?.length, isAuthenticated, apiMode]);
+  }, [dashboardData?.holdings.length, dashboardData?.watchlist?.length, isAuthenticated, apiMode, setApiMode, checkAndUnlockAchievements]);
 
 
   if (!isAuthenticated) {

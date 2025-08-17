@@ -14,7 +14,7 @@ interface PortfolioPageProps {
   onAddHolding: () => void;
 }
 
-const HoldingRow: React.FC<{h: Holding}> = ({ h }) => {
+const HoldingRow: React.FC<{h: Holding}> = React.memo(({ h }) => {
     const [flashClass, setFlashClass] = React.useState('');
     
     React.useEffect(() => {
@@ -39,7 +39,7 @@ const HoldingRow: React.FC<{h: Holding}> = ({ h }) => {
             <td className="py-4 px-4 text-right tabular-nums font-bold text-brand-text">{formatCurrency(h.totalValue)}</td>
         </tr>
     );
-};
+});
 
 const PortfolioPage: React.FC<PortfolioPageProps> = ({ data, onGenerateDemo, onAddHolding }) => {
   if (!data || data.holdings.length === 0) {

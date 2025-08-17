@@ -36,4 +36,4 @@ const AchievementsList: React.FC<AchievementsListProps> = ({ achievements }) => 
     );
 };
 
-export default AchievementsList;
+export default React.memo(AchievementsList);

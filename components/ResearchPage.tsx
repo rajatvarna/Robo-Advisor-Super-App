@@ -1,5 +1,6 @@
 
 
+
 import * as React from 'react';
 import TickerInput from './TickerInput';
 import SecFilings from './SecFilings';
@@ -49,9 +50,8 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
   const [error, setError] = React.useState<string | null>(null);
   
   const [activeTab, setActiveTab] = React.useState<DashboardTab>('overview');
-  const [fetchedTabs, setFetchedTabs] = React.useState<Set<DashboardTab>>(new Set());
-
-  const [filings, setFilings] = React.useState<SecFiling[]>([]);
+  
+  const [filings, setFilings] = React.useState<SecFiling[] | null>(null);
   const [financials, setFinancials] = React.useState<FinancialStatementsData | null>(null);
   const [transcriptsData, setTranscriptsData] = React.useState<TranscriptsData | null>(null);
   const [analysis, setAnalysis] = React.useState<StockAnalysisData | null>(null);
@@ -74,76 +74,60 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
       setIsLoading(false);
   };
 
-  const fetchInitialData = async (newTicker: string) => {
+  const handleTickerSubmit = (newTicker: string) => {
     setIsLoading(true);
     setError(null);
     setTicker(newTicker.toUpperCase());
     setActiveTab('overview');
 
-    // Reset all data
-    setFetchedTabs(new Set());
-    setFilings([]);
-    setFinancials(null);
-    setTranscriptsData(null);
+    // Reset all data for the new ticker
     setAnalysis(null);
+    setFinancials(null);
+    setFilings(null);
+    setTranscriptsData(null);
+  };
+
+  // Effect for fetching initial and pre-fetching other data
+  React.useEffect(() => {
+    if (!ticker) return;
+
+    const fetchAllData = async () => {
+        try {
+            // Fetch initial data for the first tab
+            const analysisResult = await generateStockAnalysis(ticker, apiMode);
+            setAnalysis(analysisResult);
+            setIsLoading(false); // Stop loading after first tab is ready
+
+            // Pre-fetch other data in the background
+            Promise.all([
+                generateFinancials(ticker, apiMode).then(setFinancials),
+                getFilings(ticker, apiMode).then(setFilings),
+                generateTranscripts(ticker, apiMode).then(setTranscriptsData)
+            ]).catch(err => {
+                console.error("A background pre-fetch failed:", err.message);
+                // Don't set a blocking error for pre-fetch failures
+            });
+
+        } catch (err) {
+            handleApiError(err);
+            setTicker(null); // Reset ticker on a critical error
+        }
+    };
     
-    try {
-      // Lazily load only the first tab's data
-      const analysisResult = await generateStockAnalysis(newTicker, apiMode);
-      setAnalysis(analysisResult);
-      setFetchedTabs(new Set(['overview']));
-    } catch(err) {
-      handleApiError(err);
-      setTicker(null); // Reset ticker on error
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    fetchAllData();
+  }, [ticker, apiMode]);
+
   
-  const handleTabClick = async (tab: DashboardTab) => {
-    setActiveTab(tab);
-    if (!ticker || fetchedTabs.has(tab)) {
-      return; // Already fetched or no ticker
-    }
-
-    try {
-      let dataFetched = false;
-      if (tab === 'financials') {
-        setFinancials(null); // Show spinner
-        const data = await generateFinancials(ticker, apiMode);
-        setFinancials(data);
-        dataFetched = true;
-      } else if (tab === 'transcripts') {
-        setTranscriptsData(null); // Show spinner
-        const data = await generateTranscripts(ticker, apiMode);
-        setTranscriptsData(data);
-        dataFetched = true;
-      } else if (tab === 'filings') {
-        setFilings([]); // Show spinner
-        const data = await getFilings(ticker, apiMode);
-        setFilings(data);
-        dataFetched = true;
-      }
-      
-      if (dataFetched) {
-        setFetchedTabs(prev => new Set(prev).add(tab));
-      }
-    } catch(err) {
-      handleApiError(err);
-    }
-  };
-
   const renderContent = () => {
     switch(activeTab) {
       case 'overview':
-        return analysis ? <StockAnalysis analysis={analysis} /> : <Spinner/>;
+        return analysis ? <StockAnalysis analysis={analysis} /> : <div className="flex items-center justify-center h-64"><Spinner/></div>;
       case 'financials':
-        return <FinancialStatements data={financials} />;
+        return financials ? <FinancialStatements data={financials} /> : <div className="flex items-center justify-center h-64"><Spinner/></div>;
       case 'filings':
-        // Show spinner for filings if it has been clicked but not yet loaded
-        return (fetchedTabs.has('filings') || filings.length > 0) ? <SecFilings filings={filings} /> : <div className="flex items-center justify-center h-64"><Spinner/></div>;
+        return filings ? <SecFilings filings={filings} /> : <div className="flex items-center justify-center h-64"><Spinner/></div>;
       case 'transcripts':
-        return <EarningsTranscripts transcriptsData={transcriptsData} />;
+        return transcriptsData ? <EarningsTranscripts transcriptsData={transcriptsData} /> : <div className="flex items-center justify-center h-64"><Spinner/></div>;
       default:
         return null;
     }
@@ -186,9 +170,9 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
 
   return (
     <div className="container mx-auto">
-      <TickerInput onTickerSubmit={fetchInitialData} isLoading={isLoading} />
+      <TickerInput onTickerSubmit={handleTickerSubmit} isLoading={isLoading} />
       
-      {isLoading && !ticker && (
+      {isLoading && (
          <div className="flex flex-col items-center justify-center h-96">
             <Spinner />
             <p className="mt-4 text-brand-text-secondary">Fetching financial universe...</p>
@@ -215,20 +199,20 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
 
           <div className="border-b border-brand-border">
             <nav className="-mb-px flex space-x-4" aria-label="Tabs">
-                <TabButton label="Overview" isActive={activeTab === 'overview'} onClick={() => handleTabClick('overview')} />
-                <TabButton label="Financials" isActive={activeTab === 'financials'} onClick={() => handleTabClick('financials')} />
-                <TabButton label="SEC Filings" isActive={activeTab === 'filings'} onClick={() => handleTabClick('filings')} />
-                <TabButton label="Transcripts" isActive={activeTab === 'transcripts'} onClick={() => handleTabClick('transcripts')} />
+                <TabButton label="Overview" isActive={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+                <TabButton label="Financials" isActive={activeTab === 'financials'} onClick={() => setActiveTab('financials')} />
+                <TabButton label="SEC Filings" isActive={activeTab === 'filings'} onClick={() => setActiveTab('filings')} />
+                <TabButton label="Transcripts" isActive={activeTab === 'transcripts'} onClick={() => setActiveTab('transcripts')} />
             </nav>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 min-h-[300px]">
             {renderContent()}
           </div>
         </div>
       )}
 
-      {!isLoading && !ticker && !error && (
+      {!ticker && !isLoading && !error && (
         <div className="text-center mt-16 text-brand-text-secondary">
           <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-16 w-16 text-brand-text-secondary opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />

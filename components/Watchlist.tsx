@@ -5,7 +5,7 @@ import StarSolidIcon from './icons/StarSolidIcon';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
-const WatchlistRow: React.FC<{ stock: Holding }> = ({ stock }) => {
+const WatchlistRow: React.FC<{ stock: Holding }> = React.memo(({ stock }) => {
     const [flashClass, setFlashClass] = React.useState('');
     const isPositive = stock.dayChange >= 0;
 
@@ -26,7 +26,7 @@ const WatchlistRow: React.FC<{ stock: Holding }> = ({ stock }) => {
             </td>
         </tr>
     );
-}
+});
 
 const Watchlist: React.FC<{ stocks: Holding[] }> = ({ stocks }) => {
     return (
@@ -50,4 +50,4 @@ const Watchlist: React.FC<{ stocks: Holding[] }> = ({ stocks }) => {
     );
 };
 
-export default Watchlist;
+export default React.memo(Watchlist);

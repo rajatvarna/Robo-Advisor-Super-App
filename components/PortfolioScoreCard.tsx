@@ -47,4 +47,4 @@ const PortfolioScoreCard: React.FC<{ score: PortfolioScore }> = ({ score }) => {
     );
 };
 
-export default PortfolioScoreCard;
+export default React.memo(PortfolioScoreCard);

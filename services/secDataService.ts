@@ -1,8 +1,10 @@
 
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { SecFiling, ApiMode } from '../types';
 import * as FallbackData from './fallbackData';
+import { cacheService } from './cacheService';
 
 // The API Key is expected to be available in the environment.
 const API_KEY = process.env.API_KEY;
@@ -40,8 +42,14 @@ const handleApiError = (error: any, context: string): Error => {
  * @returns A promise that resolves to an array of SecFiling objects.
  */
 export async function getFilings(ticker: string, apiMode: ApiMode): Promise<SecFiling[]> {
+  const cacheKey = `filings_${ticker}`;
+  const cachedData = cacheService.get<SecFiling[]>(cacheKey);
+  if (cachedData) return cachedData;
+  
   if (apiMode === 'opensource') {
-      return FallbackData.getFilings(ticker);
+      const data = FallbackData.getFilings(ticker);
+      cacheService.set(cacheKey, data);
+      return data;
   }
   const prompt = `
     Act as a financial data provider. Generate a list of 10 recent and plausible SEC filings for the stock ticker "${ticker.toUpperCase()}".
@@ -84,7 +92,9 @@ export async function getFilings(ticker: string, apiMode: ApiMode): Promise<SecF
     }));
 
     // Sort by most recent filing date descending
-    return filings.sort((a, b) => new Date(b.filingDate).getTime() - new Date(a.filingDate).getTime());
+    const sortedFilings = filings.sort((a, b) => new Date(b.filingDate).getTime() - new Date(a.filingDate).getTime());
+    cacheService.set(cacheKey, sortedFilings);
+    return sortedFilings;
 
   } catch (error) {
     throw handleApiError(error, `SEC filings for ${ticker}`);

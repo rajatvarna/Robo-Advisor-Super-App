@@ -1,8 +1,10 @@
 
 
+
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData } from '../types';
 import * as FallbackData from './fallbackData';
+import { cacheService } from './cacheService';
 
 const API_KEY = process.env.API_KEY;
 
@@ -23,7 +25,7 @@ const handleApiError = (error: any, context: string): Error => {
         return new Error("QUOTA_EXCEEDED");
     }
     if (error instanceof Error) {
-        if (error.message.includes('API key') || error.message.includes('400') || error.message.includes('403'))) {
+        if (error.message.includes('API key') || error.message.includes('400') || error.message.includes('403')) {
             return new Error(`The AI call failed for ${context}. Please verify that the API_KEY is configured correctly.`);
         }
         return new Error(`The AI failed to generate ${context}. Reason: ${error.message}`);
@@ -78,11 +80,24 @@ export const generatePersonalizedNews = async (holdings: Holding[], watchlist: H
     if (holdings.length === 0 && (!watchlist || watchlist.length === 0)) return [];
     const tickers = [...new Set([...holdings.map(h => h.ticker), ...(watchlist || []).map(w => w.ticker)])].join(', ');
     if (!tickers) return [];
-    const prompt = `Act as a financial news curator. Use Google Search to find 4 recent, relevant news articles for stocks: ${tickers}. For each, provide headline, summary, source, URL, and sentiment. Respond in a valid JSON array wrapped in markdown.`;
+    const prompt = `Act as a financial news curator. Use Google Search to find 4 recent, relevant news articles for these stocks: ${tickers}. For each, provide its headline, a concise one-sentence summary, the source name, its URL, and a sentiment analysis ('Positive', 'Negative', 'Neutral'). Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "sentiment". Do not include markdown formatting or any other text outside the JSON array.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
-        const jsonText = response.text.trim().replace(/^```json\s*|```\s*$/g, '');
-        return JSON.parse(jsonText);
+        
+        let text = response.text.trim();
+        // Find the JSON array within the response text, as grounding can add conversational text.
+        const match = text.match(/(\[[\s\S]*\])/);
+        if (match && match[0]) {
+            try {
+                return JSON.parse(match[0]);
+            } catch(e) {
+                 console.error("Failed to parse extracted JSON from personalized news:", match[0]);
+                 // Fall through to try parsing the whole string if extraction fails
+            }
+        }
+        // Fallback for cases where the regex fails but the response is clean JSON.
+        return JSON.parse(text);
+
     } catch (error) { throw handleApiError(error, "personalized news"); }
 }
 
@@ -205,17 +220,35 @@ export const generatePortfolio = async (answers: QuestionnaireAnswers, apiMode: 
 };
 
 export const generateFinancials = async (ticker: string, apiMode: ApiMode): Promise<FinancialStatementsData> => {
-    if (apiMode === 'opensource') return FallbackData.generateFinancials(ticker);
+    const cacheKey = `financials_${ticker}`;
+    const cachedData = cacheService.get<FinancialStatementsData>(cacheKey);
+    if (cachedData) return cachedData;
+
+    if (apiMode === 'opensource') {
+        const data = FallbackData.generateFinancials(ticker);
+        cacheService.set(cacheKey, data);
+        return data;
+    }
     const prompt = `Generate plausible financial statement data for "${ticker}" for the last 10 fiscal years. Provide JSON with 'incomeStatement', 'balanceSheet', and 'cashFlow' arrays.`;
     const schema = FallbackData.financialsSchema;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema, }, });
-        return JSON.parse(response.text.trim()) as FinancialStatementsData;
+        const data = JSON.parse(response.text.trim()) as FinancialStatementsData;
+        cacheService.set(cacheKey, data);
+        return data;
     } catch (error) { throw handleApiError(error, `financials for ${ticker}`); }
 };
 
 export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Promise<TranscriptsData> => {
-    if (apiMode === 'opensource') return FallbackData.generateTranscripts(ticker);
+    const cacheKey = `transcripts_${ticker}`;
+    const cachedData = cacheService.get<TranscriptsData>(cacheKey);
+    if (cachedData) return cachedData;
+    
+    if (apiMode === 'opensource') {
+        const data = FallbackData.generateTranscripts(ticker);
+        cacheService.set(cacheKey, data);
+        return data;
+    }
     const prompt = `Use Google Search to find earnings call transcripts for "${ticker.toUpperCase()}". Find the 4 most recent ones. For each, provide the quarter, date, a concise summary, and a key quote. CITE YOUR SOURCES by index number. Respond with ONLY a valid JSON object of the format: {"transcripts": [{"quarter": "...", "date": "...", "summary": "...", "transcript": "...", "sourceIndex": 1}, ...]}. Do not invent URLs or sources.`;
     try {
         const response: GenerateContentResponse = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}], }, });
@@ -230,28 +263,47 @@ export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Pro
 
         transcripts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
-        return { transcripts, sources: groundingSources };
+        const result = { transcripts, sources: groundingSources };
+        cacheService.set(cacheKey, result);
+        return result;
     } catch (error) { throw handleApiError(error, `earnings transcripts for ${ticker}`); }
 };
 
 export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): Promise<StockAnalysisData> => {
-    if (apiMode === 'opensource') return FallbackData.generateStockAnalysis(ticker);
+    const cacheKey = `analysis_${ticker}`;
+    const cachedData = cacheService.get<StockAnalysisData>(cacheKey);
+    if (cachedData) return cachedData;
+
+    if (apiMode === 'opensource') {
+        const data = FallbackData.generateStockAnalysis(ticker);
+        cacheService.set(cacheKey, data);
+        return data;
+    }
     const prompt = `Act as a senior analyst for "${ticker.toUpperCase()}". Use search to gather info. Provide analysis including: businessSummary, bullCase, bearCase, financialHealth (score 1-10 & summary), and 3 recentNews items (headline, summary, sentiment). CITE YOUR SOURCES by index number. Respond with ONLY a valid JSON object of the format: {"businessSummary": "...", "recentNews": [{"headline": "...", "summary": "...", "sentiment": "...", "sourceIndex": 1}], ...}. Do not invent URLs or sources.`;
     try {
         const response: GenerateContentResponse = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}], }, });
 
         const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any, index: number) => ({ uri: chunk.web?.uri, title: chunk.web?.title, index: index + 1 })).filter(source => source.uri && source.title) ?? [];
-        if (groundingSources.length === 0) throw new Error("Could not find any sources for stock analysis.");
 
         const jsonText = response.text.trim().replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
         const parsedJson = JSON.parse(jsonText);
         
-        return { ...parsedJson, sources: groundingSources };
+        const result = { ...parsedJson, sources: groundingSources };
+        cacheService.set(cacheKey, result);
+        return result;
     } catch (error) { throw handleApiError(error, `stock analysis for ${ticker}`); }
 }
 
 export const generateStockComparison = async (tickers: string[], apiMode: ApiMode): Promise<StockComparisonData> => {
-    if (apiMode === 'opensource') return FallbackData.generateStockComparison(tickers);
+    const cacheKey = `comparison_${tickers.sort().join('_')}`;
+    const cachedData = cacheService.get<StockComparisonData>(cacheKey);
+    if (cachedData) return cachedData;
+    
+    if (apiMode === 'opensource') {
+        const data = FallbackData.generateStockComparison(tickers);
+        cacheService.set(cacheKey, data);
+        return data;
+    }
     const prompt = `Act as a senior stock analyst. Provide a detailed, side-by-side comparison for the following stock tickers: ${tickers.join(', ')}. For each ticker, provide its company name, market cap in billions, P/E ratio, dividend yield, consensus analyst rating, a brief bull case, a brief bear case, and a one-sentence financial health summary. Provide the response in the specified JSON format. If a value like P/E or dividend yield isn't applicable, use null.`;
 
     const schema = {
@@ -268,7 +320,9 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
                 responseSchema: schema,
             },
         });
-        return JSON.parse(response.text.trim()) as StockComparisonData;
+        const data = JSON.parse(response.text.trim()) as StockComparisonData;
+        cacheService.set(cacheKey, data);
+        return data;
     } catch (error) {
         throw handleApiError(error, `stock comparison for ${tickers.join(', ')}`);
     }

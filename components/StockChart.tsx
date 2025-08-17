@@ -1,5 +1,6 @@
 
 
+
 import * as React from 'react';
 
 // This is a type assertion for the global TradingView object
@@ -80,4 +81,4 @@ const StockChart: React.FC<StockChartProps> = ({ ticker }) => {
   );
 };
 
-export default StockChart;
+export default React.memo(StockChart);
