@@ -1,5 +1,6 @@
 
 
+
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -118,7 +119,7 @@ const AppContent: React.FC = () => {
             if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
         }
       }
-    }, 30000);
+    }, 5000); // Reduced interval for more "live" feel
 
     return () => clearInterval(interval);
   }, [isAuthenticated, dashboardData, setApiMode]);

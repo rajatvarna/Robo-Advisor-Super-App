@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData } from '../types';
 import * as FallbackData from './fallbackData';
