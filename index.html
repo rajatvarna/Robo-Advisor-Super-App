@@ -13,13 +13,13 @@
       theme: {
         extend: {
           colors: {
-            'brand-primary': '#0D1117',
-            'brand-secondary': '#161B22',
-            'brand-accent': '#2F81F7',
-            'brand-accent-hover': '#1F6FEB',
-            'brand-text': '#E6EDF3',
-            'brand-text-secondary': '#8B949E',
-            'brand-border': '#30363D',
+            'brand-primary': 'var(--color-brand-primary)',
+            'brand-secondary': 'var(--color-brand-secondary)',
+            'brand-accent': 'var(--color-brand-accent)',
+            'brand-accent-hover': 'var(--color-brand-accent-hover)',
+            'brand-text': 'var(--color-brand-text)',
+            'brand-text-secondary': 'var(--color-brand-text-secondary)',
+            'brand-border': 'var(--color-brand-border)',
           }
         }
       }
@@ -39,16 +39,39 @@
 </script>
 <style>
   @import "https://cdn.jsdelivr.net/npm/react-joyride@2.8.2/lib/react-joyride.css";
+  :root {
+    --color-brand-primary: #FFFFFF;
+    --color-brand-secondary: #F6F8FA;
+    --color-brand-accent: #0969DA;
+    --color-brand-accent-hover: #0550AE;
+    --color-brand-text: #24292F;
+    --color-brand-text-secondary: #57606A;
+    --color-brand-border: #D0D7DE;
+    --color-body-bg: #F6F8FA;
+  }
+
+  html.dark {
+    --color-brand-primary: #0D1117;
+    --color-brand-secondary: #161B22;
+    --color-brand-accent: #2F81F7;
+    --color-brand-accent-hover: #1F6FEB;
+    --color-brand-text: #E6EDF3;
+    --color-brand-text-secondary: #8B949E;
+    --color-brand-border: #30363D;
+    --color-body-bg: #010409;
+  }
+  
   body, #root {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
   }
   body {
-     background-color: #010409;
+     background-color: var(--color-body-bg);
+     color: var(--color-brand-text);
   }
   main {
-    background-color: #0D1117;
+    background-color: var(--color-brand-primary);
     flex-grow: 1;
   }
 

@@ -1,5 +1,6 @@
 
 
+
 import * as React from 'react';
 import type { StockComparisonData } from '../types';
 import Spinner from './icons/Spinner';
@@ -48,17 +49,19 @@ const StockComparison: React.FC<StockComparisonProps> = ({ data, isLoading, erro
         const value = item[key];
         switch (key) {
             case 'marketCap':
-                return formatMarketCap(value);
+                 return <div className="text-sm text-brand-text whitespace-pre-wrap">{formatMarketCap(value)}</div>;
             case 'peRatio':
-                return typeof value === 'number' ? value.toFixed(2) : 'N/A';
+                return <div className="text-sm text-brand-text whitespace-pre-wrap">{value != null ? value.toFixed(2) : 'N/A'}</div>;
             case 'dividendYield':
-                return typeof value === 'number' ? `${value.toFixed(2)}%` : 'N/A';
+                return <div className="text-sm text-brand-text whitespace-pre-wrap">{value != null ? `${value.toFixed(2)}%` : 'N/A'}</div>;
+            case 'financialHealthSummary':
+                 return <div className="text-sm text-brand-text-secondary whitespace-pre-wrap">{value}</div>;
             case 'bullCase':
-                return <div className="text-sm text-green-300/90 whitespace-pre-wrap">{value}</div>;
+                return <div className="text-sm text-green-500 dark:text-green-300/90 whitespace-pre-wrap">{value}</div>;
             case 'bearCase':
-                 return <div className="text-sm text-red-300/90 whitespace-pre-wrap">{value}</div>;
+                 return <div className="text-sm text-red-500 dark:text-red-300/90 whitespace-pre-wrap">{value}</div>;
             default:
-                return <div className="text-sm text-brand-text-secondary whitespace-pre-wrap">{value}</div>;
+                return <div className="text-sm text-brand-text whitespace-pre-wrap">{value}</div>;
         }
     };
 

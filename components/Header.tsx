@@ -1,10 +1,15 @@
 
 
+
 import * as React from 'react';
 import type { View } from '../types';
 import VideoIcon from './icons/VideoIcon';
 import AnalyticsIcon from './icons/AnalyticsIcon';
 import HeartIcon from './icons/HeartIcon';
+import { useTheme } from '../contexts/ThemeContext';
+import SunIcon from './icons/SunIcon';
+import MoonIcon from './icons/MoonIcon';
+
 
 interface HeaderProps {
   currentView: View;
@@ -13,6 +18,8 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
+  const { theme, toggleTheme } = useTheme();
+
   const navLinkClasses = (view: View) =>
     `px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 whitespace-nowrap flex items-center gap-2 ${
       currentView === view
@@ -67,8 +74,15 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
               </a>
             </nav>
             <button
+                onClick={toggleTheme}
+                className="ml-4 p-2 rounded-full text-brand-text-secondary hover:bg-brand-secondary transition-colors"
+                aria-label="Toggle theme"
+            >
+                {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
+            </button>
+            <button
               onClick={onLogout}
-              className="ml-4 px-3 py-2 rounded-md text-sm font-medium border border-brand-border text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text transition-colors duration-200 whitespace-nowrap"
+              className="ml-2 px-3 py-2 rounded-md text-sm font-medium border border-brand-border text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text transition-colors duration-200 whitespace-nowrap"
             >
               Logout
             </button>

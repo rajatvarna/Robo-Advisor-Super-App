@@ -1,6 +1,7 @@
 
 
 
+
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -19,6 +20,7 @@ import Spinner from './components/icons/Spinner';
 import { generateDashboardData, fetchStockDetailsForPortfolio, fetchUpdatedPrices, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements } from './services/geminiService';
 import type { View, DashboardData, Holding, Transaction, UserHolding, Achievement } from './types';
 import { ApiProvider, useApi } from './contexts/ApiContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ApiStatusBanner from './components/ApiStatusBanner';
 import DonationPage from './components/DonationPage';
 import { ALL_ACHIEVEMENTS } from './services/fallbackData';
@@ -409,7 +411,9 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => (
     <ApiProvider>
-        <AppContent />
+        <ThemeProvider>
+            <AppContent />
+        </ThemeProvider>
     </ApiProvider>
 );
 

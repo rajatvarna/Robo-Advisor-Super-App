@@ -1,7 +1,9 @@
 
 
 
+
 import * as React from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 
 // This is a type assertion for the global TradingView object
 declare const TradingView: any;
@@ -13,6 +15,7 @@ interface StockChartProps {
 const StockChart: React.FC<StockChartProps> = ({ ticker }) => {
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
   const widgetInstanceRef = React.useRef<any>(null);
+  const { theme } = useTheme();
 
   React.useEffect(() => {
     const createWidget = () => {
@@ -20,11 +23,14 @@ const StockChart: React.FC<StockChartProps> = ({ ticker }) => {
         return;
       }
       
+      // Clear any existing widget before creating a new one
+      chartContainerRef.current.innerHTML = '';
+      
       const widgetOptions = {
         symbol: ticker,
         interval: 'D', // Daily
         timezone: 'Etc/UTC',
-        theme: 'dark',
+        theme: theme, // Dynamically set theme
         style: '1',
         locale: 'en',
         toolbar_bg: '#f1f3f6',
@@ -42,11 +48,15 @@ const StockChart: React.FC<StockChartProps> = ({ ticker }) => {
     };
 
     if (ticker) {
-      // The TradingView script should be loaded, but this is a safe check.
       if (typeof TradingView !== 'undefined' && TradingView.widget) {
         createWidget();
       } else {
-        window.addEventListener('load', createWidget);
+        // If the script isn't loaded yet, wait for it.
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = createWidget;
+        document.head.appendChild(script);
       }
     }
     
@@ -54,23 +64,19 @@ const StockChart: React.FC<StockChartProps> = ({ ticker }) => {
     const container = chartContainerRef.current;
 
     return () => {
-       window.removeEventListener('load', createWidget);
        if (widgetInstanceRef.current) {
           try {
-             // Only try to remove if the container is still mounted in the DOM
              if (container && document.body.contains(container)) {
                 widgetInstanceRef.current.remove();
              }
           } catch (error) {
-             // The error from the user log is caught here. We can just log it.
              console.error("Error removing TradingView widget:", error);
           } finally {
-             // Always clear the ref to prevent memory leaks
              widgetInstanceRef.current = null;
           }
        }
     };
-  }, [ticker]);
+  }, [ticker, theme]); // Re-create widget when ticker or theme changes
 
   const chartId = `tradingview-chart-container-${React.useId()}`;
   
