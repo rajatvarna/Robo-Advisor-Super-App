@@ -1,12 +1,13 @@
 
 import * as React from 'react';
 import type { View } from '../types';
-import VideoIcon from './icons/VideoIcon';
+import NewspaperIcon from './icons/NewspaperIcon';
 import AnalyticsIcon from './icons/AnalyticsIcon';
 import HeartIcon from './icons/HeartIcon';
 import { useTheme } from '../contexts/ThemeContext';
 import SunIcon from './icons/SunIcon';
 import MoonIcon from './icons/MoonIcon';
+import VideoIcon from './icons/VideoIcon';
 
 
 interface HeaderProps {
@@ -46,14 +47,17 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
                <a id="portfolio-nav-link" onClick={() => setView('portfolio')} className={navLinkClasses('portfolio')}>
                 Portfolio
               </a>
-               <a id="briefings-nav-link" onClick={() => setView('briefings')} className={navLinkClasses('briefings')}>
-                <VideoIcon className="w-4 h-4" /> Briefings
+               <a id="news-nav-link" onClick={() => setView('news')} className={navLinkClasses('news')}>
+                <NewspaperIcon className="w-5 h-5" /> Top News
               </a>
                <a id="analytics-nav-link" onClick={() => setView('analytics')} className={navLinkClasses('analytics')}>
                 <AnalyticsIcon className="w-4 h-4" /> Analytics
               </a>
               <a id="research-nav-link" onClick={() => setView('research')} className={navLinkClasses('research')}>
                 Research
+              </a>
+              <a id="briefings-nav-link" onClick={() => setView('briefings')} className={navLinkClasses('briefings')}>
+                <VideoIcon className="w-5 h-5" /> Briefings
               </a>
                <a onClick={() => setView('screener')} className={navLinkClasses('screener')}>
                 Screener

@@ -120,51 +120,100 @@ export const stockComparisonItemSchema = {
         ticker: { type: Type.STRING },
         companyName: { type: Type.STRING },
         marketCap: { type: Type.NUMBER, description: "Market capitalization in billions of USD." },
-        peRatio: { type: Type.NUMBER, description: "Price-to-Earnings ratio. Can be null if not applicable." },
-        dividendYield: { type: Type.NUMBER, description: "Dividend yield in percent. Can be null if not applicable." },
+        peRatio: { type: Type.NUMBER, nullable: true, description: "Price-to-Earnings ratio. Can be null if not applicable." },
+        dividendYield: { type: Type.NUMBER, nullable: true, description: "Dividend yield in percent. Can be null if not applicable." },
         analystRating: { type: Type.STRING, description: "Consensus analyst rating, e.g., 'Buy', 'Hold', 'Strong Buy'." },
         bullCase: { type: Type.STRING, description: "A brief summary of the bull case for the stock." },
         bearCase: { type: Type.STRING, description: "A brief summary of the bear case for the stock." },
         financialHealthSummary: { type: Type.STRING, description: "A one-sentence summary of the company's financial health." },
     },
-    required: ["ticker", "companyName", "marketCap", "analystRating", "bullCase", "bearCase", "financialHealthSummary"],
+    required: ["ticker", "companyName", "marketCap", "peRatio", "dividendYield", "analystRating", "bullCase", "bearCase", "financialHealthSummary"],
 };
 
 
 // --- Fallback Data for Services ---
 
-export const fetchStockDetailsForPortfolio = (ticker: string): Omit<Holding, 'shares' | 'totalValue'> => ({
-    ticker: ticker.toUpperCase(),
-    companyName: `${ticker.toUpperCase()} Inc. (Offline)`,
-    currentPrice: 150 + Math.random() * 20 - 10,
-    dayChange: Math.random() * 4 - 2,
-    dayChangePercent: Math.random() * 2 - 1,
-    sector: "Technology",
-});
-
-
-export const generateDashboardData = (): BaseDashboardData => {
+export const fetchStockDetailsForPortfolio = (ticker: string): Omit<Holding, 'shares' | 'totalValue'> => {
+    const previousClose = 150 + Math.random() * 20 - 10;
+    const currentPrice = previousClose + Math.random() * 4 - 2;
+    const dayChange = currentPrice - previousClose;
+    const dayChangePercent = (dayChange / previousClose) * 100;
     return {
-    user: { name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01' },
-    holdings: [
-        { ticker: 'AAPL', companyName: 'Apple Inc. (Offline)', shares: 50, currentPrice: 190.5, dayChange: 2.3, dayChangePercent: 1.22, totalValue: 9525, sector: 'Technology' },
-        { ticker: 'MSFT', companyName: 'Microsoft Corp. (Offline)', shares: 30, currentPrice: 420.7, dayChange: -1.5, dayChangePercent: -0.36, totalValue: 12621, sector: 'Technology' },
-        { ticker: 'JPM', companyName: 'JPMorgan Chase & Co. (Offline)', shares: 100, currentPrice: 198.2, dayChange: 0.8, dayChangePercent: 0.41, totalValue: 19820, sector: 'Financial Services' },
-    ],
-    transactions: [{ id: 't1', date: '2024-05-10', type: 'Buy', ticker: 'JPM', companyName: 'JPMorgan Chase & Co. (Offline)', shares: 10, price: 195.0, totalValue: 1950 }],
-    watchlist: [{ ticker: 'NVDA', companyName: 'NVIDIA Corp. (Offline)', shares: 0, currentPrice: 1200.0, dayChange: 10.5, dayChangePercent: 0.88, totalValue: 0, sector: 'Technology' }],
-}};
+        ticker: ticker.toUpperCase(),
+        companyName: `${ticker.toUpperCase()} Inc. (Offline)`,
+        currentPrice,
+        dayChange,
+        dayChangePercent,
+        sector: "Technology",
+        previousClose,
+    }
+};
 
-export const fetchUpdatedPrices = (holdings: {ticker: string, currentPrice: number}[]): {ticker: string, currentPrice: number}[] => {
-    return holdings.map(h => ({
-        ticker: h.ticker,
-        currentPrice: h.currentPrice + Math.random() * 2 - 1,
-    }));
+const DEMO_STOCKS = [
+    { ticker: 'AAPL', companyName: 'Apple Inc.', sector: 'Technology', price: 190.5, shares: 50 },
+    { ticker: 'MSFT', companyName: 'Microsoft Corp.', sector: 'Technology', price: 420.7, shares: 30 },
+    { ticker: 'JPM', companyName: 'JPMorgan Chase & Co.', sector: 'Financial Services', price: 198.2, shares: 100 },
+    { ticker: 'JNJ', companyName: 'Johnson & Johnson', sector: 'Healthcare', price: 165.4, shares: 60 },
+    { ticker: 'V', companyName: 'Visa Inc.', sector: 'Financial Services', price: 275.1, shares: 40 },
+];
+
+
+export const generateDashboardData = async (): Promise<BaseDashboardData> => {
+    const holdings: Holding[] = DEMO_STOCKS.map(stock => {
+        const previousClose = stock.price * (1 + (Math.random() - 0.5) * 0.05); // +/- 5%
+        const dayChange = stock.price - previousClose;
+        const dayChangePercent = (dayChange / previousClose) * 100;
+        return {
+            ...stock,
+            companyName: `${stock.companyName} (Offline)`,
+            currentPrice: stock.price,
+            dayChange,
+            dayChangePercent,
+            totalValue: stock.price * stock.shares,
+            previousClose
+        };
+    });
+
+    const watchlist: Holding[] = [{ 
+        ticker: 'NVDA', 
+        companyName: 'NVIDIA Corp. (Offline)', 
+        shares: 0, 
+        currentPrice: 1200.0, 
+        dayChange: 10.5, 
+        dayChangePercent: 0.88, 
+        totalValue: 0, 
+        sector: 'Technology',
+        previousClose: 1189.5,
+    }];
+    
+    return {
+        user: { name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01' },
+        holdings,
+        transactions: [{ id: 't1', date: '2024-05-10', type: 'Buy', ticker: 'JPM', companyName: 'JPMorgan Chase & Co. (Offline)', shares: 10, price: 195.0, totalValue: 1950 }],
+        watchlist,
+    };
+};
+
+export const fetchUpdatedPrices = (holdings: {ticker: string, previousClose: number, currentPrice: number}[]): {ticker: string, currentPrice: number}[] => {
+    return holdings.map(h => {
+        // Fluctuate around the previous close price for more realism
+        const change = (Math.random() - 0.5) * h.previousClose * 0.02; // Max 2% fluctuation
+        return {
+            ticker: h.ticker,
+            currentPrice: h.previousClose + change,
+        };
+    });
 };
 
 export const generatePersonalizedNews = (holdings: Holding[], watchlist: Holding[]): NewsItem[] => ([
     { headline: 'Tech Stocks Rally on AI Optimism (Offline)', url: '#', source: 'Fallback News', summary: 'Major tech companies saw gains as investors remain optimistic about artificial intelligence developments.', sentiment: 'Positive', ticker: 'AAPL' },
     { headline: 'Fed Hints at Steady Interest Rates (Offline)', url: '#', source: 'Fallback News', summary: 'The Federal Reserve has indicated that interest rates are likely to hold steady for the near future, calming market jitters.', sentiment: 'Neutral', ticker: 'JPM' },
+]);
+
+export const getTopBusinessNews = (): NewsItem[] => ([
+    { headline: 'Global Markets Show Mixed Results Amid Inflation Fears (Offline)', url: '#', source: 'Fallback Reuters', summary: 'Investors are cautiously watching economic indicators as inflation concerns linger, leading to a mixed performance across global stock markets.' },
+    { headline: 'Tech Sector Faces New Regulatory Scrutiny (Offline)', url: '#', source: 'Fallback WSJ', summary: 'Governments worldwide are increasing their focus on regulating major technology firms, potentially impacting future growth.' },
+    { headline: 'Oil Prices Surge on Supply Chain Worries (Offline)', url: '#', source: 'Fallback Bloomberg', summary: 'Disruptions in the global supply chain have caused a significant increase in crude oil prices, affecting energy markets.' },
 ]);
 
 export const calculatePortfolioScore = (holdings: Holding[]): PortfolioScore => ({
@@ -183,22 +232,6 @@ export const generateDividendData = (holdings: Holding[]): Dividend[] => ([
 export const generateTaxLossOpportunities = (holdings: Holding[]): TaxLossOpportunity[] => ([
     { ticker: 'INTC', companyName: 'Intel Corp. (Offline)', sharesToSell: 50, estimatedLoss: -500, costBasis: 4000, currentValue: 3500, explanation: 'This stock has underperformed, providing an opportunity to offset gains elsewhere. (Offline)'}
 ]);
-
-export const generateVideoBriefing = async (prompt: string): Promise<any> => {
-    return Promise.resolve({ done: false, prompt: prompt });
-};
-
-export const getVideoOperationStatus = async (operation: any): Promise<any> => {
-    // Simulate a successful completion after a short delay
-    return Promise.resolve({
-        done: true,
-        response: {
-            generatedVideos: [{
-                video: { uri: 'https://storage.googleapis.com/generative-ai-vision/veo-demo-videos/prompt-with-video/a_cinematic_shot_of_a_woman_walking_through_a_paddy_field_in_the_paddy_field.mp4' }
-            }]
-        }
-    });
-};
 
 export const generateEducationalContent = (category: string): EducationalContent[] => ([
     { id: 'fb1', type: 'Article', title: `Intro to ${category} (Offline)`, summary: `A fallback article about ${category}.`, url: '#', sourceName: 'Fallback Institute' },
@@ -302,4 +335,32 @@ export const generateStockComparison = (tickers: string[]): StockComparisonData 
         bearCase: `Facing stiff competition from other offline providers for ${ticker}.`,
         financialHealthSummary: `Solid balance sheet with consistent offline revenue.`,
     }));
+};
+
+export const generateVideoBriefing = (prompt: string): any => {
+    // Return a mock operation that will resolve in the next step
+    return {
+        name: 'fallback-operation-123',
+        done: false,
+        metadata: {},
+        response: null,
+        error: null,
+    };
+};
+
+export const getVideoOperationStatus = (operation: any): any => {
+    // Return a mock "done" operation with a link to a sample video.
+    return {
+        ...operation,
+        done: true,
+        response: {
+            generatedVideos: [
+                {
+                    video: {
+                        uri: 'https://storage.googleapis.com/generative-ai-vision/veo-demo-videos/prompt-with-video/a_cinematic_shot_of_a_woman_walking_through_a_paddy_field_in_the_paddy_field.mp4'
+                    }
+                }
+            ]
+        }
+    };
 };

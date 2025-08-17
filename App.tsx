@@ -1,6 +1,4 @@
 
-
-
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -11,8 +9,9 @@ import Home from './components/Home';
 import Screener from './components/Screener';
 import DashboardPage from './components/DashboardPage';
 import PortfolioPage from './components/PortfolioPage';
-import BriefingsPage from './components/BriefingsPage';
+import TopNewsPage from './components/TopNewsPage';
 import AnalyticsPage from './components/AnalyticsPage';
+import BriefingsPage from './components/BriefingsPage';
 import AddHoldingModal from './components/AddHoldingModal';
 import AchievementToast from './components/AchievementToast';
 import Spinner from './components/icons/Spinner';
@@ -77,7 +76,7 @@ const AppContent: React.FC = () => {
             if (holdingsToUpdate.length === 0) return;
             
             // Use the fallback price simulator directly to avoid API calls for this frequent operation
-            const updatedPrices = FallbackData.fetchUpdatedPrices(holdingsToUpdate.map(h => ({ ticker: h.ticker, currentPrice: h.currentPrice })));
+            const updatedPrices = FallbackData.fetchUpdatedPrices(holdingsToUpdate.map(h => ({ ticker: h.ticker, previousClose: h.previousClose, currentPrice: h.currentPrice })));
             
             setDashboardData(prevData => {
                 if (!prevData) return null;
@@ -85,9 +84,8 @@ const AppContent: React.FC = () => {
                 const updateItem = (item: Holding): Holding => {
                     const update = updatedPrices.find(p => p.ticker === item.ticker);
                     if (update && update.currentPrice !== item.currentPrice) {
-                        const previousClose = item.currentPrice - item.dayChange;
-                        const newDayChange = update.currentPrice - previousClose;
-                        const newDayChangePercent = previousClose !== 0 ? (newDayChange / previousClose) * 100 : 0;
+                        const newDayChange = update.currentPrice - item.previousClose;
+                        const newDayChangePercent = item.previousClose !== 0 ? (newDayChange / item.previousClose) * 100 : 0;
                         
                         return { 
                             ...item,
@@ -161,12 +159,11 @@ const AppContent: React.FC = () => {
     }
   }, [achievements, apiMode, setApiMode, dashboardData, watchlist, saveDataToLocalStorage]);
 
-  const handleGenerateDemoData = React.useCallback(() => {
+  const handleGenerateDemoData = React.useCallback(async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Use local fallback data directly, removing the API call.
-        const baseData = FallbackData.generateDashboardData();
+        const baseData = await FallbackData.generateDashboardData();
         
         const netWorth = baseData.holdings.reduce((sum, h) => sum + h.totalValue, 0);
 
@@ -371,6 +368,8 @@ const AppContent: React.FC = () => {
         return <EducationHub />;
       case 'analytics':
         return <AnalyticsPage holdings={dashboardData?.holdings || []} />;
+      case 'news':
+        return <TopNewsPage />;
       case 'briefings':
         return <BriefingsPage holdings={dashboardData?.holdings || []} />;
       case 'support':

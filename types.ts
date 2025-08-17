@@ -1,6 +1,5 @@
 
-
-export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'briefings' | 'analytics' | 'support';
+export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'briefings';
 export type ApiMode = 'gemini' | 'opensource';
 
 export interface ChatMessage {
@@ -33,6 +32,7 @@ export interface Holding {
   totalValue: number;
   sector?: string; // Add sector for better allocation
   isUpdating?: boolean; // For real-time price flash effect
+  previousClose: number;
 }
 
 export interface Transaction {
@@ -60,7 +60,7 @@ export interface NewsItem {
     url: string;
     source: string;
     summary: string; // AI generated summary
-    sentiment: 'Positive' | 'Negative' | 'Neutral';
+    sentiment?: 'Positive' | 'Negative' | 'Neutral';
     ticker?: string; // Ticker it relates to
 }
 
