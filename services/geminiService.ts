@@ -1,9 +1,11 @@
 
 
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
-import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData } from '../types';
+import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist } from '../types';
 import * as FallbackData from './fallbackData';
 import { cacheService } from './cacheService';
+import * as financialDataService from './financialDataService';
+
 
 const API_KEY = process.env.API_KEY;
 
@@ -14,16 +16,8 @@ if (!API_KEY) {
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const checkIsQuotaError = (error: any): boolean => {
-    // The error from the SDK can be an Error object with the server's JSON response in the `message` field.
-    // We create a string to search for by prioritizing the message property.
     const messageToSearch = (error?.message || JSON.stringify(error)).toLowerCase();
-    
-    // Check for the specific status field from the API error structure.
-    if (messageToSearch.includes('"status":"resource_exhausted"')) {
-        return true;
-    }
-
-    // Fallback for other quota-related messages.
+    if (messageToSearch.includes('"status":"resource_exhausted"')) return true;
     return messageToSearch.includes('429') || messageToSearch.includes('quota');
 };
 
@@ -41,21 +35,11 @@ const handleApiError = (error: any, context: string): Error => {
     return new Error(`An unknown error occurred while generating ${context}.`);
 };
 
-/**
- * A robust JSON parser that handles potential conversational text around the JSON object/array.
- * @param text The raw text response from the model.
- * @param context A string describing the context, for better error messages.
- * @returns The parsed JSON object.
- */
 const parseJsonFromText = (text: string, context: string): any => {
-    let cleanedText = text.trim();
-    // Remove markdown code block fences
-    cleanedText = cleanedText.replace(/^```json\s*|```\s*$/g, '');
-
+    let cleanedText = text.trim().replace(/^```json\s*|```\s*$/g, '');
     try {
         return JSON.parse(cleanedText);
     } catch (e1) {
-        // Fallback for cases where the model includes conversational text before/after the JSON
         const match = cleanedText.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
         if (match && match[0]) {
             try {
@@ -70,26 +54,20 @@ const parseJsonFromText = (text: string, context: string): any => {
     }
 };
 
-// --- CORE FUNCTIONS WITH FALLBACK ---
-
-export const fetchStockDetailsForPortfolio = async (ticker: string, apiMode: ApiMode): Promise<Omit<Holding, 'shares' | 'totalValue'>> => {
+export const fetchStockDetailsForPortfolio = async (ticker: string, apiMode: ApiMode): Promise<Pick<Holding, 'companyName' | 'sector'>> => {
     if (apiMode === 'opensource') return FallbackData.fetchStockDetailsForPortfolio(ticker);
-    const prompt = `Act as a financial data API. Use Google Search to find the latest stock data for the ticker "${ticker.toUpperCase()}" from reliable sources like Yahoo Finance, Bloomberg, or Reuters. Provide the following information in a single, valid JSON object and nothing else: official company name, GICS sector, current stock price (as a number), the day's price change in USD (as a number), the day's percentage change (as a number), and the previous day's closing price (as a number). The JSON keys must be: "companyName", "sector", "currentPrice", "dayChange", "dayChangePercent", "previousClose".`;
+    const prompt = `Act as a financial data API. For the ticker "${ticker.toUpperCase()}", provide the official company name and its GICS sector. Respond with a single, valid JSON object with keys "companyName" and "sector". Nothing else.`;
      try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] } });
-        const data = parseJsonFromText(response.text, `details for ticker ${ticker}`);
-        data.ticker = ticker.toUpperCase();
+        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: {type: Type.OBJECT, properties: {companyName: {type: Type.STRING}, sector: {type: Type.STRING}}}} });
+        const data = JSON.parse(response.text.trim());
         return data;
     } catch (error) { throw handleApiError(error, `details for ticker ${ticker}`); }
 }
 
-// NOTE: generateDashboardData and fetchUpdatedPrices have been removed from here.
-// They are now called directly from FallbackData in App.tsx to remove API dependency for core functions.
-
-export const generatePersonalizedNews = async (holdings: Holding[], watchlist: Holding[], apiMode: ApiMode): Promise<NewsItem[]> => {
-    if (apiMode === 'opensource') return FallbackData.generatePersonalizedNews(holdings, watchlist);
-    if (holdings.length === 0 && (!watchlist || watchlist.length === 0)) return [];
-    const tickers = [...new Set([...holdings.map(h => h.ticker), ...(watchlist || []).map(w => w.ticker)])].join(', ');
+export const generatePersonalizedNews = async (holdings: Holding[], watchlistTickers: string[], apiMode: ApiMode): Promise<NewsItem[]> => {
+    if (apiMode === 'opensource') return FallbackData.generatePersonalizedNews(holdings.map(h => h.ticker), watchlistTickers);
+    if (holdings.length === 0 && watchlistTickers.length === 0) return [];
+    const tickers = [...new Set([...holdings.map(h => h.ticker), ...watchlistTickers])].join(', ');
     if (!tickers) return [];
     const prompt = `Act as a financial news curator. Use Google Search to find 4 recent, relevant news articles for these stocks: ${tickers}. For each, provide its headline, a concise one-sentence summary, the source name, its URL, and a sentiment analysis ('Positive', 'Negative', 'Neutral'). Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "sentiment". Do not include markdown formatting or any other text outside the JSON array.`;
     try {
@@ -150,7 +128,7 @@ export const generateDividendData = async (holdings: Holding[], apiMode: ApiMode
 export const generateTaxLossOpportunities = async (holdings: Holding[], apiMode: ApiMode): Promise<TaxLossOpportunity[]> => {
     if (apiMode === 'opensource') return FallbackData.generateTaxLossOpportunities(holdings);
     if(holdings.length === 0) return [];
-    const prompt = `Analyze for tax-loss harvesting. Identify up to 3 holdings with unrealized losses. Provide ticker, companyName, sharesToSell, estimatedLoss, costBasis, currentValue, and explanation. Holdings: ${JSON.stringify(holdings.map(h => ({ ticker: h.ticker, shares: h.shares, currentPrice: h.currentPrice })))}`;
+    const prompt = `Analyze for tax-loss harvesting. For each holding, the cost basis is provided. Identify up to 3 holdings with unrealized losses (current value < cost basis). For each, provide: ticker, companyName, sharesToSell (all shares), estimatedLoss, costBasis, currentValue, and a brief explanation. Holdings: ${JSON.stringify(holdings.map(h => ({ ticker: h.ticker, shares: h.shares, currentValue: h.totalValue, costBasis: h.costBasis })))}`;
     const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { ticker: {type: Type.STRING}, companyName: {type: Type.STRING}, sharesToSell: {type: Type.NUMBER}, estimatedLoss: {type: Type.NUMBER}, costBasis: {type: Type.NUMBER}, currentValue: {type: Type.NUMBER}, explanation: {type: Type.STRING} }, required: ["ticker", "companyName", "sharesToSell", "estimatedLoss", "costBasis", "currentValue", "explanation"]}};
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema }});
@@ -210,6 +188,47 @@ export const generateFollowUpQuestions = async (chatHistory: ChatMessage[], apiM
     } catch (error) {
         if (!checkIsQuotaError(error)) console.error("Error generating follow-up questions:", error);
         throw handleApiError(error, "follow-up questions");
+    }
+};
+
+export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
+    if (apiMode === 'opensource') {
+        // Return a mock 'done' operation with a sample video URL for fallback mode.
+        return {
+            done: true,
+            response: {
+                generatedVideos: [{
+                    video: {
+                        uri: 'https://storage.googleapis.com/generative-ai-vision/veo-demo-videos/prompt-with-video/a_cinematic_shot_of_a_woman_walking_through_a_paddy_field_in_the_paddy_field.mp4'
+                    }
+                }]
+            }
+        };
+    }
+    try {
+        const operation = await ai.models.generateVideos({
+            model: 'veo-2.0-generate-001',
+            prompt,
+            config: {
+                numberOfVideos: 1,
+            }
+        });
+        return operation;
+    } catch (error) {
+        throw handleApiError(error, 'video briefing generation');
+    }
+};
+
+export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
+    if (apiMode === 'opensource') {
+        // Fallback mode operations are returned as 'done' immediately, so polling is not expected.
+        return operation;
+    }
+    try {
+        const updatedOperation = await ai.operations.getVideosOperation({ operation });
+        return updatedOperation;
+    } catch (error) {
+        throw handleApiError(error, 'video operation status check');
     }
 };
 
@@ -323,39 +342,5 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
         return data;
     } catch (error) {
         throw handleApiError(error, `stock comparison for ${tickers.join(', ')}`);
-    }
-};
-
-export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        // In fallback mode, the component logic directly sets a static video URL.
-        // To satisfy the polling logic, we can return a "done" operation.
-        // The component will see it's fallback and use its hardcoded URL.
-        return { done: true };
-    }
-    try {
-        const operation = await ai.models.generateVideos({
-            model: 'veo-2.0-generate-001',
-            prompt: prompt,
-            config: {
-                numberOfVideos: 1,
-            },
-        });
-        return operation;
-    } catch (error) {
-        throw handleApiError(error, 'video briefing generation');
-    }
-};
-
-export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        // This should ideally not be called if the initial op is `done: true`.
-        return { ...operation, done: true };
-    }
-    try {
-        const updatedOperation = await ai.operations.getVideosOperation({ operation: operation });
-        return updatedOperation;
-    } catch (error) {
-        throw handleApiError(error, 'video operation status');
     }
 };

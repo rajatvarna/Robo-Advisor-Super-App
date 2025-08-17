@@ -8,6 +8,7 @@ import HeartIcon from './icons/HeartIcon';
 import { useTheme } from '../contexts/ThemeContext';
 import SunIcon from './icons/SunIcon';
 import MoonIcon from './icons/MoonIcon';
+import VideoIcon from './icons/VideoIcon';
 
 
 interface HeaderProps {
@@ -49,6 +50,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
               </a>
                <a id="news-nav-link" onClick={() => setView('news')} className={navLinkClasses('news')}>
                 <NewspaperIcon className="w-5 h-5" /> Top News
+              </a>
+              <a id="briefings-nav-link" onClick={() => setView('briefings')} className={navLinkClasses('briefings')}>
+                <VideoIcon className="w-5 h-5" /> Video Briefings
               </a>
                <a id="analytics-nav-link" onClick={() => setView('analytics')} className={navLinkClasses('analytics')}>
                 <AnalyticsIcon className="w-4 h-4" /> Analytics

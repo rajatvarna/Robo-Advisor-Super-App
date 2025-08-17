@@ -1,13 +1,16 @@
 
+
 import * as React from 'react';
 import DividendTracker from './DividendTracker';
 import TaxLossHarvester from './TaxLossHarvester';
-import type { Holding } from '../types';
+import PerformanceChart from './PerformanceChart';
+import WhatIfScenario from './WhatIfScenario';
+import type { DashboardData } from '../types';
 
-type AnalyticsTab = 'dividends' | 'tax';
+type AnalyticsTab = 'performance' | 'dividends' | 'tax';
 
 interface AnalyticsPageProps {
-    holdings: Holding[];
+    data: DashboardData | null;
 }
 
 const TabButton: React.FC<{
@@ -29,11 +32,11 @@ const TabButton: React.FC<{
 );
 
 
-const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ holdings }) => {
-    const [activeTab, setActiveTab] = React.useState<AnalyticsTab>('dividends');
+const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ data }) => {
+    const [activeTab, setActiveTab] = React.useState<AnalyticsTab>('performance');
 
     const renderContent = () => {
-        if (holdings.length === 0) {
+        if (!data || data.holdings.length === 0) {
             return (
                  <div className="text-center flex flex-col items-center justify-center h-full min-h-[40vh]">
                     <h2 className="text-2xl font-bold text-brand-text mt-4">No Data to Analyze</h2>
@@ -45,10 +48,21 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ holdings }) => {
         }
         
         switch (activeTab) {
+            case 'performance':
+                return (
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        <div className="lg:col-span-3">
+                            <PerformanceChart transactions={data.transactions} />
+                        </div>
+                        <div className="lg:col-span-2">
+                             <WhatIfScenario holdings={data.holdings} />
+                        </div>
+                    </div>
+                );
             case 'dividends':
-                return <DividendTracker holdings={holdings} />;
+                return <DividendTracker holdings={data.holdings} />;
             case 'tax':
-                return <TaxLossHarvester holdings={holdings} />;
+                return <TaxLossHarvester holdings={data.holdings} />;
             default:
                 return null;
         }
@@ -62,6 +76,7 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ holdings }) => {
             </div>
             <div className="border-b border-brand-border">
                 <nav className="-mb-px flex space-x-4" aria-label="Tabs">
+                    <TabButton label="Performance" isActive={activeTab === 'performance'} onClick={() => setActiveTab('performance')} />
                     <TabButton label="Dividend Tracker" isActive={activeTab === 'dividends'} onClick={() => setActiveTab('dividends')} />
                     <TabButton label="Tax-Loss Harvester" isActive={activeTab === 'tax'} onClick={() => setActiveTab('tax')} />
                 </nav>

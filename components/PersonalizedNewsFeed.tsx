@@ -1,8 +1,16 @@
 
 import * as React from 'react';
-import type { NewsItem } from '../types';
+import type { NewsItem, Holding, UserWatchlist } from '../types';
 
-const PersonalizedNewsFeed: React.FC<{ news: NewsItem[] }> = ({ news }) => {
+interface PersonalizedNewsFeedProps {
+    news: NewsItem[];
+    holdings: Holding[];
+    watchlists: UserWatchlist[];
+}
+
+const PersonalizedNewsFeed: React.FC<PersonalizedNewsFeedProps> = ({ news, holdings, watchlists }) => {
+    const hasItemsToTrack = holdings.length > 0 || watchlists.some(wl => wl.tickers.length > 0);
+
     return (
         <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg transition-shadow duration-300 hover:shadow-xl">
             <h3 className="text-lg font-bold text-brand-text mb-3">For You</h3>
@@ -19,7 +27,12 @@ const PersonalizedNewsFeed: React.FC<{ news: NewsItem[] }> = ({ news }) => {
                     ))}
                 </div>
             ) : (
-                 <p className="text-sm text-brand-text-secondary text-center py-4">Add holdings or watchlist items to see personalized news.</p>
+                 <p className="text-sm text-brand-text-secondary text-center py-4">
+                    {hasItemsToTrack 
+                        ? "AI is searching for relevant news..." 
+                        : "Add holdings or watchlist items to see personalized news."
+                    }
+                </p>
             )}
         </div>
     );

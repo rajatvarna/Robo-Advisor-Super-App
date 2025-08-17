@@ -1,24 +1,30 @@
 
 
 import * as React from 'react';
-import type { DashboardData } from '../types';
+import type { DashboardData, Quote, UserWatchlist } from '../types';
 import EmptyState from './EmptyState';
 import StatCard from './StatCard';
 import PortfolioScoreCard from './PortfolioScoreCard';
 import AchievementsList from './AchievementsList';
 import Watchlist from './Watchlist';
 import PersonalizedNewsFeed from './PersonalizedNewsFeed';
+import GoalProgress from './GoalProgress';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
 interface DashboardPageProps {
   data: DashboardData | null;
+  quotes: Record<string, Quote>;
   onGenerateDemo: () => void;
   onAddHolding: () => void;
   error: string | null;
+  onAddWatchlist: (name: string) => void;
+  onRenameWatchlist: (id: string, newName: string) => void;
+  onDeleteWatchlist: (id: string) => void;
+  onUpdateWatchlistTickers: (id: string, tickers: string[]) => void;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ data, onGenerateDemo, onAddHolding, error }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ data, quotes, onGenerateDemo, onAddHolding, error, ...watchlistProps }) => {
   if (!data) {
     return (
         <>
@@ -32,7 +38,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, onGenerateDemo, onA
     );
   }
 
-  const { user, netWorth, holdings, portfolioScore, achievements, watchlist, personalizedNews } = data;
+  const { user, netWorth, holdings, portfolioScore, achievements, personalizedNews, watchlists, goal } = data;
   
   const dayGain = holdings.reduce((acc, h) => acc + (h.dayChange * h.shares), 0);
   const totalOriginalValue = holdings.reduce((acc, h) => acc + ((h.currentPrice - h.dayChange) * h.shares), 0);
@@ -42,6 +48,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, onGenerateDemo, onA
     <div className="space-y-6 animate-fade-in">
         <h1 className="text-3xl font-bold text-brand-text">Welcome back, {user.name.split(' ')[0]}!</h1>
         
+        {goal && <GoalProgress goal={goal} netWorth={netWorth} />}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div id="net-worth-card">
               <StatCard title="Net Worth" value={formatCurrency(netWorth)} />
@@ -56,14 +64,20 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, onGenerateDemo, onA
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 <div id="personalized-news-feed">
-                  <PersonalizedNewsFeed news={personalizedNews || []} />
+                  <PersonalizedNewsFeed news={personalizedNews || []} holdings={holdings} watchlists={watchlists}/>
                 </div>
                 <div id="achievements-list">
                   <AchievementsList achievements={achievements || []} />
                 </div>
             </div>
             <div className="space-y-6">
-                <Watchlist stocks={watchlist || []} />
+                <div id="watchlist-card">
+                    <Watchlist 
+                        watchlists={watchlists || []}
+                        quotes={quotes}
+                        {...watchlistProps}
+                    />
+                </div>
             </div>
         </div>
     </div>

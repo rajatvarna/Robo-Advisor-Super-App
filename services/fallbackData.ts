@@ -1,6 +1,6 @@
 import { Type } from "@google/genai";
 import type { Chat } from '@google/genai';
-import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData } from '../types';
+import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist } from '../types';
 
 // --- Achievements ---
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -61,9 +61,20 @@ export const baseDashboardDataSchema = {
                 required: ["id", "date", "type", "ticker", "companyName", "shares", "price", "totalValue"]
             }
         },
-        watchlist: { type: Type.ARRAY, items: holdingSchema },
+        watchlists: { 
+            type: Type.ARRAY, 
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    id: { type: Type.STRING },
+                    name: { type: Type.STRING },
+                    tickers: { type: Type.ARRAY, items: { type: Type.STRING } },
+                },
+                 required: ["id", "name", "tickers"]
+            }
+        },
     },
-    required: ["user", "holdings", "transactions", "watchlist"]
+    required: ["user", "holdings", "transactions", "watchlists"]
 };
 
 
@@ -133,21 +144,51 @@ export const stockComparisonItemSchema = {
 
 // --- Fallback Data for Services ---
 
-export const fetchStockDetailsForPortfolio = (ticker: string): Omit<Holding, 'shares' | 'totalValue'> => {
+export const getFallbackQuote = (ticker: string): Quote => {
     const previousClose = 150 + Math.random() * 20 - 10;
     const currentPrice = previousClose + Math.random() * 4 - 2;
     const dayChange = currentPrice - previousClose;
     const dayChangePercent = (dayChange / previousClose) * 100;
     return {
         ticker: ticker.toUpperCase(),
-        companyName: `${ticker.toUpperCase()} Inc. (Offline)`,
         currentPrice,
         dayChange,
         dayChangePercent,
-        sector: "Technology",
         previousClose,
-    }
+    };
 };
+
+export const fetchQuotes = (tickers: string[]): Record<string, Quote> => {
+    const quotes: Record<string, Quote> = {};
+    tickers.forEach(ticker => {
+        quotes[ticker] = getFallbackQuote(ticker);
+    });
+    return quotes;
+};
+
+export const fetchHistoricalData = (ticker: string, startDate: string): {date: string, price: number}[] => {
+    const data: {date: string, price: number}[] = [];
+    let currentDate = new Date(startDate);
+    const endDate = new Date();
+    let price = 150 + Math.random() * 50;
+
+    while(currentDate <= endDate) {
+        price += (Math.random() - 0.5) * 5;
+        if (price < 10) price = 10;
+        data.push({
+            date: currentDate.toISOString().split('T')[0],
+            price: price,
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return data;
+};
+
+
+export const fetchStockDetailsForPortfolio = (ticker: string): Pick<Holding, 'companyName' | 'sector'> => ({
+    companyName: `${ticker.toUpperCase()} Inc. (Offline)`,
+    sector: "Technology",
+});
 
 const DEMO_STOCKS = [
     { ticker: 'AAPL', companyName: 'Apple Inc.', sector: 'Technology', price: 190.5, shares: 50 },
@@ -159,53 +200,51 @@ const DEMO_STOCKS = [
 
 
 export const generateDashboardData = async (): Promise<BaseDashboardData> => {
-    const holdings: Holding[] = DEMO_STOCKS.map(stock => {
-        const previousClose = stock.price * (1 + (Math.random() - 0.5) * 0.05); // +/- 5%
-        const dayChange = stock.price - previousClose;
-        const dayChangePercent = (dayChange / previousClose) * 100;
+    const transactions = DEMO_STOCKS.map((stock, i) => {
+        const price = stock.price * (0.9 + Math.random() * 0.1);
         return {
-            ...stock,
-            companyName: `${stock.companyName} (Offline)`,
-            currentPrice: stock.price,
-            dayChange,
-            dayChangePercent,
-            totalValue: stock.price * stock.shares,
-            previousClose
+            id: `txn-${i}`,
+            date: new Date(Date.now() - (30+i*15) * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // transactions in the past
+            type: 'Buy' as 'Buy' | 'Sell',
+            ticker: stock.ticker,
+            companyName: stock.companyName,
+            shares: stock.shares,
+            price: price,
+            totalValue: stock.shares * price
         };
     });
+    
+    // This holdings data is just for getting tickers, it will be immediately recalculated in App.tsx
+    const holdings: Holding[] = DEMO_STOCKS.map(stock => ({
+        ticker: stock.ticker,
+        companyName: stock.companyName,
+        sector: stock.sector,
+        shares: stock.shares,
+        currentPrice: stock.price,
+        dayChange: 0,
+        dayChangePercent: 0,
+        previousClose: stock.price,
+        totalValue: stock.price * stock.shares,
+        costBasis: 0, 
+        unrealizedGain: 0,
+        unrealizedGainPercent: 0,
+    }));
 
-    const watchlist: Holding[] = [{ 
-        ticker: 'NVDA', 
-        companyName: 'NVIDIA Corp. (Offline)', 
-        shares: 0, 
-        currentPrice: 1200.0, 
-        dayChange: 10.5, 
-        dayChangePercent: 0.88, 
-        totalValue: 0, 
-        sector: 'Technology',
-        previousClose: 1189.5,
+    const watchlists: UserWatchlist[] = [{ 
+        id: 'wl-1',
+        name: 'Tech Giants',
+        tickers: ['NVDA', 'GOOGL']
     }];
     
     return {
         user: { name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01' },
         holdings,
-        transactions: [{ id: 't1', date: '2024-05-10', type: 'Buy', ticker: 'JPM', companyName: 'JPMorgan Chase & Co. (Offline)', shares: 10, price: 195.0, totalValue: 1950 }],
-        watchlist,
+        transactions,
+        watchlists,
     };
 };
 
-export const fetchUpdatedPrices = (holdings: {ticker: string, previousClose: number, currentPrice: number}[]): {ticker: string, currentPrice: number}[] => {
-    return holdings.map(h => {
-        // Fluctuate around the previous close price for more realism
-        const change = (Math.random() - 0.5) * h.previousClose * 0.02; // Max 2% fluctuation
-        return {
-            ticker: h.ticker,
-            currentPrice: h.previousClose + change,
-        };
-    });
-};
-
-export const generatePersonalizedNews = (holdings: Holding[], watchlist: Holding[]): NewsItem[] => ([
+export const generatePersonalizedNews = (holdingTickers: string[], watchlistTickers: string[]): NewsItem[] => ([
     { headline: 'Tech Stocks Rally on AI Optimism (Offline)', url: '#', source: 'Fallback News', summary: 'Major tech companies saw gains as investors remain optimistic about artificial intelligence developments.', sentiment: 'Positive', ticker: 'AAPL' },
     { headline: 'Fed Hints at Steady Interest Rates (Offline)', url: '#', source: 'Fallback News', summary: 'The Federal Reserve has indicated that interest rates are likely to hold steady for the near future, calming market jitters.', sentiment: 'Neutral', ticker: 'JPM' },
 ]);

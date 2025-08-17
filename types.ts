@@ -1,6 +1,6 @@
 
 
-export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news';
+export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'briefings';
 export type ApiMode = 'gemini' | 'opensource';
 
 export interface ChatMessage {
@@ -18,22 +18,31 @@ export interface User {
   memberSince: string;
 }
 
-export interface UserHolding {
+export interface AddHoldingData {
   ticker: string;
   shares: number;
+  purchasePrice: number;
+  purchaseDate: string;
 }
 
-export interface Holding {
+// Represents real-time price data from the market
+export interface Quote {
   ticker: string;
-  companyName: string;
-  shares: number;
   currentPrice: number;
   dayChange: number;
   dayChangePercent: number;
-  totalValue: number;
-  sector?: string; // Add sector for better allocation
-  isUpdating?: boolean; // For real-time price flash effect
   previousClose: number;
+  isUpdating?: boolean; // For real-time price flash effect
+}
+
+export interface Holding extends Quote {
+  companyName: string;
+  shares: number;
+  totalValue: number;
+  sector?: string; 
+  costBasis: number; // Total cost of acquiring the shares
+  unrealizedGain: number;
+  unrealizedGainPercent: number;
 }
 
 export interface Transaction {
@@ -78,21 +87,33 @@ export interface PortfolioScore {
     summary: string;
 }
 
+export interface InvestmentGoal {
+    name: 'Retirement' | 'Wealth Building' | 'New Home' | 'Education' | 'Other';
+    targetAmount: number;
+    targetDate: string;
+}
+
+export interface UserWatchlist {
+    id: string;
+    name: string;
+    tickers: string[];
+}
+
 export interface BaseDashboardData {
     user: User;
     holdings: Holding[];
     transactions: Transaction[];
-    watchlist: Holding[];
+    watchlists: UserWatchlist[];
 }
 
 export interface DashboardData extends BaseDashboardData {
     netWorth: number;
     portfolioPerformance: { date: string; price: number }[];
     allocation: { name: string; value: number }[];
-    // New personalized features
     personalizedNews?: NewsItem[];
     portfolioScore: PortfolioScore;
     achievements: Achievement[];
+    goal?: InvestmentGoal;
 }
 
 export type ChartTimeframe = '1Y' | '5Y' | '10Y';
@@ -228,6 +249,12 @@ export interface TaxLossOpportunity {
     costBasis: number;
     currentValue: number;
     explanation: string;
+}
+
+export interface PortfolioHistoryPoint {
+    date: string;
+    portfolioValue: number;
+    benchmarkValue: number;
 }
 
 // --- RESEARCH PAGE ---

@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import TickerInput from './TickerInput';
 import SecFilings from './SecFilings';
@@ -11,16 +12,18 @@ import StarIcon from './icons/StarIcon';
 import StarSolidIcon from './icons/StarSolidIcon';
 import StockComparison from './StockComparison';
 import XCircleIcon from './icons/XCircleIcon';
+import AddToWatchlistModal from './AddToWatchlistModal';
 import { getFilings } from '../services/secDataService';
 import { generateFinancials, generateTranscripts, generateStockAnalysis, generateStockComparison } from '../services/geminiService';
-import type { SecFiling, FinancialStatementsData, TranscriptsData, StockAnalysisData, StockComparisonData } from '../types';
+import type { SecFiling, FinancialStatementsData, TranscriptsData, StockAnalysisData, StockComparisonData, UserWatchlist } from '../types';
 import { useApi } from '../contexts/ApiContext';
 
 type DashboardTab = 'overview' | 'financials' | 'filings' | 'transcripts';
 
 interface ResearchPageProps {
-  watchlist: string[];
-  onToggleWatchlist: (ticker: string) => void;
+  watchlists: UserWatchlist[];
+  onUpdateWatchlistTickers: (id: string, tickers: string[]) => void;
+  onAddWatchlist: (name: string) => void;
 }
 
 const TabButton: React.FC<{
@@ -42,7 +45,7 @@ const TabButton: React.FC<{
 );
 
 
-const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlist }) => {
+const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, onUpdateWatchlistTickers, onAddWatchlist }) => {
   const [ticker, setTicker] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -59,6 +62,8 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
   const [isComparing, setIsComparing] = React.useState<boolean>(false);
   const [comparisonError, setComparisonError] = React.useState<string | null>(null);
   const [comparisonInput, setComparisonInput] = React.useState('');
+  
+  const [isWatchlistModalOpen, setIsWatchlistModalOpen] = React.useState(false);
 
   const { apiMode, setApiMode } = useApi();
 
@@ -80,75 +85,52 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
     setError(null);
     setTicker(newTicker.toUpperCase());
     setActiveTab('overview');
-
-    // Reset all data for the new ticker
     setAnalysis(null);
     setFinancials(null);
     setFilings(null);
     setTranscriptsData(null);
   };
 
-  // Effect for fetching the initial overview data when a new ticker is submitted
   React.useEffect(() => {
     if (!ticker) return;
-
     const fetchInitialData = async () => {
       try {
-        const analysisResult = await generateStockAnalysis(ticker, apiMode);
-        setAnalysis(analysisResult);
+        setAnalysis(await generateStockAnalysis(ticker, apiMode));
       } catch (err) {
         handleApiError(err, 'initial');
-        setTicker(null); // Reset ticker on a critical error
+        setTicker(null);
       } finally {
         setIsLoading(false);
       }
     };
-    
     fetchInitialData();
   }, [ticker, apiMode]);
 
-  // Effect for lazy-loading data when a tab is clicked
   React.useEffect(() => {
     if (!ticker) return;
-
     const fetchDataForTab = async () => {
         try {
             switch(activeTab) {
-                case 'financials':
-                    if (!financials) setFinancials(await generateFinancials(ticker, apiMode));
-                    break;
-                case 'filings':
-                    if (!filings) setFilings(await getFilings(ticker, apiMode));
-                    break;
-                case 'transcripts':
-                    if (!transcriptsData) setTranscriptsData(await generateTranscripts(ticker, apiMode));
-                    break;
+                case 'financials': if (!financials) setFinancials(await generateFinancials(ticker, apiMode)); break;
+                case 'filings': if (!filings) setFilings(await getFilings(ticker, apiMode)); break;
+                case 'transcripts': if (!transcriptsData) setTranscriptsData(await generateTranscripts(ticker, apiMode)); break;
             }
-        } catch (err) {
-            handleApiError(err, `data for ${activeTab} tab`);
-        }
+        } catch (err) { handleApiError(err, `data for ${activeTab} tab`); }
     };
-
     fetchDataForTab();
   }, [activeTab, ticker, apiMode, financials, filings, transcriptsData]);
 
-  
   const renderContent = () => {
     switch(activeTab) {
-      case 'overview':
-        return analysis ? <StockAnalysis analysis={analysis} /> : <div className="flex items-center justify-center h-64"><Spinner/></div>;
-      case 'financials':
-        return financials ? <FinancialStatements data={financials} /> : <div className="flex items-center justify-center h-64"><Spinner/></div>;
-      case 'filings':
-        return filings ? <SecFilings filings={filings} /> : <div className="flex items-center justify-center h-64"><Spinner/></div>;
-      case 'transcripts':
-        return transcriptsData ? <EarningsTranscripts transcriptsData={transcriptsData} /> : <div className="flex items-center justify-center h-64"><Spinner/></div>;
-      default:
-        return null;
+      case 'overview': return <StockAnalysis analysis={analysis} />;
+      case 'financials': return <FinancialStatements data={financials} />;
+      case 'filings': return <SecFilings filings={filings || []} />;
+      case 'transcripts': return <EarningsTranscripts transcriptsData={transcriptsData} />;
+      default: return <div className="flex items-center justify-center h-64"><Spinner/></div>;
     }
   }
   
-  const isWatched = ticker ? watchlist.includes(ticker) : false;
+  const isWatched = ticker ? watchlists.some(wl => wl.tickers.includes(ticker)) : false;
 
   const handleAddComparisonTicker = (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,43 +169,28 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
     <div className="container mx-auto">
       <TickerInput onTickerSubmit={handleTickerSubmit} isLoading={isLoading} />
       
-      {isLoading && (
-         <div className="flex flex-col items-center justify-center h-96">
-            <Spinner />
-            <p className="mt-4 text-brand-text-secondary">Fetching financial universe...</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="text-center my-8 text-red-400 p-4 bg-red-900/20 rounded-lg max-w-2xl mx-auto">
-          <p className="font-bold">Error</p>
-          <p>{error}</p>
-        </div>
-      )}
+      {isLoading && <div className="flex flex-col items-center justify-center h-96"><Spinner /><p className="mt-4 text-brand-text-secondary">Fetching financial universe...</p></div>}
+      {error && <div className="text-center my-8 text-red-400 p-4 bg-red-900/20 rounded-lg max-w-2xl mx-auto"><p className="font-bold">Error</p><p>{error}</p></div>}
 
       {!isLoading && ticker && (
         <div className="mt-8 space-y-6 animate-fade-in">
           <div className="flex items-center gap-4">
             <h1 className="text-4xl font-bold text-brand-text">Dashboard for {ticker}</h1>
-            <button onClick={() => onToggleWatchlist(ticker)} className="p-2 rounded-full hover:bg-brand-secondary transition-colors" title={isWatched ? "Remove from Watchlist" : "Add to Watchlist"}>
+            <button onClick={() => setIsWatchlistModalOpen(true)} className="p-2 rounded-full hover:bg-brand-secondary transition-colors" title={isWatched ? "Edit Watchlists" : "Add to Watchlist"}>
                 {isWatched ? <StarSolidIcon className="w-6 h-6 text-yellow-400" /> : <StarIcon className="w-6 h-6 text-brand-text-secondary" />}
             </button>
           </div>
           
           <StockChart ticker={ticker} />
 
-          <div className="border-b border-brand-border">
-            <nav className="-mb-px flex space-x-4" aria-label="Tabs">
-                <TabButton label="Overview" isActive={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-                <TabButton label="Financials" isActive={activeTab === 'financials'} onClick={() => setActiveTab('financials')} />
-                <TabButton label="SEC Filings" isActive={activeTab === 'filings'} onClick={() => setActiveTab('filings')} />
-                <TabButton label="Transcripts" isActive={activeTab === 'transcripts'} onClick={() => setActiveTab('transcripts')} />
-            </nav>
-          </div>
+          <div className="border-b border-brand-border"><nav className="-mb-px flex space-x-4" aria-label="Tabs">
+              <TabButton label="Overview" isActive={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+              <TabButton label="Financials" isActive={activeTab === 'financials'} onClick={() => setActiveTab('financials')} />
+              <TabButton label="SEC Filings" isActive={activeTab === 'filings'} onClick={() => setActiveTab('filings')} />
+              <TabButton label="Transcripts" isActive={activeTab === 'transcripts'} onClick={() => setActiveTab('transcripts')} />
+          </nav></div>
 
-          <div className="mt-4 min-h-[300px]">
-            {renderContent()}
-          </div>
+          <div className="mt-4 min-h-[300px]">{renderContent()}</div>
         </div>
       )}
 
@@ -240,44 +207,22 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
       <div className="mt-12 pt-8 border-t border-brand-border">
           <h2 className="text-2xl font-bold text-brand-text">Compare Stocks</h2>
           <p className="mt-1 text-brand-text-secondary">Add up to 5 tickers to generate a side-by-side analysis powered by AI.</p>
-
           <div className="mt-4 bg-brand-secondary p-4 rounded-lg border border-brand-border">
               <form onSubmit={handleAddComparisonTicker} className="flex items-center gap-2">
-                  <input
-                      type="text"
-                      value={comparisonInput}
-                      onChange={(e) => setComparisonInput(e.target.value)}
-                      placeholder="Enter Ticker to Add"
-                      className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition"
-                      disabled={isComparing || comparisonTickers.length >= 5}
-                  />
-                  <button
-                      type="submit"
-                      disabled={isComparing || comparisonTickers.length >= 5 || !comparisonInput.trim()}
-                      className="px-4 py-2 font-semibold rounded-lg bg-brand-primary border border-brand-border text-brand-text-secondary hover:bg-brand-border transition-colors disabled:opacity-50"
-                  >
-                      Add
-                  </button>
+                  <input type="text" value={comparisonInput} onChange={(e) => setComparisonInput(e.target.value)} placeholder="Enter Ticker to Add" className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition" disabled={isComparing || comparisonTickers.length >= 5} />
+                  <button type="submit" disabled={isComparing || comparisonTickers.length >= 5 || !comparisonInput.trim()} className="px-4 py-2 font-semibold rounded-lg bg-brand-primary border border-brand-border text-brand-text-secondary hover:bg-brand-border transition-colors disabled:opacity-50">Add</button>
               </form>
-
               <div className="flex flex-wrap gap-2 mt-4 min-h-[36px]">
-                  {comparisonTickers.map(ticker => (
-                      <div key={ticker} className="flex items-center gap-2 bg-brand-accent/20 text-brand-accent font-semibold px-3 py-1 rounded-full text-sm animate-fade-in">
-                          <span>{ticker}</span>
-                          <button onClick={() => handleRemoveComparisonTicker(ticker)} disabled={isComparing}>
-                              <XCircleIcon className="w-4 h-4 text-brand-accent/70 hover:text-brand-accent" />
-                          </button>
+                  {comparisonTickers.map(t => (
+                      <div key={t} className="flex items-center gap-2 bg-brand-accent/20 text-brand-accent font-semibold px-3 py-1 rounded-full text-sm animate-fade-in">
+                          <span>{t}</span>
+                          <button onClick={() => handleRemoveComparisonTicker(t)} disabled={isComparing}><XCircleIcon className="w-4 h-4 text-brand-accent/70 hover:text-brand-accent" /></button>
                       </div>
                   ))}
               </div>
-
               {comparisonTickers.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-brand-border flex justify-end">
-                      <button
-                          onClick={handleRunComparison}
-                          disabled={isComparing || comparisonTickers.length < 2}
-                          className="px-6 py-2 rounded-md text-sm font-semibold bg-brand-accent hover:bg-brand-accent-hover text-white transition-colors disabled:bg-brand-accent/50 flex items-center gap-2"
-                      >
+                      <button onClick={handleRunComparison} disabled={isComparing || comparisonTickers.length < 2} className="px-6 py-2 rounded-md text-sm font-semibold bg-brand-accent hover:bg-brand-accent-hover text-white transition-colors disabled:bg-brand-accent/50 flex items-center gap-2">
                           {isComparing && <Spinner />}
                           Compare {comparisonTickers.length > 1 ? `${comparisonTickers.length} Stocks` : ''}
                       </button>
@@ -286,6 +231,15 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
           </div>
           <StockComparison data={comparisonData} isLoading={isComparing} error={comparisonError} />
       </div>
+      {isWatchlistModalOpen && ticker && (
+        <AddToWatchlistModal
+          ticker={ticker}
+          watchlists={watchlists}
+          onClose={() => setIsWatchlistModalOpen(false)}
+          onUpdateWatchlistTickers={onUpdateWatchlistTickers}
+          onAddWatchlist={onAddWatchlist}
+        />
+      )}
     </div>
   );
 };
