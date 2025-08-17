@@ -127,7 +127,7 @@ export const stockComparisonItemSchema = {
         bearCase: { type: Type.STRING, description: "A brief summary of the bear case for the stock." },
         financialHealthSummary: { type: Type.STRING, description: "A one-sentence summary of the company's financial health." },
     },
-    required: ["ticker", "companyName", "marketCap", "peRatio", "dividendYield", "analystRating", "bullCase", "bearCase", "financialHealthSummary"],
+    required: ["ticker", "companyName", "marketCap", "analystRating", "bullCase", "bearCase", "financialHealthSummary"],
 };
 
 

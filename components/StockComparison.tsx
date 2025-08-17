@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import type { StockComparisonData } from '../types';
 import Spinner from './icons/Spinner';
@@ -49,9 +50,9 @@ const StockComparison: React.FC<StockComparisonProps> = ({ data, isLoading, erro
             case 'marketCap':
                 return formatMarketCap(value);
             case 'peRatio':
-                return value !== null ? value.toFixed(2) : 'N/A';
+                return typeof value === 'number' ? value.toFixed(2) : 'N/A';
             case 'dividendYield':
-                return value !== null ? `${value.toFixed(2)}%` : 'N/A';
+                return typeof value === 'number' ? `${value.toFixed(2)}%` : 'N/A';
             case 'bullCase':
                 return <div className="text-sm text-green-300/90 whitespace-pre-wrap">{value}</div>;
             case 'bearCase':

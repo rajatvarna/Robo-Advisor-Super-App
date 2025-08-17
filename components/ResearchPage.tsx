@@ -138,7 +138,7 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
   const handleAddComparisonTicker = (e: React.FormEvent) => {
     e.preventDefault();
     const tickerToAdd = comparisonInput.trim().toUpperCase();
-    if (tickerToAdd && !comparisonTickers.includes(tickerToAdd) && comparisonTickers.length < 3) {
+    if (tickerToAdd && !comparisonTickers.includes(tickerToAdd) && comparisonTickers.length < 5) {
         setComparisonTickers([...comparisonTickers, tickerToAdd]);
         setComparisonInput('');
     }
@@ -224,7 +224,7 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
 
       <div className="mt-12 pt-8 border-t border-brand-border">
           <h2 className="text-2xl font-bold text-brand-text">Compare Stocks</h2>
-          <p className="mt-1 text-brand-text-secondary">Add up to 3 tickers to generate a side-by-side analysis powered by AI.</p>
+          <p className="mt-1 text-brand-text-secondary">Add up to 5 tickers to generate a side-by-side analysis powered by AI.</p>
 
           <div className="mt-4 bg-brand-secondary p-4 rounded-lg border border-brand-border">
               <form onSubmit={handleAddComparisonTicker} className="flex items-center gap-2">
@@ -234,11 +234,11 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
                       onChange={(e) => setComparisonInput(e.target.value)}
                       placeholder="Enter Ticker to Add"
                       className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent transition"
-                      disabled={isComparing || comparisonTickers.length >= 3}
+                      disabled={isComparing || comparisonTickers.length >= 5}
                   />
                   <button
                       type="submit"
-                      disabled={isComparing || comparisonTickers.length >= 3 || !comparisonInput.trim()}
+                      disabled={isComparing || comparisonTickers.length >= 5 || !comparisonInput.trim()}
                       className="px-4 py-2 font-semibold rounded-lg bg-brand-primary border border-brand-border text-brand-text-secondary hover:bg-brand-border transition-colors disabled:opacity-50"
                   >
                       Add

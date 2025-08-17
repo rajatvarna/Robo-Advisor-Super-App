@@ -356,7 +356,7 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
         cacheService.set(cacheKey, data);
         return data;
     }
-    const prompt = `Act as a senior stock analyst. Provide a detailed, side-by-side comparison for the following stock tickers: ${tickers.join(', ')}. For each ticker, provide its company name, market cap in billions, P/E ratio, dividend yield, consensus analyst rating, a brief bull case, a brief bear case, and a one-sentence financial health summary. Provide the response in the specified JSON format. If a value like P/E or dividend yield isn't applicable, use null.`;
+    const prompt = `Act as a senior stock analyst. Provide a detailed, side-by-side comparison for the following stock tickers: ${tickers.join(', ')}. For each ticker, provide its company name, market cap as a number in billions (e.g., for $2.1T, return 2100; for $300B, return 300), P/E ratio as a number, dividend yield as a number in percent (e.g., for 1.5%, return 1.5), consensus analyst rating, a brief bull case, a brief bear case, and a one-sentence financial health summary. Provide the response in the specified JSON format. If a value like P/E or dividend yield isn't applicable, you may omit the field from the JSON object.`;
 
     const schema = {
         type: Type.ARRAY,
