@@ -36,6 +36,10 @@ const handleApiError = (error: any, context: string): Error => {
 };
 
 const parseJsonFromText = (text: string, context: string): any => {
+    if (!text || text.trim() === '') {
+        console.error(`Received empty text from AI for ${context}.`);
+        throw new Error(`The AI returned an empty response for ${context}.`);
+    }
     let cleanedText = text.trim().replace(/^```json\s*|```\s*$/g, '');
     try {
         return JSON.parse(cleanedText);
@@ -80,10 +84,13 @@ export const generatePersonalizedNews = async (holdings: Holding[], watchlistTic
 
     if (!tickers) return [];
 
-    const prompt = `Act as a financial news curator. Use Google Search to find 4 recent, relevant news articles for these stocks: ${tickers}. For each, provide its headline, a concise one-sentence summary, the source name, its direct and verifiable URL, and the publication date in ISO 8601 format. Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "publishedAt". Ensure URLs lead directly to the article. Do not include markdown formatting or any other text outside the JSON array.`;
+    const prompt = `Act as a financial news curator. Use Google Search to find 4 recent, relevant news articles for these stocks: ${tickers}. For each, provide its headline, a concise one-sentence summary, the source name, its direct and verifiable URL, and the publication date in ISO 8601 format. If a verifiable URL or publication date cannot be found, you MUST return null for that field. Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "publishedAt". Do not include markdown formatting or any other text outside the JSON array.`;
     
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
+        if (!response.text) {
+             throw new Error("The AI returned an empty response.");
+        }
         return parseJsonFromText(response.text, "personalized news");
     } catch (error) { throw handleApiError(error, "personalized news"); }
 }
@@ -94,7 +101,7 @@ export const getTopBusinessNews = async (apiMode: ApiMode): Promise<NewsItem[]> 
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.getTopBusinessNews();
-    const prompt = `Act as a financial news aggregator. Use Google Search to find 15 significant, recent business and financial news stories from reputable sources. For each story, provide the headline, a concise one-sentence summary, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", "url", and "publishedAt". Ensure URLs lead directly to the articles. Do not include any text outside the JSON array.`;
+    const prompt = `Act as a financial news aggregator. Use Google Search to find 15 significant, recent business and financial news stories from reputable sources. For each story, provide the headline, a concise one-sentence summary, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. If a verifiable URL or date cannot be found, you MUST return null for that field. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", "url", and "publishedAt". Do not include any text outside the JSON array.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const news = parseJsonFromText(response.text, "top business news");
@@ -111,7 +118,7 @@ export const getCryptoNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.getCryptoNews();
-    const prompt = `Act as a crypto news aggregator. Use Google Search to find 10 significant, recent news stories about cryptocurrency from reputable sources like Coindesk, Cointelegraph, and The Block. For each story, provide the headline, a concise one-sentence summary, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", "url", and "publishedAt". Ensure URLs lead directly to the articles. Do not include any text outside the JSON array.`;
+    const prompt = `Act as a crypto news aggregator. Use Google Search to find 10 significant, recent news stories about cryptocurrency from reputable sources like Coindesk, Cointelegraph, and The Block. For each story, provide the headline, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. If a verifiable URL or publication date cannot be found, you MUST return null for that field. A summary is not needed. Respond with ONLY a valid JSON array of objects with keys "headline", "source", "url", and "publishedAt". Do not include any text outside the JSON array.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const news = parseJsonFromText(response.text, "crypto news");
@@ -128,7 +135,7 @@ export const getTopCryptos = async (apiMode: ApiMode): Promise<CryptoData[]> => 
     if (cached) return cached;
 
     if (apiMode === 'opensource') return FallbackData.getTopCryptos();
-    const prompt = `Act as a cryptocurrency data API. Use Google Search to find the top 25 cryptocurrencies by market capitalization from sites like Coinbase or CoinMarketCap. For each, provide its name, symbol (ticker), current price in USD, 24-hour percentage change, and market cap in USD. Respond with ONLY a valid JSON array of objects with keys "name", "symbol", "price", "change24h", and "marketCap". Market cap must be a number, not a string.`;
+    const prompt = `Act as a cryptocurrency data API. Use Google Search to find the top 25 cryptocurrencies by market capitalization from sites like Coinbase or CoinMarketCap. For each, provide its name, symbol (ticker), current price in USD, 24-hour percentage change, and market cap in USD. Respond with ONLY a valid JSON array of objects with keys "name", "symbol", "price", "change24h", and "marketCap". Market cap must be a number, not a string. For stablecoins, if 24h change is not applicable, return null for "change24h".`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const cryptos = parseJsonFromText(response.text, "top cryptos");
@@ -211,7 +218,7 @@ export const generateEducationalContent = async (category: string, apiMode: ApiM
 
 export const screenStocks = async (criteria: ScreenerCriteria, apiMode: ApiMode): Promise<ScreenerResult[]> => {
     if (apiMode === 'opensource') return FallbackData.screenStocks(criteria);
-    const prompt = `Act as a US stock screener API. Use Google Search to find a list of up to 100 real US companies that match these criteria: Market Cap ($${criteria.marketCapMin}B - ${criteria.marketCapMax === Infinity ? 'any' : `$${criteria.marketCapMax}B`}), P/E Ratio (${criteria.peRatioMin} - ${criteria.peRatioMax === Infinity ? 'any' : criteria.peRatioMax}), Dividend Yield (${criteria.dividendYieldMin}% - ${criteria.dividendYieldMax === Infinity ? 'any' : `${criteria.dividendYieldMax}%`}), Sectors ([${criteria.sectors.join(', ') || 'Any'}]), Minimum Analyst Rating (${criteria.analystRating}). For market cap, use billions (e.g., 2100 for $2.1T). Respond with ONLY a valid JSON array of objects and nothing else.`;
+    const prompt = `Act as a US stock screener API. Use Google Search to find a list of up to 100 real US companies that match these criteria: Market Cap ($${criteria.marketCapMin}B - ${criteria.marketCapMax === Infinity ? 'any' : `$${criteria.marketCapMax}B`}), P/E Ratio (${criteria.peRatioMin} - ${criteria.peRatioMax === Infinity ? 'any' : criteria.peRatioMax}), Dividend Yield (${criteria.dividendYieldMin}% - ${criteria.dividendYieldMax === Infinity ? 'any' : `${criteria.dividendYieldMax}%`}), Sectors ([${criteria.sectors.join(', ') || 'Any'}]), Minimum Analyst Rating (${criteria.analystRating}). For market cap, use billions (e.g., 2100 for $2.1T). If a P/E or dividend yield is not applicable, return null. Respond with ONLY a valid JSON array of objects and nothing else.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
         return parseJsonFromText(response.text, 'stock screener results') as ScreenerResult[];

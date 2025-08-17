@@ -79,22 +79,41 @@ const TopNewsPage: React.FC = () => {
 
         return (
             <div className="space-y-4">
-                {news.map((item, index) => (
-                    <a 
-                        href={item.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        key={index} 
-                        className="block bg-brand-secondary p-4 rounded-lg border border-brand-border hover:bg-brand-border/20 hover:border-brand-border transition-colors duration-200"
-                    >
-                        <div className="flex justify-between items-center">
-                            <p className="text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">{item.source}</p>
-                            {item.publishedAt && <p className="text-xs text-brand-text-secondary">{formatTimeAgo(item.publishedAt)}</p>}
+                {news.map((item, index) => {
+                    const content = (
+                        <>
+                            <div className="flex justify-between items-center">
+                                <p className="text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">{item.source}</p>
+                                {item.publishedAt && <p className="text-xs text-brand-text-secondary">{formatTimeAgo(item.publishedAt)}</p>}
+                            </div>
+                            <h3 className="text-lg font-bold text-brand-text mt-1">{item.headline}</h3>
+                            {item.summary && <p className="text-sm text-brand-text-secondary mt-2">{item.summary}</p>}
+                        </>
+                    );
+
+                    if (item.url) {
+                        return (
+                            <a 
+                                href={item.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                key={index} 
+                                className="block bg-brand-secondary p-4 rounded-lg border border-brand-border hover:bg-brand-border/20 hover:border-brand-border transition-colors duration-200"
+                            >
+                                {content}
+                            </a>
+                        );
+                    }
+
+                    return (
+                        <div
+                            key={index} 
+                            className="block bg-brand-secondary p-4 rounded-lg border border-brand-border"
+                        >
+                            {content}
                         </div>
-                        <h3 className="text-lg font-bold text-brand-text mt-1">{item.headline}</h3>
-                        <p className="text-sm text-brand-text-secondary mt-2">{item.summary}</p>
-                    </a>
-                ))}
+                    );
+                })}
             </div>
         );
     };

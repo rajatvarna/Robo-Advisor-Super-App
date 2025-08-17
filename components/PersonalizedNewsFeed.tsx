@@ -36,10 +36,16 @@ const PersonalizedNewsFeed: React.FC<PersonalizedNewsFeedProps> = ({ news, holdi
                 <div className="space-y-4">
                     {news.map((item, index) => (
                         <div key={index} className="border-b border-brand-border pb-3 last:border-b-0 last:pb-0">
-                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-text hover:text-brand-accent transition-colors">
-                                {item.headline}
-                            </a>
-                            <p className="text-sm text-brand-text-secondary mt-1">{item.summary}</p>
+                            {item.url ? (
+                                <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-text hover:text-brand-accent transition-colors">
+                                    {item.headline}
+                                </a>
+                            ) : (
+                                <span className="font-semibold text-brand-text">
+                                    {item.headline}
+                                </span>
+                            )}
+                            {item.summary && <p className="text-sm text-brand-text-secondary mt-1">{item.summary}</p>}
                             <div className="flex justify-between items-center text-xs text-brand-text-secondary mt-2">
                                 <span>Source: {item.source}</span>
                                 {item.publishedAt && <span>{formatTimeAgo(item.publishedAt)}</span>}

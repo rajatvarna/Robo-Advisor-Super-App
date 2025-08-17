@@ -68,10 +68,10 @@ export interface EducationalContent {
 
 export interface NewsItem {
     headline: string;
-    url: string;
+    url: string | null;
     source: string;
-    summary: string; // AI generated summary
-    publishedAt: string; // ISO 8601 format
+    summary?: string; // AI generated summary
+    publishedAt: string | null; // ISO 8601 format
     sentiment?: 'Positive' | 'Negative' | 'Neutral';
     ticker?: string; // Ticker it relates to
 }
@@ -215,8 +215,8 @@ export interface ScreenerResult {
   ticker: string;
   companyName: string;
   marketCap: number;
-  peRatio: number;
-  dividendYield: number;
+  peRatio: number | null;
+  dividendYield: number | null;
   sector: string;
   analystRating: string;
 }
@@ -287,6 +287,6 @@ export interface CryptoData {
     name: string;
     symbol: string;
     price: number;
-    change24h: number; // As a percentage
+    change24h: number | null; // As a percentage
     marketCap: number;
 }

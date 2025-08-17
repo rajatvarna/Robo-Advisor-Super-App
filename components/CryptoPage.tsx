@@ -103,6 +103,10 @@ const CryptoPage: React.FC = () => {
             sortableItems.sort((a, b) => {
                 const aValue = a[sortConfig.key];
                 const bValue = b[sortConfig.key];
+                
+                if (aValue === null) return 1;
+                if (bValue === null) return -1;
+                
                 if (typeof aValue === 'number' && typeof bValue === 'number') {
                      return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
                 }
@@ -158,8 +162,8 @@ const CryptoPage: React.FC = () => {
                                             <div className="text-xs text-brand-text-secondary">{crypto.name}</div>
                                         </td>
                                         <td className="py-3 px-4 text-right tabular-nums text-brand-text">{formatCurrency(crypto.price)}</td>
-                                        <td className={`py-3 px-4 text-right tabular-nums font-semibold ${crypto.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                            {crypto.change24h.toFixed(2)}%
+                                        <td className={`py-3 px-4 text-right tabular-nums font-semibold ${crypto.change24h == null ? '' : crypto.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                            {crypto.change24h != null ? `${crypto.change24h.toFixed(2)}%` : 'N/A'}
                                         </td>
                                         <td className="py-3 px-4 text-right tabular-nums text-brand-text">{formatMarketCap(crypto.marketCap)}</td>
                                     </tr>
@@ -171,15 +175,30 @@ const CryptoPage: React.FC = () => {
                 <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg">
                      <h3 className="text-lg font-bold text-brand-text mb-3">Crypto News</h3>
                      <div className="space-y-4">
-                        {news.map((item, index) => (
-                            <a href={item.url} target="_blank" rel="noopener noreferrer" key={index} className="block border-b border-brand-border pb-3 last:border-b-0 last:pb-0">
-                                <p className="font-semibold text-brand-text hover:text-brand-accent transition-colors">{item.headline}</p>
-                                <div className="flex justify-between items-center text-xs text-brand-text-secondary mt-2">
-                                    <span>Source: {item.source}</span>
-                                    {item.publishedAt && <span>{formatTimeAgo(item.publishedAt)}</span>}
+                        {news.map((item, index) => {
+                            const content = (
+                                <>
+                                    <p className="font-semibold text-brand-text group-hover:text-brand-accent transition-colors">{item.headline}</p>
+                                    <div className="flex justify-between items-center text-xs text-brand-text-secondary mt-2">
+                                        <span>Source: {item.source}</span>
+                                        {item.publishedAt && <span>{formatTimeAgo(item.publishedAt)}</span>}
+                                    </div>
+                                </>
+                            );
+
+                            if (item.url) {
+                                return (
+                                    <a href={item.url} target="_blank" rel="noopener noreferrer" key={index} className="block border-b border-brand-border pb-3 last:border-b-0 last:pb-0 group">
+                                        {content}
+                                    </a>
+                                );
+                            }
+                            return (
+                                <div key={index} className="block border-b border-brand-border pb-3 last:border-b-0 last:pb-0">
+                                    {content}
                                 </div>
-                            </a>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             </div>
