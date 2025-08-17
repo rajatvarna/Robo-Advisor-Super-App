@@ -66,7 +66,17 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
                 
                 // The API might return an error object inside the operation when it's done.
                 if (updatedOperation.error) {
-                    setError(`Video generation failed: ${updatedOperation.error.message || 'Please try again.'}`);
+                    const isQuotaError = updatedOperation.error.code === 429 || 
+                                         (typeof updatedOperation.error.message === 'string' && 
+                                          updatedOperation.error.message.toLowerCase().includes('quota'));
+                    
+                    if (isQuotaError) {
+                        setApiMode('opensource');
+                        setError("Live AI quota for video generation exceeded. Switched to offline fallback mode. Please click 'Generate' again to get a sample video.");
+                    } else {
+                        setError(`Video generation failed: ${updatedOperation.error.message || 'An unknown error occurred. Please try again.'}`);
+                    }
+                    
                     setIsLoading(false);
                     return; // Stop the process.
                 }

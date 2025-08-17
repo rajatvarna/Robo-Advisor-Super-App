@@ -1,6 +1,3 @@
-
-
-
 import { GoogleGenAI, Type } from "@google/genai";
 import type { SecFiling, ApiMode } from '../types';
 import * as FallbackData from './fallbackData';
@@ -16,8 +13,17 @@ if (!API_KEY) {
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const checkIsQuotaError = (error: any): boolean => {
-    const message = JSON.stringify(error).toLowerCase();
-    return message.includes('429') || message.includes('resource_exhausted') || message.includes('quota');
+    // The error from the SDK can be an Error object with the server's JSON response in the `message` field.
+    // We create a string to search for by prioritizing the message property.
+    const messageToSearch = (error?.message || JSON.stringify(error)).toLowerCase();
+    
+    // Check for the specific status field from the API error structure.
+    if (messageToSearch.includes('"status":"resource_exhausted"')) {
+        return true;
+    }
+
+    // Fallback for other quota-related messages.
+    return messageToSearch.includes('429') || messageToSearch.includes('quota');
 };
 
 const handleApiError = (error: any, context: string): Error => {

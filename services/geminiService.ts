@@ -1,6 +1,3 @@
-
-
-
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData } from '../types';
 import * as FallbackData from './fallbackData';
@@ -15,8 +12,17 @@ if (!API_KEY) {
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const checkIsQuotaError = (error: any): boolean => {
-    const message = JSON.stringify(error).toLowerCase();
-    return message.includes('429') || message.includes('resource_exhausted') || message.includes('quota');
+    // The error from the SDK can be an Error object with the server's JSON response in the `message` field.
+    // We create a string to search for by prioritizing the message property.
+    const messageToSearch = (error?.message || JSON.stringify(error)).toLowerCase();
+    
+    // Check for the specific status field from the API error structure.
+    if (messageToSearch.includes('"status":"resource_exhausted"')) {
+        return true;
+    }
+
+    // Fallback for other quota-related messages.
+    return messageToSearch.includes('429') || messageToSearch.includes('quota');
 };
 
 const handleApiError = (error: any, context: string): Error => {
@@ -115,7 +121,7 @@ export const calculatePortfolioScore = async (holdings: Holding[], apiMode: ApiM
 export const checkForAchievements = async (action: string, data: any, unlockedIds: string[], apiMode: ApiMode): Promise<Pick<Achievement, 'id' | 'title'>[]> => {
     if (apiMode === 'opensource') return FallbackData.checkForAchievements(action, data, unlockedIds);
     const prompt = `Given an action ("${action}"), data (${JSON.stringify(data)}), and unlocked achievements ([${unlockedIds.join(', ')}]), determine new achievements. Conditions: 'first_login' (first login), 'first_holding' (holdingsCount>=1), 'five_holdings' (>=5), 'ten_holdings' (>=10), 'first_screener' (run_screener action), 'diversified_portfolio_5' (>=5 sectors), 'diversified_portfolio_8' (>=8 sectors), 'high_score_85' (score>=85), 'high_score_95' (score>=95). Return JSON array of new achievements with "id" and "title".`;
-    const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { id: {type: Type.STRING}, title: {type: Type.STRING}}, required: ["id", "title"] }};
+    const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { id: {type: Type.STRING}, title: {type: Type.STRING}}, required: ["id", "title"] } };
      try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema }});
         return JSON.parse(response.text.trim());
