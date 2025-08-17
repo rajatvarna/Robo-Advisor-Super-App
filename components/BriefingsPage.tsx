@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { generateVideoBriefing, getVideoOperationStatus } from '../services/geminiService';
-import type { Holding, ApiMode } from '../types';
+import type { Holding } from '../types';
 import Spinner from './icons/Spinner';
 import VideoIcon from './icons/VideoIcon';
 import { useApi } from '../contexts/ApiContext';
@@ -60,13 +60,25 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
             const updatedOperation = await getVideoOperationStatus(operation, apiMode);
 
             if (updatedOperation.done) {
+                if (pollingTimeoutRef.current) {
+                    clearTimeout(pollingTimeoutRef.current);
+                }
+                
+                // The API might return an error object inside the operation when it's done.
+                if (updatedOperation.error) {
+                    setError(`Video generation failed: ${updatedOperation.error.message || 'Please try again.'}`);
+                    setIsLoading(false);
+                    return; // Stop the process.
+                }
+
                 const downloadLink = updatedOperation.response?.generatedVideos?.[0]?.video?.uri;
                 if (downloadLink) {
                     setVideoUrl(`${downloadLink}&key=${API_KEY}`);
                 } else if (isFallbackMode) {
                     setVideoUrl('https://storage.googleapis.com/generative-ai-vision/veo-demo-videos/prompt-with-video/a_cinematic_shot_of_a_woman_walking_through_a_paddy_field_in_the_paddy_field.mp4');
                 } else {
-                    setError("Video generation completed, but no video URL was returned.");
+                    // This handles the case where the operation is 'done' but no video URI is present.
+                    setError("Video generation completed, but a video is not available at this time. Please try again.");
                 }
                 setIsLoading(false);
             } else {
