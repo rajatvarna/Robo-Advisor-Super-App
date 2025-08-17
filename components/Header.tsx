@@ -10,15 +10,17 @@ import SunIcon from './icons/SunIcon';
 import MoonIcon from './icons/MoonIcon';
 import CryptoIcon from './icons/CryptoIcon';
 import SettingsIcon from './icons/SettingsIcon';
+import BellIcon from './icons/BellIcon';
 
 
 interface HeaderProps {
   currentView: View;
   setView: (view: View) => void;
   onLogout: () => void;
+  unreadAlertsCount?: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout, unreadAlertsCount = 0 }) => {
   const { theme, toggleTheme } = useTheme();
 
   const navLinkClasses = (view: View) =>
@@ -81,8 +83,18 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
               </a>
             </nav>
             <button
+                onClick={() => setView('alerts')}
+                className="ml-4 p-2 rounded-full text-brand-text-secondary hover:bg-brand-secondary transition-colors relative"
+                aria-label="View alerts"
+            >
+                <BellIcon className="w-5 h-5" />
+                {unreadAlertsCount > 0 && (
+                    <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-brand-primary" />
+                )}
+            </button>
+            <button
                 onClick={toggleTheme}
-                className="ml-4 p-2 rounded-full text-brand-text-secondary hover:bg-brand-secondary transition-colors"
+                className="ml-1 p-2 rounded-full text-brand-text-secondary hover:bg-brand-secondary transition-colors"
                 aria-label="Toggle theme"
             >
                 {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}

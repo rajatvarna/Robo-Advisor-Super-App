@@ -9,6 +9,7 @@ import AchievementsList from './AchievementsList';
 import Watchlist from './Watchlist';
 import PersonalizedNewsFeed from './PersonalizedNewsFeed';
 import GoalProgress from './GoalProgress';
+import DashboardInsights from './DashboardInsights';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
@@ -38,7 +39,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, quotes, onGenerateD
     );
   }
 
-  const { user, netWorth, holdings, portfolioScore, achievements, personalizedNews, watchlists, goal } = data;
+  const { user, netWorth, holdings, portfolioScore, achievements, personalizedNews, watchlists, goal, dashboardInsights } = data;
   
   const dayGain = holdings.reduce((acc, h) => acc + (h.dayChange * h.shares), 0);
   const totalOriginalValue = holdings.reduce((acc, h) => acc + ((h.currentPrice - h.dayChange) * h.shares), 0);
@@ -47,6 +48,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, quotes, onGenerateD
   return (
     <div className="space-y-6 animate-fade-in">
         <h1 className="text-3xl font-bold text-brand-text">Welcome back, {user.name.split(' ')[0]}!</h1>
+        
+        <div id="dashboard-insights">
+            <DashboardInsights insights={dashboardInsights} />
+        </div>
         
         {goal && <GoalProgress goal={goal} netWorth={netWorth} />}
 

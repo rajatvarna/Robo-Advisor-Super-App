@@ -1,7 +1,7 @@
 
 
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
-import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData } from '../types';
+import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert } from '../types';
 import * as FallbackData from './fallbackData';
 import { cacheService } from './cacheService';
 import * as financialDataService from './financialDataService';
@@ -84,14 +84,23 @@ export const generatePersonalizedNews = async (holdings: Holding[], watchlistTic
 
     if (!tickers) return [];
 
-    const prompt = `Act as a financial news curator. Use Google Search to find 4 recent, relevant news articles for these stocks: ${tickers}. For each, provide its headline, a concise one-sentence summary, the source name, its direct and verifiable URL, and the publication date in ISO 8601 format. If a verifiable URL or publication date cannot be found, you MUST return null for that field. Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "publishedAt". Do not include markdown formatting or any other text outside the JSON array.`;
+    const prompt = `Act as a financial news curator. Prioritize reputable, verifiable sources like Bloomberg, Reuters, and the Wall Street Journal. Use Google Search to find 4 of the most recent, relevant news articles for these stocks: ${tickers}. Return the results sorted with the newest articles first. For each, provide its headline, a concise one-sentence summary, the source name, its direct and verifiable URL, and the publication date in ISO 8601 format. If a verifiable URL or publication date cannot be found, you MUST return null for that field. Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "publishedAt". Do not include markdown formatting or any other text outside the JSON array.`;
     
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         if (!response.text) {
              throw new Error("The AI returned an empty response.");
         }
-        return parseJsonFromText(response.text, "personalized news");
+        const newsItems = parseJsonFromText(response.text, "personalized news");
+        if (!Array.isArray(newsItems)) {
+            throw new Error("Parsed JSON is not an array for personalized news.");
+        }
+        const validNews = newsItems.filter(item => item && typeof item === 'object' && item.headline && item.source);
+        validNews.sort((a, b) => {
+            if (!a.publishedAt || !b.publishedAt) return 0;
+            return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+        });
+        return validNews;
     } catch (error) { throw handleApiError(error, "personalized news"); }
 }
 
@@ -101,12 +110,23 @@ export const getTopBusinessNews = async (apiMode: ApiMode): Promise<NewsItem[]> 
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.getTopBusinessNews();
-    const prompt = `Act as a financial news aggregator. Use Google Search to find 15 significant, recent business and financial news stories from reputable sources. For each story, provide the headline, a concise one-sentence summary, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. If a verifiable URL or date cannot be found, you MUST return null for that field. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", "url", and "publishedAt". Do not include any text outside the JSON array.`;
+    const prompt = `Act as a financial news aggregator. Prioritize major, verifiable news outlets like Bloomberg, Reuters, The Wall Street Journal, and Morningstar. Use Google Search to find 15 significant, recent business and financial news stories. Return the results sorted with the newest articles first. For each story, provide the headline, a concise one-sentence summary, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. If a verifiable URL or date cannot be found, you MUST return null for that field. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", "url", and "publishedAt". Do not include any text outside the JSON array.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
+        if (!response.text) {
+             throw new Error("The AI returned an empty response for top business news.");
+        }
         const news = parseJsonFromText(response.text, "top business news");
-        cacheService.set(cacheKey, news, 15 * 60 * 1000); // Cache for 15 minutes
-        return news;
+        if (!Array.isArray(news)) {
+            throw new Error("Parsed JSON is not an array for top business news.");
+        }
+        const validNews = news.filter(item => item && typeof item === 'object' && item.headline && item.source);
+        validNews.sort((a, b) => {
+            if (!a.publishedAt || !b.publishedAt) return 0;
+            return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+        });
+        cacheService.set(cacheKey, validNews, 15 * 60 * 1000); // Cache for 15 minutes
+        return validNews;
     } catch (error) {
         throw handleApiError(error, "top business news");
     }
@@ -118,12 +138,23 @@ export const getCryptoNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.getCryptoNews();
-    const prompt = `Act as a crypto news aggregator. Use Google Search to find 10 significant, recent news stories about cryptocurrency from reputable sources like Coindesk, Cointelegraph, and The Block. For each story, provide the headline, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. If a verifiable URL or publication date cannot be found, you MUST return null for that field. A summary is not needed. Respond with ONLY a valid JSON array of objects with keys "headline", "source", "url", and "publishedAt". Do not include any text outside the JSON array.`;
+    const prompt = `Act as a crypto news aggregator. Prioritize major, verifiable sources like Coindesk, Cointelegraph, and The Block. Use Google Search to find 10 of the most recent, significant news stories about cryptocurrency. Return the results sorted with the newest articles first. For each story, provide the headline, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. If a verifiable URL or publication date cannot be found, you MUST return null for that field. A summary is not needed. Respond with ONLY a valid JSON array of objects with keys "headline", "source", "url", and "publishedAt". Do not include any text outside the JSON array.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
+        if (!response.text) {
+            throw new Error("The AI returned an empty response for crypto news.");
+        }
         const news = parseJsonFromText(response.text, "crypto news");
-        cacheService.set(cacheKey, news, 15 * 60 * 1000); // Cache for 15 minutes
-        return news;
+         if (!Array.isArray(news)) {
+            throw new Error("Parsed JSON is not an array for crypto news.");
+        }
+        const validNews = news.filter(item => item && typeof item === 'object' && item.headline && item.source);
+        validNews.sort((a, b) => {
+            if (!a.publishedAt || !b.publishedAt) return 0;
+            return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+        });
+        cacheService.set(cacheKey, validNews, 15 * 60 * 1000); // Cache for 15 minutes
+        return validNews;
     } catch (error) {
         throw handleApiError(error, "crypto news");
     }
@@ -168,6 +199,108 @@ export const checkForAchievements = async (action: string, data: any, unlockedId
         return JSON.parse(response.text.trim());
     } catch (error) { throw handleApiError(error, "achievement check"); }
 }
+
+export const generateDashboardInsights = async (dashboardData: DashboardData, apiMode: ApiMode): Promise<string[]> => {
+    if (apiMode === 'opensource') return FallbackData.generateDashboardInsights();
+    
+    // Create a concise summary of the dashboard data for the prompt
+    const context = {
+        netWorth: dashboardData.netWorth,
+        goal: dashboardData.goal,
+        topHoldings: dashboardData.holdings.slice(0, 5).map(h => ({ ticker: h.ticker, value: h.totalValue, sector: h.sector })),
+        allocation: dashboardData.allocation,
+    };
+    
+    const prompt = `Act as a financial analyst. Based on the following portfolio snapshot, provide 3-4 concise, actionable, and insightful bullet points for a "Daily Briefing" for the user. Focus on concentration, performance, or progress towards goals. Be encouraging but realistic. Do not give direct buy/sell advice. Context: ${JSON.stringify(context)}`;
+
+    const schema = {
+        type: Type.OBJECT,
+        properties: {
+            insights: {
+                type: Type.ARRAY,
+                description: "An array of 3-4 string bullet points for the user's daily briefing.",
+                items: { type: Type.STRING }
+            }
+        },
+        required: ["insights"]
+    };
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: { responseMimeType: "application/json", responseSchema: schema }
+        });
+        const result = JSON.parse(response.text.trim());
+        return result.insights || [];
+    } catch (error) {
+        throw handleApiError(error, "dashboard insights");
+    }
+};
+
+export const generatePortfolioAlerts = async (dashboardData: DashboardData, apiMode: ApiMode): Promise<Alert[]> => {
+    if (apiMode === 'opensource') return FallbackData.generatePortfolioAlerts(dashboardData);
+    if (dashboardData.holdings.length === 0) return [];
+
+    const context = {
+        holdings: dashboardData.holdings.map(h => ({
+            ticker: h.ticker,
+            totalValue: h.totalValue,
+            dayChangePercent: h.dayChangePercent
+        })),
+        allocation: dashboardData.allocation,
+        goal: dashboardData.goal,
+        netWorth: dashboardData.netWorth
+    };
+
+    const prompt = `Act as a portfolio monitoring AI. Analyze this portfolio for significant events that occurred today: ${JSON.stringify(context)}.
+    Identify up to 3 important alerts for the user. Focus on:
+    1.  **Price:** Any holding with a daily change > 5% or < -5%.
+    2.  **Portfolio:** Sector concentration exceeding 40%.
+    3.  **News (Use Search):** Search for a major breaking news story (earnings, M&A) for one of the top 3 holdings.
+    4.  **Goal:** A significant milestone reached (e.g., crossing a 25%, 50%, or 75% threshold of their goal).
+    
+    For each alert, provide a unique ID, type, severity, title, and a concise description.
+    Respond with ONLY a valid JSON array of objects.`;
+
+    const schema = {
+        type: Type.ARRAY,
+        items: {
+            type: Type.OBJECT,
+            properties: {
+                id: { type: Type.STRING },
+                type: { type: Type.STRING, enum: ['Price', 'News', 'Portfolio', 'Goal'] },
+                severity: { type: Type.STRING, enum: ['Info', 'Warning', 'Critical'] },
+                title: { type: Type.STRING },
+                description: { type: Type.STRING },
+                ticker: { type: Type.STRING, nullable: true }
+            },
+            required: ['id', 'type', 'severity', 'title', 'description']
+        }
+    };
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }],
+                responseMimeType: "application/json",
+                responseSchema: schema
+            }
+        });
+        const alerts: Omit<Alert, 'timestamp' | 'read'>[] = JSON.parse(response.text.trim());
+        // Add timestamp and read status
+        return alerts.map(alert => ({
+            ...alert,
+            timestamp: new Date().toISOString(),
+            read: false
+        }));
+    } catch (error) {
+        throw handleApiError(error, "portfolio alerts");
+    }
+};
+
 
 export const generateDividendData = async (holdings: Holding[], apiMode: ApiMode): Promise<Dividend[]> => {
     if (apiMode === 'opensource') return FallbackData.generateDividendData(holdings);

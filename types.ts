@@ -1,6 +1,6 @@
 
 
-export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto' | 'integrations';
+export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto' | 'integrations' | 'alerts';
 export type ApiMode = 'gemini' | 'opensource';
 
 export interface ChatMessage {
@@ -76,6 +76,18 @@ export interface NewsItem {
     ticker?: string; // Ticker it relates to
 }
 
+export interface Alert {
+    id: string;
+    timestamp: string; // ISO 8601 format
+    type: 'Price' | 'News' | 'Portfolio' | 'Goal';
+    severity: 'Info' | 'Warning' | 'Critical';
+    title: string;
+    description: string;
+    ticker?: string;
+    read: boolean;
+}
+
+
 export interface Achievement {
     id: string;
     title: string;
@@ -118,8 +130,10 @@ export interface DashboardData extends BaseDashboardData {
     portfolioPerformance: { date: string; price: number }[];
     allocation: { name: string; value: number }[];
     personalizedNews?: NewsItem[];
+    dashboardInsights?: string[];
     portfolioScore: PortfolioScore;
     achievements: Achievement[];
+    alerts: Alert[];
     goal?: InvestmentGoal;
     integrations: {
         interactiveBrokers: BrokerageIntegration;

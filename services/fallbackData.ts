@@ -2,7 +2,7 @@
 
 import { Type } from "@google/genai";
 import type { Chat } from '@google/genai';
-import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist, CryptoData } from '../types';
+import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist, CryptoData, Alert } from '../types';
 
 // --- Achievements ---
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -255,6 +255,7 @@ export const generateDashboardData = async (): Promise<DashboardData> => {
         allocation: [],
         portfolioScore: { score: 0, summary: ""},
         achievements: [],
+        alerts: [],
         integrations: {
             interactiveBrokers: { connected: false }
         }
@@ -339,6 +340,34 @@ export const calculatePortfolioScore = (holdings: Holding[]): PortfolioScore => 
 export const checkForAchievements = (action: string, data: any, unlockedIds: string[]): Pick<Achievement, 'id'|'title'>[] => {
     return []; // Don't unlock new achievements in fallback mode to keep it simple
 };
+
+export const generateDashboardInsights = (): string[] => ([
+    "Your portfolio is heavily weighted in the Technology sector (45%), consider diversifying.",
+    "AAPL has shown strong performance this week, up 5.2%.",
+    "You are 25% of the way to your 'New Home' investment goal. Keep it up!",
+]);
+
+export const generatePortfolioAlerts = (dashboardData: DashboardData): Alert[] => ([
+    {
+        id: `alert-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        type: 'Price',
+        severity: 'Critical',
+        title: 'Significant Price Movement in AAPL',
+        description: 'AAPL is down 5.8% today on higher than average volume. This may be related to news about new tariffs.',
+        ticker: 'AAPL',
+        read: false
+    },
+    {
+        id: `alert-${Date.now() - 100000}`,
+        timestamp: new Date(Date.now() - 100000).toISOString(),
+        type: 'Portfolio',
+        severity: 'Warning',
+        title: 'High Sector Concentration',
+        description: 'Your portfolio concentration in the Technology sector has reached 48%, which is above the recommended threshold of 40%.',
+        read: true
+    }
+]);
 
 export const generateDividendData = (holdings: Holding[]): Dividend[] => ([
     { ticker: 'AAPL', companyName: 'Apple Inc.', amountPerShare: 0.25, totalAmount: 12.5, payDate: '2024-08-15', exDividendDate: '2024-08-08' },

@@ -1,5 +1,6 @@
 
 
+
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -14,10 +15,11 @@ import TopNewsPage from './components/TopNewsPage';
 import AnalyticsPage from './components/AnalyticsPage';
 import CryptoPage from './components/CryptoPage';
 import IntegrationsPage from './components/IntegrationsPage';
+import AlertsPage from './components/AlertsPage';
 import AddHoldingModal from './components/AddHoldingModal';
 import AchievementToast from './components/AchievementToast';
 import Spinner from './components/icons/Spinner';
-import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements, getTopBusinessNews } from './services/geminiService';
+import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements, getTopBusinessNews, generateDashboardInsights, generatePortfolioAlerts } from './services/geminiService';
 import * as financialDataService from './services/financialDataService';
 import * as brokerageService from './services/brokerageService';
 import type { View, DashboardData, Holding, Transaction, AddHoldingData, Achievement, UserWatchlist, InvestmentGoal, Quote, BaseDashboardData } from './types';
@@ -243,8 +245,10 @@ const AppContent: React.FC = () => {
             holdings: liveHoldings,
             portfolioPerformance: [{ date: new Date().toISOString().split('T')[0], price: netWorth }],
             personalizedNews: [],
+            dashboardInsights: FallbackData.generateDashboardInsights(),
             portfolioScore: { score: 78, summary: "A well-diversified portfolio with solid holdings." },
             achievements: initializedAchievements,
+            alerts: FallbackData.generatePortfolioAlerts({ holdings: liveHoldings } as DashboardData),
         };
 
         setDashboardData(fullData);
@@ -451,6 +455,16 @@ const AppContent: React.FC = () => {
       });
   };
 
+  const handleMarkAllAlertsRead = React.useCallback(() => {
+    setDashboardData(prev => {
+        if (!prev) return null;
+        const updatedAlerts = prev.alerts.map(a => ({ ...a, read: true }));
+        const newData = { ...prev, alerts: updatedAlerts };
+        saveDataToLocalStorage(newData);
+        return newData;
+    });
+  }, [saveDataToLocalStorage]);
+
   const handleApiError = (err: any) => {
         if (err.message.includes('QUOTA_EXCEEDED')) {
             setApiMode('opensource');
@@ -467,14 +481,20 @@ const AppContent: React.FC = () => {
           try {
             // Fetch portfolio-dependent data
             const allWatchlistTickers = dashboardData.watchlists.flatMap(wl => wl.tickers);
-            const [news, score] = await Promise.all([
+            const [news, score, insights, alerts] = await Promise.all([
                 generatePersonalizedNews(dashboardData.holdings, allWatchlistTickers, apiMode),
                 calculatePortfolioScore(dashboardData.holdings, apiMode),
+                generateDashboardInsights(dashboardData, apiMode),
+                generatePortfolioAlerts(dashboardData, apiMode),
             ]);
 
             setDashboardData(d => {
                 if(!d) return null;
-                const newData = {...d, personalizedNews: news, portfolioScore: score };
+                const existingAlertIds = new Set(d.alerts.map(a => a.id));
+                const newUniqueAlerts = alerts.filter(a => !existingAlertIds.has(a.id));
+                const updatedAlerts = [...d.alerts, ...newUniqueAlerts];
+
+                const newData = {...d, personalizedNews: news, portfolioScore: score, dashboardInsights: insights, alerts: updatedAlerts };
                 saveDataToLocalStorage(newData);
                 return newData;
             });
@@ -484,8 +504,8 @@ const AppContent: React.FC = () => {
             await getTopBusinessNews(apiMode);
 
           } catch(err: any) {
+              console.error("Data refresh failed", err);
               if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
-              else console.error("Data refresh failed", err.message);
           }
         };
 
@@ -501,6 +521,8 @@ const AppContent: React.FC = () => {
     return <Home onLogin={handleLogin} />;
   }
   
+  const unreadAlertsCount = dashboardData?.alerts?.filter(a => !a.read).length ?? 0;
+
   const renderView = () => {
     if (isLoading && !dashboardData) {
       return (
@@ -537,6 +559,8 @@ const AppContent: React.FC = () => {
         return <CryptoPage />;
        case 'integrations':
         return <IntegrationsPage data={dashboardData} onSync={handleSyncBrokerage} onDisconnect={handleDisconnectBrokerage} />;
+       case 'alerts':
+        return <AlertsPage alerts={dashboardData?.alerts || []} onMarkAllRead={handleMarkAllAlertsRead} />;
       case 'support':
         return <DonationPage />;
       default:
@@ -547,7 +571,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-brand-body-bg text-brand-text font-sans flex flex-col">
       <ApiStatusBanner />
-      <Header currentView={view} setView={setView} onLogout={handleLogout} />
+      <Header currentView={view} setView={setView} onLogout={handleLogout} unreadAlertsCount={unreadAlertsCount} />
       <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full flex-grow">
         {renderView()}
       </main>
