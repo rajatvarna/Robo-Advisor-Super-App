@@ -1,5 +1,4 @@
 
-
 import * as React from 'react';
 import { screenStocks } from '../services/geminiService';
 import type { ScreenerCriteria, ScreenerResult } from '../types';
@@ -190,9 +189,9 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                             </thead>
                             <tbody className="divide-y divide-brand-border">
                                 {paginatedResults.map(stock => (
-                                    <tr key={stock.ticker}>
+                                    <tr key={stock.ticker} className="hover:bg-brand-border/20 transition-colors">
                                         <td className="py-4 px-4 font-bold text-brand-accent">{stock.ticker}</td>
-                                        <td className="py-4 px-4 text-brand-text-secondary">{stock.companyName}</td>
+                                        <td className="py-4 px-4 text-brand-text">{stock.companyName}</td>
                                         <td className="py-4 px-4 text-brand-text-secondary">{stock.sector}</td>
                                         <td className="py-4 px-4 text-right tabular-nums text-brand-text">{formatMarketCap(stock.marketCap)}</td>
                                         <td className="py-4 px-4 text-right tabular-nums text-brand-text">
@@ -247,24 +246,24 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                     <div>
                         <label className="block text-sm font-medium text-brand-text mb-1">Market Cap (Billions)</label>
                         <div className="flex gap-2">
-                            <input type="number" name="marketCapMin" placeholder="Min" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-md text-sm" />
-                            <input type="number" name="marketCapMax" placeholder="Max" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-md text-sm" />
+                            <input type="number" name="marketCapMin" placeholder="Min" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                            <input type="number" name="marketCapMax" placeholder="Max" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
                         </div>
                     </div>
                      {/* P/E Ratio */}
                     <div>
                         <label className="block text-sm font-medium text-brand-text mb-1">P/E Ratio</label>
                         <div className="flex gap-2">
-                            <input type="number" name="peRatioMin" placeholder="Min" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-md text-sm" />
-                            <input type="number" name="peRatioMax" placeholder="Max" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-md text-sm" />
+                            <input type="number" name="peRatioMin" placeholder="Min" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                            <input type="number" name="peRatioMax" placeholder="Max" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
                         </div>
                     </div>
                     {/* Dividend Yield */}
                     <div>
                         <label className="block text-sm font-medium text-brand-text mb-1">Dividend Yield (%)</label>
                         <div className="flex gap-2">
-                            <input type="number" name="dividendYieldMin" placeholder="Min" step="0.1" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-md text-sm" />
-                            <input type="number" name="dividendYieldMax" placeholder="Max" step="0.1" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-md text-sm" />
+                            <input type="number" name="dividendYieldMin" placeholder="Min" step="0.1" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                            <input type="number" name="dividendYieldMax" placeholder="Max" step="0.1" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
                         </div>
                     </div>
                      {/* Analyst Rating */}
@@ -275,7 +274,7 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                             name="analystRating"
                             value={criteria.analystRating}
                             onChange={(e) => setCriteria(prev => ({ ...prev, analystRating: e.target.value }))}
-                            className="w-full p-2 bg-brand-primary border border-brand-border rounded-md text-sm"
+                            className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none"
                         >
                             {ANALYST_RATINGS.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
@@ -289,10 +288,10 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                             <button
                                 key={sector}
                                 onClick={() => handleSectorToggle(sector)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors border ${
                                     criteria.sectors.includes(sector)
-                                        ? 'bg-brand-accent text-white'
-                                        : 'bg-brand-primary hover:bg-gray-700'
+                                        ? 'bg-brand-accent border-brand-accent text-white'
+                                        : 'bg-brand-primary border-brand-border hover:bg-brand-secondary'
                                 }`}
                             >
                                 {sector}
@@ -304,14 +303,14 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                 <div className="mt-6 pt-6 border-t border-brand-border flex justify-end gap-4">
                      <button 
                         onClick={() => { setCriteria(INITIAL_CRITERIA); setResults([]); setHasSearched(false); setCurrentPage(1); }}
-                        className="px-6 py-2 rounded-md text-sm font-semibold bg-brand-border text-brand-text-secondary hover:bg-gray-600 transition-colors"
+                        className="px-6 py-2 rounded-lg text-sm font-semibold bg-brand-secondary text-brand-text-secondary hover:bg-brand-border transition-colors"
                      >
                         Reset Filters
                     </button>
                     <button 
                         onClick={handleRunScreener}
                         disabled={isLoading}
-                        className="px-8 py-2 rounded-md text-sm font-semibold bg-brand-accent hover:bg-brand-accent-hover text-white transition-colors disabled:bg-brand-accent/50 flex items-center gap-2"
+                        className="px-8 py-2 rounded-lg text-sm font-semibold bg-brand-accent hover:bg-brand-accent-hover text-white transition-colors disabled:bg-brand-accent/50 flex items-center gap-2"
                     >
                         {isLoading && <Spinner />}
                         Run Screener

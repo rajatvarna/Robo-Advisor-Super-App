@@ -21,7 +21,7 @@ const WatchlistRow: React.FC<{ stock: Holding }> = React.memo(({ stock }) => {
         <tr className={`transition-colors duration-500 ${flashClass}`}>
             <td className="py-2 px-3 font-bold text-brand-text">{stock.ticker}</td>
             <td className="py-2 px-3 text-right tabular-nums text-brand-text">{formatCurrency(stock.currentPrice)}</td>
-            <td className={`py-2 px-3 text-right tabular-nums font-semibold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+            <td className={`py-2 px-3 text-right tabular-nums font-semibold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
                 {stock.dayChangePercent.toFixed(2)}%
             </td>
         </tr>
@@ -30,7 +30,7 @@ const WatchlistRow: React.FC<{ stock: Holding }> = React.memo(({ stock }) => {
 
 const Watchlist: React.FC<{ stocks: Holding[] }> = ({ stocks }) => {
     return (
-        <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg">
+        <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg transition-shadow duration-300 hover:shadow-xl">
             <h3 className="text-lg font-bold text-brand-text mb-3 flex items-center gap-2">
                 <StarSolidIcon className="w-5 h-5 text-yellow-400" />
                 Watchlist

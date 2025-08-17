@@ -24,7 +24,7 @@ const AchievementsList: React.FC<AchievementsListProps> = ({ achievements }) => 
     const unlockedCount = achievements.filter(a => a.unlocked).length;
 
     return (
-        <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg">
+        <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg transition-shadow duration-300 hover:shadow-xl">
             <div className="flex justify-between items-baseline mb-3">
                 <h3 className="text-lg font-bold text-brand-text">Achievements</h3>
                 <p className="text-sm text-brand-text-secondary">{unlockedCount} / {achievements.length} Unlocked</p>

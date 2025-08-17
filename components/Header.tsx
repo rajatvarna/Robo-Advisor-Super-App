@@ -1,6 +1,4 @@
 
-
-
 import * as React from 'react';
 import type { View } from '../types';
 import VideoIcon from './icons/VideoIcon';
@@ -28,7 +26,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
     }`;
 
   return (
-    <header className="bg-brand-primary border-b border-brand-border sticky top-0 z-10">
+    <header className="bg-brand-primary border-b border-brand-border sticky top-0 z-10 shadow-sm">
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
@@ -38,7 +36,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 15l3-3m-3 3l-3-3m3-3v6" />
               </svg>
             </div>
-            <span className="ml-3 text-xl font-bold text-brand-text hidden sm:inline">Robo Advisor</span>
+            <span className="ml-3 text-xl font-extrabold text-brand-text hidden sm:inline">Robo Advisor</span>
           </div>
           <div className="flex items-center">
             <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
@@ -82,7 +80,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
             </button>
             <button
               onClick={onLogout}
-              className="ml-2 px-3 py-2 rounded-md text-sm font-medium border border-brand-border text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text transition-colors duration-200 whitespace-nowrap"
+              className="ml-2 px-3 py-2 rounded-lg text-sm font-semibold border border-transparent text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text transition-colors duration-200 whitespace-nowrap"
             >
               Logout
             </button>

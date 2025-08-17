@@ -62,7 +62,7 @@ const AddHoldingModal: React.FC<AddHoldingModalProps> = ({ onClose, onAddHolding
                             value={ticker}
                             onChange={(e) => setTicker(e.target.value)}
                             placeholder="e.g., AAPL"
-                            className="w-full p-3 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent transition"
+                            className="w-full p-3 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/75 transition"
                             disabled={isLoading}
                         />
                     </div>
@@ -76,7 +76,7 @@ const AddHoldingModal: React.FC<AddHoldingModalProps> = ({ onClose, onAddHolding
                             placeholder="e.g., 10.5"
                             step="any"
                             min="0"
-                            className="w-full p-3 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent transition"
+                            className="w-full p-3 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/75 transition"
                             disabled={isLoading}
                         />
                     </div>

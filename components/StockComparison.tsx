@@ -1,8 +1,6 @@
 
-
-
 import * as React from 'react';
-import type { StockComparisonData } from '../types';
+import type { StockComparisonData, StockComparisonItem } from '../types';
 import Spinner from './icons/Spinner';
 
 interface StockComparisonProps {
@@ -34,7 +32,7 @@ const StockComparison: React.FC<StockComparisonProps> = ({ data, isLoading, erro
         return null;
     }
 
-    const headers = [
+    const headers: { key: keyof StockComparisonItem, label: string }[] = [
         { key: 'companyName', label: 'Company Name' },
         { key: 'marketCap', label: 'Market Cap' },
         { key: 'peRatio', label: 'P/E Ratio' },
@@ -45,43 +43,45 @@ const StockComparison: React.FC<StockComparisonProps> = ({ data, isLoading, erro
         { key: 'bearCase', label: 'Bear Case' },
     ];
 
-    const renderCell = (item: any, key: string) => {
+    const renderCell = (item: StockComparisonItem, key: keyof StockComparisonItem) => {
         const value = item[key];
         switch (key) {
+            case 'companyName':
+                 return <div className="text-sm font-semibold text-brand-text whitespace-pre-wrap">{value}</div>;
             case 'marketCap':
-                 return <div className="text-sm text-brand-text whitespace-pre-wrap">{formatMarketCap(value)}</div>;
+                 return <div className="text-sm text-brand-text whitespace-pre-wrap tabular-nums">{formatMarketCap(value as number)}</div>;
             case 'peRatio':
-                return <div className="text-sm text-brand-text whitespace-pre-wrap">{value != null ? value.toFixed(2) : 'N/A'}</div>;
+                return <div className="text-sm text-brand-text whitespace-pre-wrap tabular-nums">{value != null ? (value as number).toFixed(2) : 'N/A'}</div>;
             case 'dividendYield':
-                return <div className="text-sm text-brand-text whitespace-pre-wrap">{value != null ? `${value.toFixed(2)}%` : 'N/A'}</div>;
+                return <div className="text-sm text-brand-text whitespace-pre-wrap tabular-nums">{value != null ? `${(value as number).toFixed(2)}%` : 'N/A'}</div>;
             case 'financialHealthSummary':
                  return <div className="text-sm text-brand-text-secondary whitespace-pre-wrap">{value}</div>;
             case 'bullCase':
-                return <div className="text-sm text-green-500 dark:text-green-300/90 whitespace-pre-wrap">{value}</div>;
+                return <div className="text-sm text-green-600 dark:text-green-400 whitespace-pre-wrap">{value}</div>;
             case 'bearCase':
-                 return <div className="text-sm text-red-500 dark:text-red-300/90 whitespace-pre-wrap">{value}</div>;
+                 return <div className="text-sm text-red-600 dark:text-red-400 whitespace-pre-wrap">{value}</div>;
             default:
                 return <div className="text-sm text-brand-text whitespace-pre-wrap">{value}</div>;
         }
     };
 
     return (
-        <div className="mt-8 bg-brand-secondary rounded-lg border border-brand-border shadow-lg overflow-hidden animate-fade-in">
+        <div className="mt-8 bg-brand-primary rounded-lg border border-brand-border shadow-lg overflow-hidden animate-fade-in">
             <h2 className="text-2xl font-bold text-brand-text p-4 border-b border-brand-border">Stock Comparison</h2>
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[800px] text-sm text-left">
-                    <thead className="text-xs text-brand-text-secondary uppercase bg-brand-primary">
+                    <thead className="text-xs text-brand-text-secondary uppercase bg-brand-secondary">
                         <tr>
-                            <th className="py-3 px-4 sticky left-0 bg-brand-primary z-10 w-48">Metric</th>
+                            <th className="py-3 px-4 sticky left-0 bg-brand-secondary z-10 w-48">Metric</th>
                             {data.map(item => (
                                 <th key={item.ticker} className="py-3 px-4 text-center min-w-[250px] font-bold text-brand-text text-base">{item.ticker}</th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-brand-border">
-                        {headers.map(header => (
-                            <tr key={header.key}>
-                                <td className="py-4 px-4 font-semibold text-brand-text sticky left-0 bg-brand-secondary z-10 w-48">{header.label}</td>
+                    <tbody>
+                        {headers.map((header, rowIndex) => (
+                            <tr key={header.key} className={rowIndex % 2 === 0 ? 'bg-brand-primary' : 'bg-brand-secondary/50'}>
+                                <td className={`py-4 px-4 font-semibold text-brand-text sticky left-0 z-10 w-48 ${rowIndex % 2 === 0 ? 'bg-brand-primary' : 'bg-brand-secondary/50'}`}>{header.label}</td>
                                 {data.map(item => (
                                     <td key={item.ticker} className="py-4 px-4 align-top min-w-[250px]">
                                         {renderCell(item, header.key)}

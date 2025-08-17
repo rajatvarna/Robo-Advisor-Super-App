@@ -25,20 +25,20 @@ const Home: React.FC<HomeProps> = ({ onLogin }) => {
     }, 2000);
   };
 
-  const socialButtonClasses = "w-full flex items-center justify-center gap-3 p-3 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors disabled:bg-gray-800 disabled:cursor-not-allowed disabled:text-brand-text-secondary";
+  const socialButtonClasses = "w-full flex items-center justify-center gap-3 p-3 rounded-lg bg-brand-primary hover:bg-brand-secondary border border-brand-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
   const mainButtonClasses = "w-full p-3 font-semibold rounded-lg bg-brand-accent hover:bg-brand-accent-hover transition-colors flex items-center justify-center disabled:bg-brand-accent/50 disabled:cursor-not-allowed";
 
   return (
-    <div className="min-h-screen bg-brand-primary text-brand-text font-sans flex flex-col items-center justify-center p-4 animate-fade-in">
-      <div className="text-center mb-10 max-w-2xl">
+    <div className="min-h-screen bg-brand-body-bg text-brand-text font-sans flex flex-col items-center justify-center p-4 animate-fade-in">
+      <div className="text-center mb-10 max-w-3xl">
         <svg className="h-20 w-20 text-brand-accent mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 15l3-3m-3 3l-3-3m3-3v6" />
         </svg>
-        <h1 className="text-4xl sm:text-5xl font-bold text-brand-text">
-          Your Personal AI Financial Co-pilot
+        <h1 className="text-4xl sm:text-6xl font-extrabold text-brand-text tracking-tight">
+          Your Personal AI <span className="text-brand-accent">Financial Co-pilot</span>
         </h1>
-        <p className="mt-4 text-lg text-brand-text-secondary">
+        <p className="mt-6 text-lg text-brand-text-secondary max-w-2xl mx-auto">
           Navigate the markets with confidence. Get personalized portfolio advice, deep-dive stock analysis, and automated insights—all in one place.
         </p>
       </div>
@@ -85,7 +85,7 @@ const Home: React.FC<HomeProps> = ({ onLogin }) => {
               name="email"
               placeholder="you@example.com"
               disabled={!!authenticatingService}
-              className="w-full p-3 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent transition disabled:bg-gray-800 disabled:cursor-not-allowed" 
+              className="w-full p-3 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/75 transition disabled:bg-brand-border/20 disabled:cursor-not-allowed" 
             />
           </div>
           <div>
@@ -96,7 +96,7 @@ const Home: React.FC<HomeProps> = ({ onLogin }) => {
               name="password"
               placeholder="••••••••"
               disabled={!!authenticatingService}
-              className="w-full p-3 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent transition disabled:bg-gray-800 disabled:cursor-not-allowed"
+              className="w-full p-3 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/75 transition disabled:bg-brand-border/20 disabled:cursor-not-allowed"
             />
           </div>
           <button type="submit" disabled={!!authenticatingService} className={mainButtonClasses}>

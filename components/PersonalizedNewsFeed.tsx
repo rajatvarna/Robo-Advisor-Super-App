@@ -4,7 +4,7 @@ import type { NewsItem } from '../types';
 
 const PersonalizedNewsFeed: React.FC<{ news: NewsItem[] }> = ({ news }) => {
     return (
-        <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg">
+        <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg transition-shadow duration-300 hover:shadow-xl">
             <h3 className="text-lg font-bold text-brand-text mb-3">For You</h3>
             {news.length > 0 ? (
                 <div className="space-y-4">

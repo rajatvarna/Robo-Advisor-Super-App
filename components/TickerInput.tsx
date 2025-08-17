@@ -57,21 +57,21 @@ const TickerInput: React.FC<TickerInputProps> = ({ onTickerSubmit, isLoading }) 
 
   return (
     <form onSubmit={handleSubmit} className="max-w-xl mx-auto mb-8 relative" ref={wrapperRef}>
-      <div className="flex items-center bg-brand-secondary border border-brand-border rounded-lg overflow-hidden shadow-md">
+       <div className="relative">
         <input
           type="text"
           value={inputValue}
           onChange={handleChange}
           onFocus={() => inputValue && setShowSuggestions(true)}
-          placeholder="Enter Ticker (e.g., AAPL)"
-          className="w-full p-4 bg-transparent text-brand-text placeholder-brand-text-secondary focus:outline-none"
+          placeholder="Enter stock ticker (e.g., AAPL, GOOGL)"
+          className="w-full p-4 pl-5 pr-32 bg-brand-secondary border-2 border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition-all duration-200 shadow-sm"
           disabled={isLoading}
           autoComplete="off"
         />
         <button
           type="submit"
           disabled={isLoading || !inputValue.trim()}
-          className="bg-brand-accent hover:bg-brand-accent-hover text-white font-bold py-4 px-6 transition-colors duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed flex items-center justify-center w-32"
+          className="absolute inset-y-0 right-0 m-1.5 px-6 bg-brand-accent hover:bg-brand-accent-hover text-white font-bold rounded-lg transition-colors duration-200 disabled:bg-brand-text-secondary disabled:cursor-not-allowed flex items-center justify-center"
         >
           {isLoading ? <Spinner /> : 'Analyze'}
         </button>
@@ -82,7 +82,7 @@ const TickerInput: React.FC<TickerInputProps> = ({ onTickerSubmit, isLoading }) 
             <li
               key={s.symbol}
               onClick={() => handleSelect(s.symbol)}
-              className="px-4 py-3 cursor-pointer hover:bg-brand-accent text-brand-text"
+              className="px-4 py-3 cursor-pointer hover:bg-brand-accent hover:text-white"
             >
               <span className="font-bold">{s.symbol}</span>
               <span className="ml-3 text-brand-text-secondary">{s.name}</span>

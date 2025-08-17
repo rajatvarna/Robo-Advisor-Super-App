@@ -1,6 +1,4 @@
 
-
-
 import * as React from 'react';
 import TickerInput from './TickerInput';
 import SecFilings from './SecFilings';
@@ -32,10 +30,10 @@ const TabButton: React.FC<{
 }> = ({ label, isActive, onClick }) => (
   <button
     onClick={onClick}
-    className={`px-3 py-2 font-medium text-sm rounded-t-lg transition-colors border-b-2 ${
+    className={`px-4 py-2 font-semibold text-sm rounded-t-lg transition-colors border-b-2 ${
       isActive
-        ? 'text-brand-accent border-brand-accent'
-        : 'text-brand-text-secondary border-transparent hover:text-brand-text hover:border-gray-600'
+        ? 'text-brand-accent border-brand-accent bg-brand-secondary'
+        : 'text-brand-text-secondary border-transparent hover:text-brand-text hover:border-brand-text-secondary/50'
     }`}
     aria-current={isActive ? 'page' : undefined}
   >
@@ -250,7 +248,7 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
                       value={comparisonInput}
                       onChange={(e) => setComparisonInput(e.target.value)}
                       placeholder="Enter Ticker to Add"
-                      className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent transition"
+                      className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition"
                       disabled={isComparing || comparisonTickers.length >= 5}
                   />
                   <button

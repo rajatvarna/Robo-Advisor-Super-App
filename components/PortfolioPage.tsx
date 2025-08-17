@@ -28,12 +28,12 @@ const HoldingRow: React.FC<{h: Holding}> = React.memo(({ h }) => {
     }, [h.isUpdating, h.currentPrice, h.dayChange]);
 
     return (
-        <tr className={`transition-colors duration-500 ${flashClass}`}>
+        <tr className={`transition-colors duration-500 hover:bg-brand-border/20 ${flashClass}`}>
             <td className="py-4 px-4 font-bold text-brand-accent">{h.ticker}</td>
             <td className="py-4 px-4 text-brand-text-secondary">{h.companyName}</td>
             <td className="py-4 px-4 text-right tabular-nums text-brand-text">{h.shares.toFixed(2)}</td>
             <td className="py-4 px-4 text-right tabular-nums text-brand-text">{formatCurrency(h.currentPrice)}</td>
-            <td className={`py-4 px-4 text-right tabular-nums font-semibold ${h.dayChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <td className={`py-4 px-4 text-right tabular-nums font-semibold ${h.dayChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {h.dayChange.toFixed(2)} ({h.dayChangePercent.toFixed(2)}%)
             </td>
             <td className="py-4 px-4 text-right tabular-nums font-bold text-brand-text">{formatCurrency(h.totalValue)}</td>
@@ -61,7 +61,7 @@ const PortfolioPage: React.FC<PortfolioPageProps> = ({ data, onGenerateDemo, onA
             </button>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-brand-secondary rounded-lg border border-brand-border shadow-lg overflow-hidden">
+            <div className="lg:col-span-2 bg-brand-secondary rounded-lg border border-brand-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-xl">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-brand-text-secondary uppercase bg-brand-primary">
@@ -80,7 +80,7 @@ const PortfolioPage: React.FC<PortfolioPageProps> = ({ data, onGenerateDemo, onA
                     </table>
                 </div>
             </div>
-            <div className="bg-brand-secondary p-6 rounded-lg border border-brand-border shadow-lg">
+            <div className="bg-brand-secondary p-6 rounded-lg border border-brand-border shadow-lg transition-shadow duration-300 hover:shadow-xl">
                 <h2 className="text-xl font-bold mb-4">Sector Allocation</h2>
                 <div className="h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">

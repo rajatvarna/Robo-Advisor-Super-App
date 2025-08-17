@@ -1,7 +1,4 @@
 
-
-
-
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -383,7 +380,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-brand-primary text-brand-text font-sans flex flex-col">
+    <div className="min-h-screen bg-brand-body-bg text-brand-text font-sans flex flex-col">
       <ApiStatusBanner />
       <Header currentView={view} setView={setView} onLogout={handleLogout} />
       <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full flex-grow">
@@ -402,7 +399,7 @@ const AppContent: React.FC = () => {
             onDismiss={() => setLastUnlockedAchievement(null)}
           />
       )}
-       <footer className="text-center p-4 text-brand-text-secondary text-xs border-t border-brand-border mt-auto flex-shrink-0">
+       <footer className="text-center p-4 text-brand-text-secondary text-xs border-t border-brand-border mt-auto flex-shrink-0 bg-brand-primary">
           <p>Robo Advisor Super App. Financial data may be simulated by AI and should not be used for real investment decisions.</p>
         </footer>
     </div>
