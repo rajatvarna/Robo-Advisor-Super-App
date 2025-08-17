@@ -64,14 +64,17 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
 
   const { apiMode, setApiMode } = useApi();
 
-  const handleApiError = (err: any) => {
+  const handleApiError = (err: any, context?: string) => {
+      const errorMessage = err.message || `An unexpected error occurred while fetching ${context || 'data'}.`;
       if (err.message.includes('QUOTA_EXCEEDED')) {
           setApiMode('opensource');
           setError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
       } else {
-          setError(err.message || 'An unexpected error occurred while fetching data.');
+          setError(errorMessage);
       }
-      setIsLoading(false);
+      if (context === 'initial') {
+          setIsLoading(false);
+      }
   };
 
   const handleTickerSubmit = (newTicker: string) => {
@@ -87,35 +90,49 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlist, onToggleWatchlis
     setTranscriptsData(null);
   };
 
-  // Effect for fetching initial and pre-fetching other data
+  // Effect for fetching the initial overview data when a new ticker is submitted
   React.useEffect(() => {
     if (!ticker) return;
 
-    const fetchAllData = async () => {
-        try {
-            // Fetch initial data for the first tab
-            const analysisResult = await generateStockAnalysis(ticker, apiMode);
-            setAnalysis(analysisResult);
-            setIsLoading(false); // Stop loading after first tab is ready
-
-            // Pre-fetch other data in the background
-            Promise.all([
-                generateFinancials(ticker, apiMode).then(setFinancials),
-                getFilings(ticker, apiMode).then(setFilings),
-                generateTranscripts(ticker, apiMode).then(setTranscriptsData)
-            ]).catch(err => {
-                console.error("A background pre-fetch failed:", err.message);
-                // Don't set a blocking error for pre-fetch failures
-            });
-
-        } catch (err) {
-            handleApiError(err);
-            setTicker(null); // Reset ticker on a critical error
-        }
+    const fetchInitialData = async () => {
+      try {
+        const analysisResult = await generateStockAnalysis(ticker, apiMode);
+        setAnalysis(analysisResult);
+      } catch (err) {
+        handleApiError(err, 'initial');
+        setTicker(null); // Reset ticker on a critical error
+      } finally {
+        setIsLoading(false);
+      }
     };
     
-    fetchAllData();
+    fetchInitialData();
   }, [ticker, apiMode]);
+
+  // Effect for lazy-loading data when a tab is clicked
+  React.useEffect(() => {
+    if (!ticker) return;
+
+    const fetchDataForTab = async () => {
+        try {
+            switch(activeTab) {
+                case 'financials':
+                    if (!financials) setFinancials(await generateFinancials(ticker, apiMode));
+                    break;
+                case 'filings':
+                    if (!filings) setFilings(await getFilings(ticker, apiMode));
+                    break;
+                case 'transcripts':
+                    if (!transcriptsData) setTranscriptsData(await generateTranscripts(ticker, apiMode));
+                    break;
+            }
+        } catch (err) {
+            handleApiError(err, `data for ${activeTab} tab`);
+        }
+    };
+
+    fetchDataForTab();
+  }, [activeTab, ticker, apiMode, financials, filings, transcriptsData]);
 
   
   const renderContent = () => {
