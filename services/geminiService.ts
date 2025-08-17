@@ -82,7 +82,7 @@ export const getTopBusinessNews = async (apiMode: ApiMode): Promise<NewsItem[]> 
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.getTopBusinessNews();
-    const prompt = `Act as a financial news aggregator. Use Google Search to find the top 25 most important business and financial news stories right now from top-tier sources like Bloomberg, The Wall Street Journal, Reuters, and the Financial Times. For each story, provide the headline, a concise one-sentence summary, the source name, and the direct URL to the article. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", and "url". Do not include any text outside the JSON array.`;
+    const prompt = `Act as a financial news aggregator. Use Google Search to find 15 significant, recent business and financial news stories from reputable sources. For each story, provide the headline, a concise one-sentence summary, the source name, and the direct URL to the article. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", and "url". Do not include any text outside the JSON array.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const news = parseJsonFromText(response.text, "top business news");

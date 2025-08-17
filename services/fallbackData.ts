@@ -186,7 +186,7 @@ export const fetchHistoricalData = (ticker: string, startDate: string): {date: s
 
 
 export const fetchStockDetailsForPortfolio = (ticker: string): Pick<Holding, 'companyName' | 'sector'> => ({
-    companyName: `${ticker.toUpperCase()} Inc. (Offline)`,
+    companyName: `${ticker.toUpperCase()} Inc.`,
     sector: "Technology",
 });
 
@@ -245,18 +245,18 @@ export const generateDashboardData = async (): Promise<BaseDashboardData> => {
 };
 
 export const generatePersonalizedNews = (holdingTickers: string[], watchlistTickers: string[]): NewsItem[] => ([
-    { headline: 'Tech Stocks Rally on AI Optimism (Offline)', url: '#', source: 'Fallback News', summary: 'Major tech companies saw gains as investors remain optimistic about artificial intelligence developments.', sentiment: 'Positive', ticker: 'AAPL' },
-    { headline: 'Fed Hints at Steady Interest Rates (Offline)', url: '#', source: 'Fallback News', summary: 'The Federal Reserve has indicated that interest rates are likely to hold steady for the near future, calming market jitters.', sentiment: 'Neutral', ticker: 'JPM' },
+    { headline: 'Tech Stocks Rally on AI Optimism', url: '#', source: 'Simulated News', summary: 'Major tech companies saw gains as investors remain optimistic about artificial intelligence developments.', sentiment: 'Positive', ticker: 'AAPL' },
+    { headline: 'Fed Hints at Steady Interest Rates', url: '#', source: 'Simulated News', summary: 'The Federal Reserve has indicated that interest rates are likely to hold steady for the near future, calming market jitters.', sentiment: 'Neutral', ticker: 'JPM' },
 ]);
 
 export const getTopBusinessNews = (): NewsItem[] => ([
-    { headline: 'Global Markets Show Mixed Results Amid Inflation Fears (Offline)', url: '#', source: 'Fallback Reuters', summary: 'Investors are cautiously watching economic indicators as inflation concerns linger, leading to a mixed performance across global stock markets.' },
-    { headline: 'Tech Sector Faces New Regulatory Scrutiny (Offline)', url: '#', source: 'Fallback WSJ', summary: 'Governments worldwide are increasing their focus on regulating major technology firms, potentially impacting future growth.' },
-    { headline: 'Oil Prices Surge on Supply Chain Worries (Offline)', url: '#', source: 'Fallback Bloomberg', summary: 'Disruptions in the global supply chain have caused a significant increase in crude oil prices, affecting energy markets.' },
+    { headline: 'Global Markets Show Mixed Results Amid Inflation Fears', url: '#', source: 'Reuters', summary: 'Investors are cautiously watching economic indicators as inflation concerns linger, leading to a mixed performance across global stock markets.' },
+    { headline: 'Tech Sector Faces New Regulatory Scrutiny', url: '#', source: 'WSJ', summary: 'Governments worldwide are increasing their focus on regulating major technology firms, potentially impacting future growth.' },
+    { headline: 'Oil Prices Surge on Supply Chain Worries', url: '#', source: 'Bloomberg', summary: 'Disruptions in the global supply chain have caused a significant increase in crude oil prices, affecting energy markets.' },
 ]);
 
 export const calculatePortfolioScore = (holdings: Holding[]): PortfolioScore => ({
-    score: 75, summary: 'This is a sample portfolio analysis from offline mode.'
+    score: 78, summary: 'A well-diversified portfolio with solid holdings.'
 });
 
 export const checkForAchievements = (action: string, data: any, unlockedIds: string[]): Pick<Achievement, 'id'|'title'>[] => {
@@ -264,30 +264,30 @@ export const checkForAchievements = (action: string, data: any, unlockedIds: str
 };
 
 export const generateDividendData = (holdings: Holding[]): Dividend[] => ([
-    { ticker: 'AAPL', companyName: 'Apple Inc. (Offline)', amountPerShare: 0.25, totalAmount: 12.5, payDate: '2024-08-15', exDividendDate: '2024-08-08' },
-    { ticker: 'MSFT', companyName: 'Microsoft Corp. (Offline)', amountPerShare: 0.75, totalAmount: 22.5, payDate: '2024-09-12', exDividendDate: '2024-08-21' },
+    { ticker: 'AAPL', companyName: 'Apple Inc.', amountPerShare: 0.25, totalAmount: 12.5, payDate: '2024-08-15', exDividendDate: '2024-08-08' },
+    { ticker: 'MSFT', companyName: 'Microsoft Corp.', amountPerShare: 0.75, totalAmount: 22.5, payDate: '2024-09-12', exDividendDate: '2024-08-21' },
 ]);
 
 export const generateTaxLossOpportunities = (holdings: Holding[]): TaxLossOpportunity[] => ([
-    { ticker: 'INTC', companyName: 'Intel Corp. (Offline)', sharesToSell: 50, estimatedLoss: -500, costBasis: 4000, currentValue: 3500, explanation: 'This stock has underperformed, providing an opportunity to offset gains elsewhere. (Offline)'}
+    { ticker: 'INTC', companyName: 'Intel Corp.', sharesToSell: 50, estimatedLoss: -500, costBasis: 4000, currentValue: 3500, explanation: 'This stock has underperformed, providing an opportunity to offset gains elsewhere.'}
 ]);
 
 export const generateEducationalContent = (category: string): EducationalContent[] => ([
-    { id: 'fb1', type: 'Article', title: `Intro to ${category} (Offline)`, summary: `A fallback article about ${category}.`, url: '#', sourceName: 'Fallback Institute' },
-    { id: 'fb2', type: 'Video', title: `Video on ${category} (Offline)`, summary: `A fallback video about ${category}.`, url: '#', sourceName: 'Fallback Tube' },
-    { id: 'fb3', type: 'Podcast', title: `Podcast for ${category} (Offline)`, summary: `A fallback podcast about ${category}.`, url: '#', sourceName: 'Fallback FM' },
+    { id: 'fb1', type: 'Article', title: `Intro to ${category}`, summary: `An introductory article about ${category}.`, url: '#', sourceName: 'Invest Institute' },
+    { id: 'fb2', type: 'Video', title: `Video on ${category}`, summary: `A helpful video explaining the basics of ${category}.`, url: '#', sourceName: 'FinTube' },
+    { id: 'fb3', type: 'Podcast', title: `Podcast for ${category}`, summary: `A podcast episode discussing advanced strategies in ${category}.`, url: '#', sourceName: 'Market Movers FM' },
 ]);
 
 export const screenStocks = (criteria: ScreenerCriteria): ScreenerResult[] => ([
-    { ticker: 'FBAK', companyName: 'Fallback Inc.', marketCap: 150, peRatio: 25, dividendYield: 1.5, sector: 'Technology', analystRating: 'Buy' },
-    { ticker: 'OFFL', companyName: 'Offline Solutions', marketCap: 50, peRatio: 15, dividendYield: 2.5, sector: 'Industrials', analystRating: 'Hold' },
+    { ticker: 'DEMO', companyName: 'Demo Corp.', marketCap: 150, peRatio: 25, dividendYield: 1.5, sector: 'Technology', analystRating: 'Buy' },
+    { ticker: 'SMPL', companyName: 'Sample Industries', marketCap: 50, peRatio: 15, dividendYield: 2.5, sector: 'Industrials', analystRating: 'Hold' },
 ]);
 
 export const createChat = (): Chat => {
     return {
         // Mock the sendMessageStream method
         sendMessageStream: async function*(params: { message: any }) {
-            const responseText = "I am in offline fallback mode. My capabilities are limited.";
+            const responseText = "I am operating in a simulated environment. For example, diversification is a strategy to manage risk.";
             for (const char of responseText.split('')) {
                 await new Promise(r => setTimeout(r, 10)); // Simulate streaming
                 yield { text: char };
@@ -301,9 +301,9 @@ export const generateFollowUpQuestions = (chatHistory: ChatMessage[]): string[] 
 ]);
 
 export const generatePortfolio = (answers: QuestionnaireAnswers): PortfolioSuggestion => ({
-    riskProfile: 'Moderate (Offline)',
+    riskProfile: 'Moderate (Simulated)',
     allocation: { stocks: 60, bonds: 25, cash: 5, commodities: 5, realEstate: 5 },
-    explanation: 'This is a balanced portfolio suggestion generated in offline mode. It focuses on growth while maintaining a cushion against volatility.'
+    explanation: 'This is a balanced portfolio suggestion generated in a simulated environment. It focuses on growth while maintaining a cushion against volatility.'
 });
 
 export const generateFinancials = (ticker: string): FinancialStatementsData => ({
@@ -342,36 +342,36 @@ export const generateChartData = (ticker: string, timeframe: ChartTimeframe): St
 
 export const generateTranscripts = (ticker: string): TranscriptsData => ({
     transcripts: [
-        { quarter: 'Q2 2024 (Offline)', date: '2024-07-25', summary: 'Summary of offline earnings call.', transcript: 'We had a good offline quarter. We are optimistic about the future of offline operations.', sourceIndex: 1 },
-        { quarter: 'Q1 2024 (Offline)', date: '2024-04-25', summary: 'Summary of Q1 offline earnings call.', transcript: 'Q1 was solid for our offline segment.', sourceIndex: 1 }
+        { quarter: 'Q2 2024 (Simulated)', date: '2024-07-25', summary: 'Summary of simulated earnings call.', transcript: 'We had a good quarter. We are optimistic about the future of our operations.', sourceIndex: 1 },
+        { quarter: 'Q1 2024 (Simulated)', date: '2024-04-25', summary: 'Summary of Q1 simulated earnings call.', transcript: 'Q1 was solid for our main business segment.', sourceIndex: 1 }
     ],
-    sources: [{ uri: '#', title: 'Offline Source Inc.', index: 1 }]
+    sources: [{ uri: '#', title: 'Simulated Transcripts Inc.', index: 1 }]
 });
 
 export const generateStockAnalysis = (ticker: string): StockAnalysisData => ({
-    businessSummary: `An analysis of ${ticker} generated in offline mode. This company is a leader in its respective offline industry, focusing on tangible goods and services.`,
-    bullCase: 'The company might do well if offline mode is popular, as it has strong brand recognition in non-digital spaces.',
-    bearCase: 'The company might do poorly if users prefer online mode, as it has less of a digital footprint.',
-    financialHealth: { score: 7, summary: 'Health is good in offline mode, with steady revenue streams.' },
-    recentNews: [{ headline: 'Offline Mode Activated', summary: "The system is currently running in a simulated offline mode.", sentiment: 'Neutral', sourceIndex: 1 }],
-    sources: [{ uri: '#', title: 'Offline Analysis Corp.', index: 1 }]
+    businessSummary: `This is a simulated analysis of ${ticker}. This company is a leader in its respective industry, focusing on innovative products and services.`,
+    bullCase: 'The company might perform well due to strong brand recognition and expansion into new markets.',
+    bearCase: 'The company might face challenges from increased competition and shifting consumer preferences.',
+    financialHealth: { score: 7, summary: 'Financial health is stable, with consistent revenue streams.' },
+    recentNews: [{ headline: 'Company Announces New Product Line', summary: "The company has revealed a new line of products expected to launch next quarter.", sentiment: 'Positive', sourceIndex: 1 }],
+    sources: [{ uri: '#', title: 'Simulated Analysis Corp.', index: 1 }]
 });
 
 export const getFilings = (ticker: string): SecFiling[] => ([
-    { accessionNumber: '000-OFFLINE-10Q', filingDate: '2024-05-01', reportDate: '2024-03-31', form: '10-Q (Offline)', primaryDocument: 'doc.html', primaryDocDescription: 'Quarterly Report', url: '#' },
-    { accessionNumber: '000-OFFLINE-8K', filingDate: '2024-04-15', reportDate: '2024-04-15', form: '8-K (Offline)', primaryDocument: 'doc.html', primaryDocDescription: 'Current Event', url: '#' }
+    { accessionNumber: '000-000000-00-10Q', filingDate: '2024-05-01', reportDate: '2024-03-31', form: '10-Q', primaryDocument: 'doc.html', primaryDocDescription: 'Quarterly Report', url: '#' },
+    { accessionNumber: '000-000000-00-08K', filingDate: '2024-04-15', reportDate: '2024-04-15', form: '8-K', primaryDocument: 'doc.html', primaryDocDescription: 'Current Event', url: '#' }
 ]);
 
 export const generateStockComparison = (tickers: string[]): StockComparisonData => {
     return tickers.map(ticker => ({
         ticker,
-        companyName: `${ticker} Inc. (Offline)`,
+        companyName: `${ticker} Inc. (Demo)`,
         marketCap: Math.floor(Math.random() * 2000) + 100, // in billions
         peRatio: Math.random() * 30 + 10,
         dividendYield: Math.random() * 5,
         analystRating: "Buy",
-        bullCase: `Strong growth potential in the offline market for ${ticker}.`,
-        bearCase: `Facing stiff competition from other offline providers for ${ticker}.`,
-        financialHealthSummary: `Solid balance sheet with consistent offline revenue.`,
+        bullCase: `Strong growth potential in the current market for ${ticker}.`,
+        bearCase: `Facing stiff competition from other providers for ${ticker}.`,
+        financialHealthSummary: `Solid balance sheet with consistent revenue.`,
     }));
 };
