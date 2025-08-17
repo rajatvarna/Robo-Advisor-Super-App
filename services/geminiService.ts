@@ -165,17 +165,32 @@ export const generateEducationalContent = async (category: string, apiMode: ApiM
         const response: GenerateContentResponse = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] } });
         const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any, index: number) => ({ uri: chunk.web?.uri, title: chunk.web?.title, index: index + 1 })).filter(source => source.uri && source.title) ?? [];
         if (groundingSources.length === 0) return [];
-        const jsonText = response.text.trim().replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
-        const parsedJson = JSON.parse(jsonText);
-        const generatedContent = parsedJson.content;
-        if (!Array.isArray(generatedContent)) return [];
-        return generatedContent.map((item: any) => {
-            const source = groundingSources.find(s => s.index === item.sourceIndex);
-            if (source) {
-                return { ...item, url: source.uri };
+        
+        const processJson = (parsedJson: any) => {
+            const generatedContent = parsedJson.content;
+            if (!Array.isArray(generatedContent)) return [];
+            return generatedContent.map((item: any) => {
+                const source = groundingSources.find(s => s.index === item.sourceIndex);
+                if (source) {
+                    return { ...item, url: source.uri };
+                }
+                return null;
+            }).filter((item): item is EducationalContent => item !== null);
+        };
+
+        const text = response.text.trim();
+        const match = text.match(/(\{[\s\S]*\})/);
+        if (match && match[0]) {
+            try {
+                return processJson(JSON.parse(match[0]));
+            } catch (e) {
+                console.error(`Failed to parse extracted JSON from educational content for ${category}, falling back. Error: ${e}`);
             }
-            return null;
-        }).filter((item): item is EducationalContent => item !== null);
+        }
+        
+        const jsonText = text.replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
+        return processJson(JSON.parse(jsonText));
+
     } catch (error) { throw handleApiError(error, `educational content for ${category}`); }
 };
 
@@ -257,15 +272,30 @@ export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Pro
 
         if (groundingSources.length === 0) return { transcripts: [], sources: [] };
 
-        const jsonText = response.text.trim().replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
-        const parsedJson = JSON.parse(jsonText);
-        const transcripts = parsedJson.transcripts || [];
+        const processJson = (parsedJson: any) => {
+            const transcripts = parsedJson.transcripts || [];
+            transcripts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            return { transcripts, sources: groundingSources };
+        };
 
-        transcripts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        const result = { transcripts, sources: groundingSources };
+        const text = response.text.trim();
+        const match = text.match(/(\{[\s\S]*\})/);
+        if (match && match[0]) {
+            try {
+                const data = processJson(JSON.parse(match[0]));
+                cacheService.set(cacheKey, data);
+                return data;
+            } catch (e) {
+                console.error(`Failed to parse extracted JSON from transcripts for ${ticker}, falling back. Error: ${e}`);
+            }
+        }
+
+        const jsonText = text.replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
+        const parsedJson = JSON.parse(jsonText);
+        const result = processJson(parsedJson);
         cacheService.set(cacheKey, result);
         return result;
+
     } catch (error) { throw handleApiError(error, `earnings transcripts for ${ticker}`); }
 };
 
@@ -285,10 +315,26 @@ export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): P
 
         const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any, index: number) => ({ uri: chunk.web?.uri, title: chunk.web?.title, index: index + 1 })).filter(source => source.uri && source.title) ?? [];
 
-        const jsonText = response.text.trim().replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
+        const processJson = (parsedJson: any) => {
+            return { ...parsedJson, sources: groundingSources };
+        };
+
+        const text = response.text.trim();
+        const match = text.match(/(\{[\s\S]*\})/);
+        if (match && match[0]) {
+            try {
+                const data = processJson(JSON.parse(match[0]));
+                cacheService.set(cacheKey, data);
+                return data;
+            } catch (e) {
+                 console.error(`Failed to parse extracted JSON from stock analysis for ${ticker}, falling back. Error: ${e}`);
+            }
+        }
+        
+        const jsonText = text.replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
         const parsedJson = JSON.parse(jsonText);
         
-        const result = { ...parsedJson, sources: groundingSources };
+        const result = processJson(parsedJson);
         cacheService.set(cacheKey, result);
         return result;
     } catch (error) { throw handleApiError(error, `stock analysis for ${ticker}`); }
