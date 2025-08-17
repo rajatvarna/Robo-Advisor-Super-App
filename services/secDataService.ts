@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { SecFiling, ApiMode } from '../types';
 import * as FallbackData from './fallbackData';
@@ -40,10 +41,28 @@ const handleApiError = (error: any, context: string): Error => {
     return new Error(`An unknown error occurred while generating ${context}.`);
 };
 
+const parseJsonFromText = (text: string, context: string): any => {
+    let cleanedText = text.trim();
+    cleanedText = cleanedText.replace(/^```json\s*|```\s*$/g, '');
+    try {
+        return JSON.parse(cleanedText);
+    } catch (e1) {
+        const match = cleanedText.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+        if (match && match[0]) {
+            try {
+                return JSON.parse(match[0]);
+            } catch (e2) {
+                console.error(`Failed to parse extracted JSON for ${context}. Raw text:`, text);
+                throw new Error(`The AI returned invalid JSON for ${context}.`);
+            }
+        }
+        console.error(`Failed to parse any JSON for ${context}. Raw text:`, text);
+        throw new Error(`The AI returned a non-JSON response for ${context}.`);
+    }
+};
 
 /**
- * Generates a list of plausible SEC filings for a given stock ticker using the Gemini API.
- * This replaces the direct fetch to the SEC API to avoid CORS issues.
+ * Fetches a list of recent SEC filings for a given stock ticker using the Gemini API with Google Search grounding.
  * @param ticker The stock ticker symbol.
  * @returns A promise that resolves to an array of SecFiling objects.
  */
@@ -58,11 +77,9 @@ export async function getFilings(ticker: string, apiMode: ApiMode): Promise<SecF
       return data;
   }
   const prompt = `
-    Act as a financial data provider. Generate a list of 10 recent and plausible SEC filings for the stock ticker "${ticker.toUpperCase()}".
-    Include a mix of common forms like 10-K (annual report), 10-Q (quarterly report), and 8-K (current event report).
-    Ensure the dates are recent (within the last 2-3 years) and chronologically plausible.
-    For each filing, provide a realistic accession number, filing date, report date, form type, a primary document filename, and a brief document description.
-    All dates must be in 'YYYY-MM-DD' format.
+    Act as a financial data API. Use Google Search to find a list of the 10 most recent SEC filings for the stock ticker "${ticker.toUpperCase()}".
+    For each filing, provide the accession number, filing date (in 'YYYY-MM-DD' format), report date (in 'YYYY-MM-DD' format), form type (e.g., "10-K", "8-K"), a primary document filename, and a brief document description.
+    Respond with ONLY a valid JSON array of objects and nothing else.
   `;
 
   try {
@@ -70,13 +87,11 @@ export async function getFilings(ticker: string, apiMode: ApiMode): Promise<SecF
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
-        responseSchema: FallbackData.filingsSchema,
+        tools: [{googleSearch: {}}],
       },
     });
 
-    const jsonText = response.text.trim();
-    const generatedFilings = JSON.parse(jsonText);
+    const generatedFilings = parseJsonFromText(response.text, `SEC filings for ${ticker}`);
 
     if (!Array.isArray(generatedFilings)) {
         console.error("AI did not return an array for filings", generatedFilings);

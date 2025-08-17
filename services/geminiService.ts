@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData } from '../types';
 import * as FallbackData from './fallbackData';
@@ -39,47 +40,50 @@ const handleApiError = (error: any, context: string): Error => {
     return new Error(`An unknown error occurred while generating ${context}.`);
 };
 
+/**
+ * A robust JSON parser that handles potential conversational text around the JSON object/array.
+ * @param text The raw text response from the model.
+ * @param context A string describing the context, for better error messages.
+ * @returns The parsed JSON object.
+ */
+const parseJsonFromText = (text: string, context: string): any => {
+    let cleanedText = text.trim();
+    // Remove markdown code block fences
+    cleanedText = cleanedText.replace(/^```json\s*|```\s*$/g, '');
+
+    try {
+        return JSON.parse(cleanedText);
+    } catch (e1) {
+        // Fallback for cases where the model includes conversational text before/after the JSON
+        const match = cleanedText.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+        if (match && match[0]) {
+            try {
+                return JSON.parse(match[0]);
+            } catch (e2) {
+                console.error(`Failed to parse extracted JSON for ${context}. Raw text:`, text);
+                throw new Error(`The AI returned invalid JSON for ${context}.`);
+            }
+        }
+        console.error(`Failed to parse any JSON for ${context}. Raw text:`, text);
+        throw new Error(`The AI returned a non-JSON response for ${context}.`);
+    }
+};
+
 // --- CORE FUNCTIONS WITH FALLBACK ---
 
-const holdingDetailsSchema = { type: Type.OBJECT, properties: { ticker: { type: Type.STRING }, companyName: { type: Type.STRING }, currentPrice: { type: Type.NUMBER }, dayChange: { type: Type.NUMBER }, dayChangePercent: { type: Type.NUMBER }, sector: { type: Type.STRING, description: "The GICS sector of the company." } }, required: ["ticker", "companyName", "currentPrice", "dayChange", "dayChangePercent", "sector"] };
 export const fetchStockDetailsForPortfolio = async (ticker: string, apiMode: ApiMode): Promise<Omit<Holding, 'shares' | 'totalValue'>> => {
     if (apiMode === 'opensource') return FallbackData.fetchStockDetailsForPortfolio(ticker);
-    const prompt = `Act as a stock data provider. For the stock ticker "${ticker.toUpperCase()}", get its official company name, its GICS sector, and a realistic current stock price, day's price change (in USD), and day's percentage change as of today. Provide the response in the specified JSON format.`;
+    const prompt = `Act as a financial data API. Use Google Search to find the latest stock data for the ticker "${ticker.toUpperCase()}" from reliable sources like Yahoo Finance, Bloomberg, or Reuters. Provide the following information in a single, valid JSON object and nothing else: official company name, GICS sector, current stock price (as a number), the day's price change in USD (as a number), and the day's percentage change (as a number). The JSON keys must be: "companyName", "sector", "currentPrice", "dayChange", "dayChangePercent".`;
      try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: holdingDetailsSchema } });
-        const data = JSON.parse(response.text.trim());
+        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] } });
+        const data = parseJsonFromText(response.text, `details for ticker ${ticker}`);
         data.ticker = ticker.toUpperCase();
         return data;
     } catch (error) { throw handleApiError(error, `details for ticker ${ticker}`); }
 }
 
-export const generateDashboardData = async (apiMode: ApiMode): Promise<BaseDashboardData> => {
-    if (apiMode === 'opensource') return FallbackData.generateDashboardData();
-    const prompt = `
-      Act as a financial data simulator. Generate a realistic set of base data for a user of a robo-advisor app.
-      Please provide the following:
-      1.  A 'user' object with name, email, and memberSince date.
-      2.  A 'holdings' array with 8-12 well-known stocks, including all necessary details like ticker, shares, and price.
-      3.  A 'transactions' array with about 10 recent "Buy" or "Sell" transactions.
-      4.  A 'watchlist' array with 4 different well-known stocks.
-      Provide the response in the specified JSON format.
-    `;
-    const schema = FallbackData.baseDashboardDataSchema;
-    try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema, }, });
-        return JSON.parse(response.text.trim()) as BaseDashboardData;
-    } catch (error) { throw handleApiError(error, `dashboard data`); }
-};
-
-export const fetchUpdatedPrices = async (holdings: {ticker: string, currentPrice: number}[], apiMode: ApiMode): Promise<{ticker: string, currentPrice: number}[]> => {
-    if (apiMode === 'opensource') return FallbackData.fetchUpdatedPrices(holdings);
-    const prompt = `Simulate minor price fluctuations for the following stocks. For each stock, adjust its current price slightly up or down (by about 0.05% to 0.5%) to mimic real-time market movement. Return a JSON array of objects with "ticker" and "currentPrice".\n\n${JSON.stringify(holdings)}`;
-    const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { ticker: {type: Type.STRING}, currentPrice: {type: Type.NUMBER}}, required: ["ticker", "currentPrice"]}};
-    try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema }});
-        return JSON.parse(response.text.trim());
-    } catch (error) { throw handleApiError(error, "price updates"); }
-}
+// NOTE: generateDashboardData and fetchUpdatedPrices have been removed from here.
+// They are now called directly from FallbackData in App.tsx to remove API dependency for core functions.
 
 export const generatePersonalizedNews = async (holdings: Holding[], watchlist: Holding[], apiMode: ApiMode): Promise<NewsItem[]> => {
     if (apiMode === 'opensource') return FallbackData.generatePersonalizedNews(holdings, watchlist);
@@ -89,21 +93,7 @@ export const generatePersonalizedNews = async (holdings: Holding[], watchlist: H
     const prompt = `Act as a financial news curator. Use Google Search to find 4 recent, relevant news articles for these stocks: ${tickers}. For each, provide its headline, a concise one-sentence summary, the source name, its URL, and a sentiment analysis ('Positive', 'Negative', 'Neutral'). Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "sentiment". Do not include markdown formatting or any other text outside the JSON array.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
-        
-        let text = response.text.trim();
-        // Find the JSON array within the response text, as grounding can add conversational text.
-        const match = text.match(/(\[[\s\S]*\])/);
-        if (match && match[0]) {
-            try {
-                return JSON.parse(match[0]);
-            } catch(e) {
-                 console.error("Failed to parse extracted JSON from personalized news:", match[0]);
-                 // Fall through to try parsing the whole string if extraction fails
-            }
-        }
-        // Fallback for cases where the regex fails but the response is clean JSON.
-        return JSON.parse(text);
-
+        return parseJsonFromText(response.text, "personalized news");
     } catch (error) { throw handleApiError(error, "personalized news"); }
 }
 
@@ -130,11 +120,10 @@ export const checkForAchievements = async (action: string, data: any, unlockedId
 
 export const generateDividendData = async (holdings: Holding[], apiMode: ApiMode): Promise<Dividend[]> => {
     if (apiMode === 'opensource') return FallbackData.generateDividendData(holdings);
-    const prompt = `For these holdings, generate upcoming dividends for next 3 months: ${JSON.stringify(holdings.map(h => ({ ticker: h.ticker, shares: h.shares })))}. Include ticker, companyName, amountPerShare, totalAmount, payDate, exDividendDate. Omit non-dividend stocks.`;
-    const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { ticker: {type: Type.STRING}, companyName: {type: Type.STRING}, amountPerShare: {type: Type.NUMBER}, totalAmount: {type: Type.NUMBER}, payDate: {type: Type.STRING}, exDividendDate: {type: Type.STRING} }, required: ["ticker", "companyName", "amountPerShare", "totalAmount", "payDate", "exDividendDate"]}};
+    const prompt = `Act as a financial data API. Use Google Search to find the upcoming dividend information for the next 3 months for these holdings: ${JSON.stringify(holdings.map(h => ({ ticker: h.ticker, shares: h.shares })))}. For each stock that pays a dividend, provide its ticker, companyName, amountPerShare, totalAmount (calculated as shares * amountPerShare), payDate, and exDividendDate. Omit any non-dividend paying stocks. Respond with a single, valid JSON array of objects and nothing else.`;
     try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema }});
-        return JSON.parse(response.text.trim());
+        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }});
+        return parseJsonFromText(response.text, 'dividend data');
     } catch (error) { throw handleApiError(error, 'dividend data'); }
 }
 
@@ -184,29 +173,18 @@ export const generateEducationalContent = async (category: string, apiMode: ApiM
             }).filter((item): item is EducationalContent => item !== null);
         };
 
-        const text = response.text.trim();
-        const match = text.match(/(\{[\s\S]*\})/);
-        if (match && match[0]) {
-            try {
-                return processJson(JSON.parse(match[0]));
-            } catch (e) {
-                console.error(`Failed to parse extracted JSON from educational content for ${category}, falling back. Error: ${e}`);
-            }
-        }
-        
-        const jsonText = text.replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
-        return processJson(JSON.parse(jsonText));
+        const jsonText = response.text.trim();
+        return processJson(parseJsonFromText(jsonText, `educational content for ${category}`));
 
     } catch (error) { throw handleApiError(error, `educational content for ${category}`); }
 };
 
 export const screenStocks = async (criteria: ScreenerCriteria, apiMode: ApiMode): Promise<ScreenerResult[]> => {
     if (apiMode === 'opensource') return FallbackData.screenStocks(criteria);
-    const prompt = `Act as a US stock screener. Generate a list of up to 100 real US companies matching these criteria: Market Cap ($${criteria.marketCapMin}B - ${criteria.marketCapMax === Infinity ? 'any' : `$${criteria.marketCapMax}B`}), P/E (${criteria.peRatioMin} - ${criteria.peRatioMax === Infinity ? 'any' : criteria.peRatioMax}), Dividend Yield (${criteria.dividendYieldMin}% - ${criteria.dividendYieldMax === Infinity ? 'any' : `${criteria.dividendYieldMax}%`}), Sectors ([${criteria.sectors.join(', ') || 'Any'}]), Min Analyst Rating (${criteria.analystRating}). Provide response as JSON array.`;
-    const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { ticker: { type: Type.STRING }, companyName: { type: Type.STRING }, marketCap: { type: Type.NUMBER, }, peRatio: { type: Type.NUMBER }, dividendYield: { type: Type.NUMBER }, sector: { type: Type.STRING }, analystRating: { type: Type.STRING } }, required: ["ticker", "companyName", "marketCap", "peRatio", "dividendYield", "sector", "analystRating"] } };
+    const prompt = `Act as a US stock screener API. Use Google Search to find a list of up to 100 real US companies that match these criteria: Market Cap ($${criteria.marketCapMin}B - ${criteria.marketCapMax === Infinity ? 'any' : `$${criteria.marketCapMax}B`}), P/E Ratio (${criteria.peRatioMin} - ${criteria.peRatioMax === Infinity ? 'any' : criteria.peRatioMax}), Dividend Yield (${criteria.dividendYieldMin}% - ${criteria.dividendYieldMax === Infinity ? 'any' : `${criteria.dividendYieldMax}%`}), Sectors ([${criteria.sectors.join(', ') || 'Any'}]), Minimum Analyst Rating (${criteria.analystRating}). For market cap, use billions (e.g., 2100 for $2.1T). Respond with ONLY a valid JSON array of objects and nothing else.`;
     try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema, }, });
-        return JSON.parse(response.text.trim()) as ScreenerResult[];
+        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
+        return parseJsonFromText(response.text, 'stock screener results') as ScreenerResult[];
     } catch (error) { throw handleApiError(error, 'stock screener results'); }
 };
 
@@ -250,11 +228,10 @@ export const generateFinancials = async (ticker: string, apiMode: ApiMode): Prom
         cacheService.set(cacheKey, data);
         return data;
     }
-    const prompt = `Generate plausible financial statement data for "${ticker}" for the last 10 fiscal years. Provide JSON with 'incomeStatement', 'balanceSheet', and 'cashFlow' arrays.`;
-    const schema = FallbackData.financialsSchema;
+    const prompt = `Act as a financial data API. Use Google Search to find financial statement data for "${ticker}" for the last 10 fiscal years from sources like Morningstar or Yahoo Finance. Provide ONLY a valid JSON object with 'incomeStatement', 'balanceSheet', and 'cashFlow' arrays and nothing else.`;
     try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema, }, });
-        const data = JSON.parse(response.text.trim()) as FinancialStatementsData;
+        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
+        const data = parseJsonFromText(response.text, `financials for ${ticker}`) as FinancialStatementsData;
         cacheService.set(cacheKey, data);
         return data;
     } catch (error) { throw handleApiError(error, `financials for ${ticker}`); }
@@ -285,19 +262,7 @@ export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Pro
         };
 
         const text = response.text.trim();
-        const match = text.match(/(\{[\s\S]*\})/);
-        if (match && match[0]) {
-            try {
-                const data = processJson(JSON.parse(match[0]));
-                cacheService.set(cacheKey, data);
-                return data;
-            } catch (e) {
-                console.error(`Failed to parse extracted JSON from transcripts for ${ticker}, falling back. Error: ${e}`);
-            }
-        }
-
-        const jsonText = text.replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
-        const parsedJson = JSON.parse(jsonText);
+        const parsedJson = parseJsonFromText(text, `transcripts for ${ticker}`);
         const result = processJson(parsedJson);
         cacheService.set(cacheKey, result);
         return result;
@@ -326,19 +291,7 @@ export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): P
         };
 
         const text = response.text.trim();
-        const match = text.match(/(\{[\s\S]*\})/);
-        if (match && match[0]) {
-            try {
-                const data = processJson(JSON.parse(match[0]));
-                cacheService.set(cacheKey, data);
-                return data;
-            } catch (e) {
-                 console.error(`Failed to parse extracted JSON from stock analysis for ${ticker}, falling back. Error: ${e}`);
-            }
-        }
-        
-        const jsonText = text.replace(/^```json\s*|`{3,}\s*$|^\s*json\s*/, '');
-        const parsedJson = JSON.parse(jsonText);
+        const parsedJson = parseJsonFromText(text, `stock analysis for ${ticker}`);
         
         const result = processJson(parsedJson);
         cacheService.set(cacheKey, result);
@@ -356,23 +309,11 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
         cacheService.set(cacheKey, data);
         return data;
     }
-    const prompt = `Act as a senior stock analyst. Provide a detailed, side-by-side comparison for the following stock tickers: ${tickers.join(', ')}. For each ticker, provide its company name, market cap as a number in billions (e.g., for $2.1T, return 2100; for $300B, return 300), P/E ratio as a number, dividend yield as a number in percent (e.g., for 1.5%, return 1.5), consensus analyst rating, a brief bull case, a brief bear case, and a one-sentence financial health summary. Provide the response in the specified JSON format. If a value like P/E or dividend yield isn't applicable, you may omit the field from the JSON object.`;
-
-    const schema = {
-        type: Type.ARRAY,
-        items: FallbackData.stockComparisonItemSchema,
-    };
+    const prompt = `Act as a senior stock analyst API. Use Google Search to provide a detailed, side-by-side comparison for the stock tickers: ${tickers.join(', ')}. For each ticker, provide its company name, market cap (as a number in billions, e.g., 2100 for $2.1T), P/E ratio (as a number), dividend yield (as a number in percent, e.g., 1.5 for 1.5%), consensus analyst rating, a brief bull case, a brief bear case, and a one-sentence financial health summary. Provide the response as a single, valid JSON array and nothing else. If a value like P/E or dividend yield isn't applicable, use null.`;
 
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: schema,
-            },
-        });
-        const data = JSON.parse(response.text.trim()) as StockComparisonData;
+        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
+        const data = parseJsonFromText(response.text, `stock comparison for ${tickers.join(', ')}`) as StockComparisonData;
         cacheService.set(cacheKey, data);
         return data;
     } catch (error) {

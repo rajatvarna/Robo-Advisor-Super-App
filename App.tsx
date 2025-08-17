@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -14,7 +15,7 @@ import AnalyticsPage from './components/AnalyticsPage';
 import AddHoldingModal from './components/AddHoldingModal';
 import AchievementToast from './components/AchievementToast';
 import Spinner from './components/icons/Spinner';
-import { generateDashboardData, fetchStockDetailsForPortfolio, fetchUpdatedPrices, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements } from './services/geminiService';
+import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements } from './services/geminiService';
 import type { View, DashboardData, Holding, Transaction, UserHolding, Achievement } from './types';
 import { ApiProvider, useApi } from './contexts/ApiContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -22,6 +23,7 @@ import ApiStatusBanner from './components/ApiStatusBanner';
 import DonationPage from './components/DonationPage';
 import { ALL_ACHIEVEMENTS } from './services/fallbackData';
 import OnboardingTour from './components/OnboardingTour';
+import * as FallbackData from './services/fallbackData';
 
 
 const AppContent: React.FC = () => {
@@ -73,7 +75,8 @@ const AppContent: React.FC = () => {
             const holdingsToUpdate = [...dashboardData.holdings, ...(dashboardData.watchlist || [])];
             if (holdingsToUpdate.length === 0) return;
             
-            const updatedPrices = await fetchUpdatedPrices(holdingsToUpdate.map(h => ({ ticker: h.ticker, currentPrice: h.currentPrice })), apiMode);
+            // Use the fallback price simulator directly to avoid API calls for this frequent operation
+            const updatedPrices = FallbackData.fetchUpdatedPrices(holdingsToUpdate.map(h => ({ ticker: h.ticker, currentPrice: h.currentPrice })));
             
             setDashboardData(prevData => {
                 if (!prevData) return null;
@@ -111,13 +114,14 @@ const AppContent: React.FC = () => {
 
         } catch(err: any) {
             console.error("Failed to fetch price updates:", err);
+            // This part is less likely to be hit now, but kept for safety
             if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
         }
       }
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [isAuthenticated, dashboardData, apiMode, setApiMode]);
+  }, [isAuthenticated, dashboardData, setApiMode]);
   
   // --- USER ACTIONS ---
   const handleLogin = React.useCallback(() => {
@@ -156,11 +160,12 @@ const AppContent: React.FC = () => {
     }
   }, [achievements, apiMode, setApiMode, dashboardData, watchlist, saveDataToLocalStorage]);
 
-  const handleGenerateDemoData = React.useCallback(async () => {
+  const handleGenerateDemoData = React.useCallback(() => {
       setIsLoading(true);
       setError(null);
       try {
-        const baseData = await generateDashboardData(apiMode);
+        // Use local fallback data directly, removing the API call.
+        const baseData = FallbackData.generateDashboardData();
         
         const netWorth = baseData.holdings.reduce((sum, h) => sum + h.totalValue, 0);
 
@@ -184,7 +189,7 @@ const AppContent: React.FC = () => {
             allocation,
             portfolioPerformance: [{ date: new Date().toISOString().split('T')[0], price: netWorth }],
             personalizedNews: [],
-            portfolioScore: { score: 0, summary: "" },
+            portfolioScore: { score: 78, summary: "A well-diversified portfolio with solid holdings." }, // Default score
             achievements: initializedAchievements,
         };
 
@@ -199,16 +204,11 @@ const AppContent: React.FC = () => {
         }
 
       } catch (err: any) {
-        if (err.message.includes('QUOTA_EXCEEDED')) {
-            setApiMode('opensource');
-            setError('Live AI quota exceeded. Switched to offline fallback mode.');
-        } else {
-            setError(err.message || 'Failed to load demo data. Please try again.');
-        }
+        setError(err.message || 'Failed to load demo data. Please try again.');
       } finally {
         setIsLoading(false);
       }
-  }, [apiMode, setApiMode, saveDataToLocalStorage]);
+  }, [saveDataToLocalStorage]);
 
   const handleTourEnd = React.useCallback(() => {
     setRunTour(false);
