@@ -40,21 +40,42 @@ const parseJsonFromText = (text: string, context: string): any => {
         console.error(`Received empty text from AI for ${context}.`);
         throw new Error(`The AI returned an empty response for ${context}.`);
     }
-    let cleanedText = text.trim().replace(/^```json\s*|```\s*$/g, '');
-    try {
-        return JSON.parse(cleanedText);
-    } catch (e1) {
-        const match = cleanedText.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-        if (match && match[0]) {
-            try {
-                return JSON.parse(match[0]);
-            } catch (e2) {
-                console.error(`Failed to parse extracted JSON for ${context}. Raw text:`, text);
-                throw new Error(`The AI returned invalid JSON for ${context}.`);
-            }
+
+    // Find text within ```json ... ``` block
+    const match = text.match(/```json\s*([\s\S]*?)\s*```/);
+    let jsonString = match ? match[1] : text;
+
+    // If no JSON block found, try to extract from the raw text by finding the first and last brace/bracket
+    if (!match) {
+        const firstBracket = jsonString.indexOf('{');
+        const firstSquare = jsonString.indexOf('[');
+
+        if (firstBracket === -1 && firstSquare === -1) {
+            console.error(`No JSON object or array found in text for ${context}. Raw text:`, text);
+            throw new Error(`The AI returned a non-JSON response for ${context}.`);
         }
-        console.error(`Failed to parse any JSON for ${context}. Raw text:`, text);
-        throw new Error(`The AI returned a non-JSON response for ${context}.`);
+
+        let start = -1;
+        if (firstBracket === -1) start = firstSquare;
+        else if (firstSquare === -1) start = firstBracket;
+        else start = Math.min(firstBracket, firstSquare);
+
+        const lastBracket = jsonString.lastIndexOf('}');
+        const lastSquare = jsonString.lastIndexOf(']');
+        const end = Math.max(lastBracket, lastSquare);
+
+        if (end > start) {
+            jsonString = jsonString.substring(start, end + 1);
+        }
+    }
+
+    try {
+        // Sanitize common JSON errors like trailing commas
+        const sanitizedString = jsonString.replace(/,\s*([}\]])/g, '$1');
+        return JSON.parse(sanitizedString);
+    } catch (e) {
+        console.error(`Failed to parse JSON for ${context}. Raw text:`, text, "Error:", e);
+        throw new Error(`The AI returned invalid JSON for ${context}.`);
     }
 };
 
@@ -263,34 +284,26 @@ export const generatePortfolioAlerts = async (dashboardData: DashboardData, apiM
     For each alert, provide a unique ID, type, severity, title, and a concise description.
     Respond with ONLY a valid JSON array of objects.`;
 
-    const schema = {
-        type: Type.ARRAY,
-        items: {
-            type: Type.OBJECT,
-            properties: {
-                id: { type: Type.STRING },
-                type: { type: Type.STRING, enum: ['Price', 'News', 'Portfolio', 'Goal'] },
-                severity: { type: Type.STRING, enum: ['Info', 'Warning', 'Critical'] },
-                title: { type: Type.STRING },
-                description: { type: Type.STRING },
-                ticker: { type: Type.STRING, nullable: true }
-            },
-            required: ['id', 'type', 'severity', 'title', 'description']
-        }
-    };
-
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }],
-                responseMimeType: "application/json",
-                responseSchema: schema
             }
         });
-        const alerts: Omit<Alert, 'timestamp' | 'read'>[] = JSON.parse(response.text.trim());
+         if (!response.text) {
+            throw new Error("The AI returned an empty response for portfolio alerts.");
+        }
+        const alertsResult = parseJsonFromText(response.text, "portfolio alerts");
+        
+        if (!Array.isArray(alertsResult)) {
+            console.warn("Parsed JSON is not an array for portfolio alerts, returning empty.", alertsResult);
+            return [];
+        }
+
         // Add timestamp and read status
+        const alerts: Omit<Alert, 'timestamp' | 'read'>[] = alertsResult;
         return alerts.map(alert => ({
             ...alert,
             timestamp: new Date().toISOString(),
