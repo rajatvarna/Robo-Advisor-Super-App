@@ -34,12 +34,17 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
     ];
 
     React.useEffect(() => {
+        // This is a cleanup effect. When the component unmounts, it clears any
+        // pending polling timeouts and revokes any temporary blob URLs to prevent memory leaks.
         return () => {
             if (pollingTimeoutRef.current) {
                 clearTimeout(pollingTimeoutRef.current);
             }
+            if (videoUrl && videoUrl.startsWith('blob:')) {
+                URL.revokeObjectURL(videoUrl);
+            }
         };
-    }, []);
+    }, [videoUrl]);
 
     const handleApiError = (err: any) => {
         if (err.message.includes('QUOTA_EXCEEDED')) {
@@ -60,11 +65,8 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
             const updatedOperation = await getVideoOperationStatus(operation, apiMode);
 
             if (updatedOperation.done) {
-                if (pollingTimeoutRef.current) {
-                    clearTimeout(pollingTimeoutRef.current);
-                }
+                if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
                 
-                // The API might return an error object inside the operation when it's done.
                 if (updatedOperation.error) {
                     const isQuotaError = updatedOperation.error.code === 429 || 
                                          (typeof updatedOperation.error.message === 'string' && 
@@ -76,23 +78,33 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
                     } else {
                         setError(`Video generation failed: ${updatedOperation.error.message || 'An unknown error occurred. Please try again.'}`);
                     }
-                    
                     setIsLoading(false);
-                    return; // Stop the process.
+                    return;
                 }
 
                 const downloadLink = updatedOperation.response?.generatedVideos?.[0]?.video?.uri;
                 if (downloadLink) {
-                    setVideoUrl(`${downloadLink}&key=${API_KEY}`);
+                    try {
+                        setLoadingMessage("Downloading your secure video briefing...");
+                        const response = await fetch(`${downloadLink}&key=${API_KEY}`);
+                        if (!response.ok) {
+                            throw new Error(`Failed to download video: ${response.statusText}`);
+                        }
+                        const videoBlob = await response.blob();
+                        const videoObjectUrl = URL.createObjectURL(videoBlob);
+                        setVideoUrl(videoObjectUrl);
+                        setIsLoading(false);
+                    } catch (fetchError: any) {
+                        handleApiError(fetchError);
+                    }
                 } else if (isFallbackMode) {
                     setVideoUrl('https://storage.googleapis.com/generative-ai-vision/veo-demo-videos/prompt-with-video/a_cinematic_shot_of_a_woman_walking_through_a_paddy_field_in_the_paddy_field.mp4');
+                    setIsLoading(false);
                 } else {
-                    // This handles the case where the operation is 'done' but no video URI is present.
                     setError("Video generation completed, but a video is not available at this time. Please try again.");
+                    setIsLoading(false);
                 }
-                setIsLoading(false);
             } else {
-                // Not done, schedule the next poll with the *updated* operation object
                 pollingTimeoutRef.current = window.setTimeout(() => pollOperation(updatedOperation), 10000);
             }
         } catch (err: any) {
@@ -105,12 +117,9 @@ const BriefingsPage: React.FC<BriefingsPageProps> = ({ holdings }) => {
     const handleGenerateVideo = async (type: 'daily' | 'weekly') => {
         setIsLoading(true);
         setError(null);
-        setVideoUrl(null);
+        setVideoUrl(null); // This will also trigger the useEffect cleanup for the old blob URL
         
-        // Clear any existing polling timeout before starting a new one
-        if (pollingTimeoutRef.current) {
-            clearTimeout(pollingTimeoutRef.current);
-        }
+        if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current);
 
         messageIndexRef.current = 0;
         setLoadingMessage(loadingMessages[0]);
