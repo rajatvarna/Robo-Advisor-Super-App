@@ -13,12 +13,14 @@ import PortfolioPage from './components/PortfolioPage';
 import TopNewsPage from './components/TopNewsPage';
 import AnalyticsPage from './components/AnalyticsPage';
 import CryptoPage from './components/CryptoPage';
+import IntegrationsPage from './components/IntegrationsPage';
 import AddHoldingModal from './components/AddHoldingModal';
 import AchievementToast from './components/AchievementToast';
 import Spinner from './components/icons/Spinner';
 import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements, getTopBusinessNews } from './services/geminiService';
 import * as financialDataService from './services/financialDataService';
-import type { View, DashboardData, Holding, Transaction, AddHoldingData, Achievement, UserWatchlist, InvestmentGoal, Quote } from './types';
+import * as brokerageService from './services/brokerageService';
+import type { View, DashboardData, Holding, Transaction, AddHoldingData, Achievement, UserWatchlist, InvestmentGoal, Quote, BaseDashboardData } from './types';
 import { ApiProvider, useApi } from './contexts/ApiContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ApiStatusBanner from './components/ApiStatusBanner';
@@ -50,7 +52,7 @@ const AppContent: React.FC = () => {
     transactions.forEach(tx => {
       let holding = holdingsMap.get(tx.ticker);
       if (!holding) {
-        holding = { shares: 0, totalCost: 0, companyName: tx.companyName };
+        holding = { shares: 0, totalCost: 0, companyName: tx.companyName, sector: tx.sector };
         holdingsMap.set(tx.ticker, holding);
       }
 
@@ -64,6 +66,7 @@ const AppContent: React.FC = () => {
       }
       // Assuming company name from last transaction is most recent
       holding.companyName = tx.companyName;
+      holding.sector = tx.sector;
     });
 
     return Array.from(holdingsMap.entries())
@@ -283,6 +286,7 @@ const AppContent: React.FC = () => {
            type: 'Buy',
            ticker: holdingData.ticker,
            companyName: stockDetails.companyName,
+           sector: stockDetails.sector,
            shares: holdingData.shares,
            price: holdingData.purchasePrice,
            totalValue: holdingData.shares * holdingData.purchasePrice,
@@ -333,6 +337,77 @@ const AppContent: React.FC = () => {
     });
     localStorage.setItem('robo-advisor-goal-set', 'true');
     setIsGoalModalOpen(false);
+  }, [saveDataToLocalStorage]);
+
+  const handleSyncBrokerage = React.useCallback(async (brokerage: 'Interactive Brokers') => {
+      setIsLoading(true);
+      setError(null);
+      try {
+          let brokeragePortfolio: BaseDashboardData;
+          if (brokerage === 'Interactive Brokers') {
+              brokeragePortfolio = await brokerageService.syncInteractiveBrokersPortfolio(apiMode);
+          } else {
+              throw new Error("Unsupported brokerage.");
+          }
+
+          const allTickers = brokeragePortfolio.holdings.map(h => h.ticker);
+          const liveQuotes = await financialDataService.fetchQuotes(allTickers, apiMode);
+          setQuotes(liveQuotes);
+          
+          const liveHoldings = recalculateHoldings(brokeragePortfolio.transactions, liveQuotes);
+          const netWorth = liveHoldings.reduce((sum, h) => sum + h.totalValue, 0);
+
+          const allocationMap = new Map<string, number>();
+          liveHoldings.forEach(h => {
+              const sector = h.sector || 'Stocks';
+              allocationMap.set(sector, (allocationMap.get(sector) || 0) + h.totalValue);
+          });
+          const allocation = netWorth > 0 ? Array.from(allocationMap.entries()).map(([name, value]) => ({
+              name,
+              value: (value / netWorth) * 100,
+          })) : [];
+
+          setDashboardData(prevData => {
+              if (!prevData) return null;
+              const newData: DashboardData = {
+                  ...prevData,
+                  holdings: liveHoldings,
+                  transactions: brokeragePortfolio.transactions,
+                  netWorth,
+                  allocation,
+                  integrations: {
+                      ...prevData.integrations,
+                      interactiveBrokers: {
+                          connected: true,
+                          lastSync: new Date().toISOString(),
+                      },
+                  },
+              };
+              saveDataToLocalStorage(newData);
+              return newData;
+          });
+      } catch (err: any) {
+          handleApiError(err);
+      } finally {
+          setIsLoading(false);
+      }
+  }, [apiMode, recalculateHoldings, saveDataToLocalStorage]);
+
+  const handleDisconnectBrokerage = React.useCallback((brokerage: 'Interactive Brokers') => {
+    setDashboardData(prev => {
+        if (!prev) return null;
+        const newData = {
+            ...prev,
+            integrations: {
+                ...prev.integrations,
+                interactiveBrokers: {
+                    connected: false,
+                },
+            },
+        };
+        saveDataToLocalStorage(newData);
+        return newData;
+    });
   }, [saveDataToLocalStorage]);
 
     // --- WATCHLIST ACTIONS ---
@@ -460,6 +535,8 @@ const AppContent: React.FC = () => {
         return <TopNewsPage />;
       case 'crypto':
         return <CryptoPage />;
+       case 'integrations':
+        return <IntegrationsPage data={dashboardData} onSync={handleSyncBrokerage} onDisconnect={handleDisconnectBrokerage} />;
       case 'support':
         return <DonationPage />;
       default:

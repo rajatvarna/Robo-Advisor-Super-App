@@ -58,6 +58,7 @@ export const baseDashboardDataSchema = {
                     shares: { type: Type.NUMBER },
                     price: { type: Type.NUMBER },
                     totalValue: { type: Type.NUMBER },
+                    sector: { type: Type.STRING },
                 },
                 required: ["id", "date", "type", "ticker", "companyName", "shares", "price", "totalValue"]
             }
@@ -200,7 +201,7 @@ const DEMO_STOCKS = [
 ];
 
 
-export const generateDashboardData = async (): Promise<BaseDashboardData> => {
+export const generateDashboardData = async (): Promise<DashboardData> => {
     const transactions = DEMO_STOCKS.map((stock, i) => {
         const price = stock.price * (0.9 + Math.random() * 0.1);
         return {
@@ -211,7 +212,8 @@ export const generateDashboardData = async (): Promise<BaseDashboardData> => {
             companyName: stock.companyName,
             shares: stock.shares,
             price: price,
-            totalValue: stock.shares * price
+            totalValue: stock.shares * price,
+            sector: stock.sector
         };
     });
     
@@ -237,13 +239,69 @@ export const generateDashboardData = async (): Promise<BaseDashboardData> => {
         tickers: ['NVDA', 'GOOGL']
     }];
     
-    return {
+    const baseData: BaseDashboardData = {
         user: { name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01' },
         holdings,
         transactions,
         watchlists,
     };
+
+    // This is a placeholder; the actual full data is constructed in App.tsx
+    return {
+        ...baseData,
+        netWorth: 0,
+        portfolioPerformance: [],
+        allocation: [],
+        portfolioScore: { score: 0, summary: ""},
+        achievements: [],
+        integrations: {
+            interactiveBrokers: { connected: false }
+        }
+    };
 };
+
+export const getInteractiveBrokersPortfolio = (): BaseDashboardData => {
+    const ibkrStocks = [
+        { ticker: 'NVDA', companyName: 'NVIDIA Corporation', sector: 'Technology', shares: 25, price: 950.0 },
+        { ticker: 'TSLA', companyName: 'Tesla, Inc.', sector: 'Consumer Cyclical', shares: 50, price: 175.0 },
+        { ticker: 'SNOW', companyName: 'Snowflake Inc.', sector: 'Technology', shares: 40, price: 160.0 },
+        { ticker: 'UBER', companyName: 'Uber Technologies, Inc.', sector: 'Technology', shares: 100, price: 65.0 },
+    ];
+
+    const transactions = ibkrStocks.map((stock, i) => {
+        const price = stock.price * (0.95 + Math.random() * 0.05); // Purchase price is slightly less than current
+        return {
+            id: `ibkr-txn-${i}`,
+            date: new Date(Date.now() - (60 + i * 20) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            type: 'Buy' as 'Buy',
+            ticker: stock.ticker,
+            companyName: stock.companyName,
+            sector: stock.sector,
+            shares: stock.shares,
+            price: price,
+            totalValue: stock.shares * price
+        };
+    });
+
+     // This holdings data is just for getting tickers, it will be immediately recalculated in App.tsx
+    const holdings: Holding[] = ibkrStocks.map(stock => ({
+        ticker: stock.ticker,
+        companyName: stock.companyName,
+        sector: stock.sector,
+        shares: stock.shares,
+        currentPrice: stock.price,
+        dayChange: 0, dayChangePercent: 0, previousClose: stock.price, totalValue: stock.price * stock.shares,
+        costBasis: 0, unrealizedGain: 0, unrealizedGainPercent: 0,
+    }));
+
+    return {
+        user: { name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01' },
+        holdings,
+        transactions,
+        watchlists: [], // Synced portfolios usually don't bring watchlists
+    };
+}
+
 
 export const generatePersonalizedNews = (holdingTickers: string[], watchlistTickers: string[]): NewsItem[] => ([
     { headline: 'Tech Stocks Rally on AI Optimism', url: '#', source: 'Simulated News', summary: 'Major tech companies saw gains as investors remain optimistic about artificial intelligence developments.', sentiment: 'Positive', ticker: 'AAPL' },

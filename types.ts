@@ -1,6 +1,6 @@
 
 
-export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto';
+export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto' | 'integrations';
 export type ApiMode = 'gemini' | 'opensource';
 
 export interface ChatMessage {
@@ -54,6 +54,7 @@ export interface Transaction {
   shares: number;
   price: number;
   totalValue: number;
+  sector?: string;
 }
 
 export interface EducationalContent {
@@ -99,6 +100,11 @@ export interface UserWatchlist {
     tickers: string[];
 }
 
+export interface BrokerageIntegration {
+    connected: boolean;
+    lastSync?: string;
+}
+
 export interface BaseDashboardData {
     user: User;
     holdings: Holding[];
@@ -114,6 +120,9 @@ export interface DashboardData extends BaseDashboardData {
     portfolioScore: PortfolioScore;
     achievements: Achievement[];
     goal?: InvestmentGoal;
+    integrations: {
+        interactiveBrokers: BrokerageIntegration;
+    };
 }
 
 export type ChartTimeframe = '1Y' | '5Y' | '10Y';

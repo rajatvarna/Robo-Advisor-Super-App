@@ -9,6 +9,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import SunIcon from './icons/SunIcon';
 import MoonIcon from './icons/MoonIcon';
 import CryptoIcon from './icons/CryptoIcon';
+import SettingsIcon from './icons/SettingsIcon';
 
 
 interface HeaderProps {
@@ -71,6 +72,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout }) => {
               </a>
               <a onClick={() => setView('education')} className={navLinkClasses('education')}>
                 Education
+              </a>
+              <a onClick={() => setView('integrations')} className={navLinkClasses('integrations')}>
+                <SettingsIcon className="w-4 h-4" /> Integrations
               </a>
               <a onClick={() => setView('support')} className={navLinkClasses('support')}>
                 <HeartIcon className="w-4 h-4" /> Support
