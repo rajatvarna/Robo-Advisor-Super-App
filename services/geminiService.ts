@@ -67,9 +67,21 @@ export const fetchStockDetailsForPortfolio = async (ticker: string, apiMode: Api
 export const generatePersonalizedNews = async (holdings: Holding[], watchlistTickers: string[], apiMode: ApiMode): Promise<NewsItem[]> => {
     if (apiMode === 'opensource') return FallbackData.generatePersonalizedNews(holdings.map(h => h.ticker), watchlistTickers);
     if (holdings.length === 0 && watchlistTickers.length === 0) return [];
-    const tickers = [...new Set([...holdings.map(h => h.ticker), ...watchlistTickers])].join(', ');
+
+    // Limit tickers to avoid overly complex prompts that can cause internal errors
+    const topHoldingTickers = holdings
+        .sort((a, b) => b.totalValue - a.totalValue)
+        .slice(0, 10)
+        .map(h => h.ticker);
+    
+    const topWatchlistTickers = watchlistTickers.slice(0, 10);
+
+    const tickers = [...new Set([...topHoldingTickers, ...topWatchlistTickers])].join(', ');
+
     if (!tickers) return [];
-    const prompt = `Act as a financial news curator. Use Google Search to find 4 recent, relevant news articles for these stocks: ${tickers}. For each, provide its headline, a concise one-sentence summary, the source name, its URL, and a sentiment analysis ('Positive', 'Negative', 'Neutral'). Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "sentiment". Do not include markdown formatting or any other text outside the JSON array.`;
+
+    const prompt = `Act as a financial news curator. Use Google Search to find 4 recent, relevant news articles for these stocks: ${tickers}. For each, provide its headline, a concise one-sentence summary, the source name, its direct and verifiable URL, and the publication date in ISO 8601 format. Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "publishedAt". Ensure URLs lead directly to the article. Do not include markdown formatting or any other text outside the JSON array.`;
+    
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         return parseJsonFromText(response.text, "personalized news");
@@ -82,7 +94,7 @@ export const getTopBusinessNews = async (apiMode: ApiMode): Promise<NewsItem[]> 
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.getTopBusinessNews();
-    const prompt = `Act as a financial news aggregator. Use Google Search to find 15 significant, recent business and financial news stories from reputable sources. For each story, provide the headline, a concise one-sentence summary, the source name, and the direct URL to the article. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", and "url". Do not include any text outside the JSON array.`;
+    const prompt = `Act as a financial news aggregator. Use Google Search to find 15 significant, recent business and financial news stories from reputable sources. For each story, provide the headline, a concise one-sentence summary, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", "url", and "publishedAt". Ensure URLs lead directly to the articles. Do not include any text outside the JSON array.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const news = parseJsonFromText(response.text, "top business news");
@@ -99,7 +111,7 @@ export const getCryptoNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.getCryptoNews();
-    const prompt = `Act as a crypto news aggregator. Use Google Search to find 10 significant, recent news stories about cryptocurrency from reputable sources like Coindesk, Cointelegraph, and The Block. For each story, provide the headline, a concise one-sentence summary, the source name, and the direct URL to the article. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", and "url". Do not include any text outside the JSON array.`;
+    const prompt = `Act as a crypto news aggregator. Use Google Search to find 10 significant, recent news stories about cryptocurrency from reputable sources like Coindesk, Cointelegraph, and The Block. For each story, provide the headline, a concise one-sentence summary, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", "url", and "publishedAt". Ensure URLs lead directly to the articles. Do not include any text outside the JSON array.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const news = parseJsonFromText(response.text, "crypto news");

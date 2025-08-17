@@ -1,4 +1,5 @@
 
+
 import { Type } from "@google/genai";
 import type { Chat } from '@google/genai';
 import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist, CryptoData } from '../types';
@@ -304,20 +305,20 @@ export const getInteractiveBrokersPortfolio = (): BaseDashboardData => {
 
 
 export const generatePersonalizedNews = (holdingTickers: string[], watchlistTickers: string[]): NewsItem[] => ([
-    { headline: 'Tech Stocks Rally on AI Optimism', url: '#', source: 'Simulated News', summary: 'Major tech companies saw gains as investors remain optimistic about artificial intelligence developments.', sentiment: 'Positive', ticker: 'AAPL' },
-    { headline: 'Fed Hints at Steady Interest Rates', url: '#', source: 'Simulated News', summary: 'The Federal Reserve has indicated that interest rates are likely to hold steady for the near future, calming market jitters.', sentiment: 'Neutral', ticker: 'JPM' },
+    { headline: 'Tech Stocks Rally on AI Optimism', url: '#', source: 'Simulated News', summary: 'Major tech companies saw gains as investors remain optimistic about artificial intelligence developments.', sentiment: 'Positive', ticker: 'AAPL', publishedAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString() },
+    { headline: 'Fed Hints at Steady Interest Rates', url: '#', source: 'Simulated News', summary: 'The Federal Reserve has indicated that interest rates are likely to hold steady for the near future, calming market jitters.', sentiment: 'Neutral', ticker: 'JPM', publishedAt: new Date(Date.now() - 3600 * 1000 * 5).toISOString() },
 ]);
 
 export const getTopBusinessNews = (): NewsItem[] => ([
-    { headline: 'Global Markets Show Mixed Results Amid Inflation Fears', url: '#', source: 'Reuters', summary: 'Investors are cautiously watching economic indicators as inflation concerns linger, leading to a mixed performance across global stock markets.' },
-    { headline: 'Tech Sector Faces New Regulatory Scrutiny', url: '#', source: 'WSJ', summary: 'Governments worldwide are increasing their focus on regulating major technology firms, potentially impacting future growth.' },
-    { headline: 'Oil Prices Surge on Supply Chain Worries', url: '#', source: 'Bloomberg', summary: 'Disruptions in the global supply chain have caused a significant increase in crude oil prices, affecting energy markets.' },
+    { headline: 'Global Markets Show Mixed Results Amid Inflation Fears', url: '#', source: 'Reuters', summary: 'Investors are cautiously watching economic indicators as inflation concerns linger, leading to a mixed performance across global stock markets.', publishedAt: new Date(Date.now() - 3600 * 1000 * 1).toISOString() },
+    { headline: 'Tech Sector Faces New Regulatory Scrutiny', url: '#', source: 'WSJ', summary: 'Governments worldwide are increasing their focus on regulating major technology firms, potentially impacting future growth.', publishedAt: new Date(Date.now() - 3600 * 1000 * 3).toISOString() },
+    { headline: 'Oil Prices Surge on Supply Chain Worries', url: '#', source: 'Bloomberg', summary: 'Disruptions in the global supply chain have caused a significant increase in crude oil prices, affecting energy markets.', publishedAt: new Date(Date.now() - 3600 * 1000 * 8).toISOString() },
 ]);
 
 export const getCryptoNews = (): NewsItem[] => ([
-    { headline: 'Bitcoin Surges Past Fictional Milestone', url: '#', source: 'CoinDesk', summary: 'Bitcoin reached a new simulated all-time high as institutional interest continues to grow.' },
-    { headline: 'Ethereum "Merge" Upgrade Successful in Testnet', url: '#', source: 'The Block', summary: 'A key test for Ethereum\'s transition to Proof-of-Stake has completed successfully, developers report.' },
-    { headline: 'DeFi Sector Sees Record Inflows', url: '#', source: 'Cointelegraph', summary: 'Decentralized Finance protocols have attracted a record amount of capital in the last month, data shows.' },
+    { headline: 'Bitcoin Surges Past Fictional Milestone', url: '#', source: 'CoinDesk', summary: 'Bitcoin reached a new simulated all-time high as institutional interest continues to grow.', publishedAt: new Date(Date.now() - 60000 * 30).toISOString() },
+    { headline: 'Ethereum "Merge" Upgrade Successful in Testnet', url: '#', source: 'The Block', summary: 'A key test for Ethereum\'s transition to Proof-of-Stake has completed successfully, developers report.', publishedAt: new Date(Date.now() - 3600 * 1000 * 4).toISOString() },
+    { headline: 'DeFi Sector Sees Record Inflows', url: '#', source: 'Cointelegraph', summary: 'Decentralized Finance protocols have attracted a record amount of capital in the last month, data shows.', publishedAt: new Date(Date.now() - 3600 * 1000 * 10).toISOString() },
 ]);
 
 export const getTopCryptos = (): CryptoData[] => ([

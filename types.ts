@@ -71,6 +71,7 @@ export interface NewsItem {
     url: string;
     source: string;
     summary: string; // AI generated summary
+    publishedAt: string; // ISO 8601 format
     sentiment?: 'Positive' | 'Negative' | 'Neutral';
     ticker?: string; // Ticker it relates to
 }

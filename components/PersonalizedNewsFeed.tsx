@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import type { NewsItem, Holding, UserWatchlist } from '../types';
 
@@ -7,6 +8,23 @@ interface PersonalizedNewsFeedProps {
     holdings: Holding[];
     watchlists: UserWatchlist[];
 }
+
+const formatTimeAgo = (isoDate: string | null): string => {
+    if (!isoDate) return '';
+    const date = new Date(isoDate);
+    const now = new Date();
+    const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.round(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
 
 const PersonalizedNewsFeed: React.FC<PersonalizedNewsFeedProps> = ({ news, holdings, watchlists }) => {
     const hasItemsToTrack = holdings.length > 0 || watchlists.some(wl => wl.tickers.length > 0);
@@ -22,7 +40,10 @@ const PersonalizedNewsFeed: React.FC<PersonalizedNewsFeedProps> = ({ news, holdi
                                 {item.headline}
                             </a>
                             <p className="text-sm text-brand-text-secondary mt-1">{item.summary}</p>
-                            <p className="text-xs text-brand-text-secondary mt-2">Source: {item.source}</p>
+                            <div className="flex justify-between items-center text-xs text-brand-text-secondary mt-2">
+                                <span>Source: {item.source}</span>
+                                {item.publishedAt && <span>{formatTimeAgo(item.publishedAt)}</span>}
+                            </div>
                         </div>
                     ))}
                 </div>

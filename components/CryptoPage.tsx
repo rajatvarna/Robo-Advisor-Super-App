@@ -15,6 +15,23 @@ const formatMarketCap = (value: number) => {
     return formatCurrency(value);
 }
 
+const formatTimeAgo = (isoDate: string | null): string => {
+    if (!isoDate) return '';
+    const date = new Date(isoDate);
+    const now = new Date();
+    const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.round(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 type SortKey = keyof CryptoData;
 type SortDirection = 'ascending' | 'descending';
 
@@ -157,7 +174,10 @@ const CryptoPage: React.FC = () => {
                         {news.map((item, index) => (
                             <a href={item.url} target="_blank" rel="noopener noreferrer" key={index} className="block border-b border-brand-border pb-3 last:border-b-0 last:pb-0">
                                 <p className="font-semibold text-brand-text hover:text-brand-accent transition-colors">{item.headline}</p>
-                                <p className="text-xs text-brand-text-secondary mt-2">Source: {item.source}</p>
+                                <div className="flex justify-between items-center text-xs text-brand-text-secondary mt-2">
+                                    <span>Source: {item.source}</span>
+                                    {item.publishedAt && <span>{formatTimeAgo(item.publishedAt)}</span>}
+                                </div>
                             </a>
                         ))}
                     </div>
