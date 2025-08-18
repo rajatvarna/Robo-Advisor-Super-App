@@ -60,7 +60,7 @@ const AppContent: React.FC = () => {
         holding.shares += tx.shares;
         holding.totalCost += tx.totalValue;
       } else { // Sell
-        const costOfSoldShares = (holding.totalCost / holding.shares) * tx.shares;
+        const costOfSoldShares = (holding.shares / holding.totalCost) * tx.shares;
         holding.shares -= tx.shares;
         holding.totalCost -= costOfSoldShares;
       }
@@ -187,29 +187,34 @@ const AppContent: React.FC = () => {
     setView('dashboard');
   }, []);
 
-  const checkAndUnlockAchievements = React.useCallback(async (action: string, data: any) => {
-    if (!dashboardData) return;
-    const unlockedAchievementIds = dashboardData.achievements.filter(a => a.unlocked).map(a => a.id);
-    try {
-        const newAchievements = await checkForAchievements(action, data, unlockedAchievementIds, apiMode);
+  // Stable achievement checker that doesn't depend on dashboardData, preventing loops.
+  const checkAndUnlockAchievements = React.useCallback((action: string, data: any) => {
+    setDashboardData(prev => {
+        if(!prev) return null;
+        
+        const unlockedAchievementIds = prev.achievements.filter(a => a.unlocked).map(a => a.id);
+        const newAchievements = checkForAchievements(action, data, unlockedAchievementIds);
+
         if (newAchievements.length > 0) {
-            setDashboardData(prev => {
-                if(!prev) return null;
-                const updatedAchievements = prev.achievements.map(pa => {
-                    const found = newAchievements.find(na => na.id === pa.id);
-                    return found ? { ...pa, unlocked: true, unlockedAt: new Date().toISOString() } : pa;
-                });
-                setLastUnlockedAchievement(updatedAchievements.find(a => a.id === newAchievements[0].id)!);
-                const newData = {...prev, achievements: updatedAchievements};
-                saveDataToLocalStorage(newData);
-                return newData;
+            let latestUnlocked: Achievement | null = null;
+            const updatedAchievements = prev.achievements.map(pa => {
+                const found = newAchievements.find(na => na.id === pa.id);
+                if (found) {
+                    const unlockedAchievement = { ...pa, unlocked: true, unlockedAt: new Date().toISOString() };
+                    latestUnlocked = unlockedAchievement;
+                    return unlockedAchievement;
+                }
+                return pa;
             });
+            if (latestUnlocked) setLastUnlockedAchievement(latestUnlocked);
+            
+            const newData = {...prev, achievements: updatedAchievements};
+            saveDataToLocalStorage(newData);
+            return newData;
         }
-    } catch(err: any) {
-         if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
-         else console.error("Achievement check failed:", err.message);
-    }
-  }, [apiMode, setApiMode, dashboardData, saveDataToLocalStorage]);
+        return prev;
+    });
+  }, [saveDataToLocalStorage, setLastUnlockedAchievement]);
 
   const handleGenerateDemoData = React.useCallback(async () => {
       setIsLoading(true);
@@ -277,7 +282,6 @@ const AppContent: React.FC = () => {
   }, []);
   
   const handleAddHolding = React.useCallback(async (holdingData: AddHoldingData) => {
-      // Fetch latest quote and details for the new stock
       const newQuote = await financialDataService.fetchQuotes([holdingData.ticker], apiMode);
       setQuotes(q => ({...q, ...newQuote}));
       const stockDetails = await fetchStockDetailsForPortfolio(holdingData.ticker, apiMode);
@@ -295,7 +299,7 @@ const AppContent: React.FC = () => {
       };
 
       setDashboardData(prevData => {
-          if (!prevData) return null; // Should not happen if modal is open
+          if (!prevData) return null;
 
           const updatedTransactions = [newTransaction, ...prevData.transactions];
           const updatedHoldings = recalculateHoldings(updatedTransactions, { ...quotes, ...newQuote });
@@ -320,7 +324,8 @@ const AppContent: React.FC = () => {
               portfolioPerformance: [...prevData.portfolioPerformance, {date: new Date().toISOString().split('T')[0], price: updatedNetWorth}]
           };
           saveDataToLocalStorage(newData);
-          checkAndUnlockAchievements('add_holding', { holdingsCount: newData.holdings.length });
+          const sectorCount = new Set(newData.holdings.map(h => h.sector).filter(Boolean)).size;
+          checkAndUnlockAchievements('add_holding', { holdingsCount: newData.holdings.length, sectorCount });
           return newData;
       });
 
@@ -477,7 +482,6 @@ const AppContent: React.FC = () => {
     if (isAuthenticated && dashboardData) {
         const refreshData = async () => {
           try {
-            // Fetch portfolio-dependent data
             const allWatchlistTickers = dashboardData.watchlists.flatMap(wl => wl.tickers);
             const [news, score, insights, alerts] = await Promise.all([
                 generatePersonalizedNews(dashboardData.holdings, allWatchlistTickers, apiMode),
@@ -504,12 +508,12 @@ const AppContent: React.FC = () => {
           }
         };
 
-        refreshData(); // Initial call
-        const intervalId = setInterval(refreshData, 480 * 60 * 1000); // Refresh every 480 minutes (8 hours)
+        refreshData();
+        const intervalId = setInterval(refreshData, 480 * 60 * 1000); // Refresh every 8 hours
 
         return () => clearInterval(intervalId);
     }
-  }, [dashboardData?.holdings.length, dashboardData?.watchlists.length, isAuthenticated, apiMode, setApiMode, checkAndUnlockAchievements, saveDataToLocalStorage]);
+  }, [isAuthenticated, dashboardData?.holdings.length, dashboardData?.watchlists.length, apiMode, setApiMode, checkAndUnlockAchievements, saveDataToLocalStorage]);
 
 
   if (!isAuthenticated) {

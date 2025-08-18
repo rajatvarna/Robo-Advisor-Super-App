@@ -3,6 +3,7 @@
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert } from '../types';
 import * as FallbackData from './fallbackData';
+import { ALL_ACHIEVEMENTS } from './fallbackData';
 import { cacheService } from './cacheService';
 import * as financialDataService from './financialDataService';
 
@@ -185,14 +186,36 @@ export const calculatePortfolioScore = async (holdings: Holding[], apiMode: ApiM
     } catch (error) { throw handleApiError(error, "portfolio score"); }
 }
 
-export const checkForAchievements = async (action: string, data: any, unlockedIds: string[], apiMode: ApiMode): Promise<Pick<Achievement, 'id' | 'title'>[]> => {
-    if (apiMode === 'opensource') return FallbackData.checkForAchievements(action, data, unlockedIds);
-    const prompt = `Given an action ("${action}"), data (${JSON.stringify(data)}), and unlocked achievements ([${unlockedIds.join(', ')}]), determine new achievements. Conditions: 'first_login' (first login), 'first_holding' (holdingsCount>=1), 'five_holdings' (>=5), 'ten_holdings' (>=10), 'first_screener' (run_screener action), 'diversified_portfolio_5' (>=5 sectors), 'diversified_portfolio_8' (>=8 sectors), 'high_score_85' (score>=85), 'high_score_95' (score>=95). Return JSON array of new achievements with "id" and "title".`;
-    const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { id: {type: Type.STRING}, title: {type: Type.STRING}}, required: ["id", "title"] } };
-     try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema }});
-        return JSON.parse(response.text.trim());
-    } catch (error) { throw handleApiError(error, "achievement check"); }
+export const checkForAchievements = (action: string, data: any, unlockedIds: string[]): Pick<Achievement, 'id' | 'title'>[] => {
+    const newAchievements: Pick<Achievement, 'id' | 'title'>[] = [];
+
+    const check = (id: string, condition: boolean) => {
+        if (condition && !unlockedIds.includes(id)) {
+            const achievement = ALL_ACHIEVEMENTS.find(a => a.id === id);
+            if (achievement) {
+                newAchievements.push({ id: achievement.id, title: achievement.title });
+            }
+        }
+    };
+
+    switch (action) {
+        case 'add_holding':
+            check('first_holding', data.holdingsCount >= 1);
+            check('five_holdings', data.holdingsCount >= 5);
+            check('ten_holdings', data.holdingsCount >= 10);
+            check('diversified_portfolio_5', data.sectorCount >= 5);
+            check('diversified_portfolio_8', data.sectorCount >= 8);
+            break;
+        case 'run_screener':
+            check('first_screener', true);
+            break;
+        case 'portfolio_score':
+            check('high_score_85', data.score >= 85);
+            check('high_score_95', data.score >= 95);
+            break;
+    }
+
+    return newAchievements;
 }
 
 export const generateDashboardInsights = async (dashboardData: DashboardData, apiMode: ApiMode): Promise<string[]> => {
@@ -208,7 +231,6 @@ export const generateDashboardInsights = async (dashboardData: DashboardData, ap
 
     if (apiMode === 'opensource') return FallbackData.generateDashboardInsights();
     
-    // Create a concise summary of the dashboard data for the prompt
     const context = {
         netWorth: dashboardData.netWorth,
         goal: dashboardData.goal,
@@ -296,7 +318,6 @@ export const generatePortfolioAlerts = async (dashboardData: DashboardData, apiM
             return [];
         }
 
-        // Add timestamp and read status
         const alerts: Omit<Alert, 'timestamp' | 'read'>[] = alertsResult;
         const finalAlerts = alerts.map(alert => ({
             ...alert,
@@ -513,36 +534,5 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
         return data;
     } catch (error) {
         throw handleApiError(error, `stock comparison for ${tickers.join(', ')}`);
-    }
-};
-
-export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        // Return a mock operation object for fallback mode
-        return { done: true, response: { generatedVideos: [{ video: { uri: 'fallback_video_url' } }] } };
-    }
-    try {
-        let operation = await ai.models.generateVideos({
-            model: 'veo-2.0-generate-001',
-            prompt: prompt,
-            config: {
-                numberOfVideos: 1,
-            }
-        });
-        return operation;
-    } catch (error) {
-        throw handleApiError(error, 'video briefing generation');
-    }
-};
-
-export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        return operation; // Fallback will be handled in the component
-    }
-    try {
-        const updatedOperation = await ai.operations.getVideosOperation({ operation: operation });
-        return updatedOperation;
-    } catch (error) {
-        throw handleApiError(error, 'video operation status');
     }
 };

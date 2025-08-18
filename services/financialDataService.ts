@@ -1,22 +1,14 @@
 
 
-import type { ApiMode, Quote, PortfolioHistoryPoint, NewsItem, SecFiling, FinancialStatementsData } from '../types';
+import type { ApiMode, Quote, NewsItem, SecFiling, FinancialStatementsData } from '../types';
 import * as FallbackData from './fallbackData';
 import { cacheService } from './cacheService';
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 
-const checkIsFinnhubError = (error: any): boolean => {
-    const messageToSearch = (error?.message || JSON.stringify(error)).toLowerCase();
-    return messageToSearch.includes('finnhub');
-};
-
 const handleApiError = (error: any, context: string): Error => {
-    console.error(`Error in ${context}:`, error);
-    if (checkIsFinnhubError(error)) {
-        return new Error(`The Financial Data API call failed for ${context}. Please verify that the FINNHUB_API_KEY is configured correctly.`);
-    }
-    return new Error(`An unknown error occurred while fetching ${context}.`);
+    console.error(`Error fetching from Finnhub for ${context}:`, error);
+    return new Error(`The Financial Data API call failed for ${context}. Please verify that the FINNHUB_API_KEY is configured correctly.`);
 };
 
 export const fetchQuotes = async (tickers: string[], apiMode: ApiMode): Promise<Record<string, Quote>> => {
@@ -134,7 +126,7 @@ export const getCompanyNews = async (ticker: string, apiMode: ApiMode): Promise<
         if(!response.ok) throw new Error(`Finnhub company news error: ${response.statusText}`);
         const data = await response.json();
         
-        return data.slice(0, 5).map((item: any) => ({
+        return data.slice(0, 5).map((item: any): NewsItem => ({
             headline: item.headline,
             url: item.url,
             source: item.source,
@@ -215,22 +207,22 @@ export const getFinancials = async (ticker: string, apiMode: ApiMode): Promise<F
 
         const incomeStatement = data.map((item: any) => ({
             year: item.year,
-            revenue: item.report.ic?.Revenues || 0,
-            netIncome: item.report.ic?.NetIncomeLoss || 0
+            revenue: item.report.ic?.find((r:any) => r.concept === 'Revenues')?.value || 0,
+            netIncome: item.report.ic?.find((r:any) => r.concept === 'NetIncomeLoss')?.value || 0,
         })).slice(0,10);
         
         const balanceSheet = data.map((item: any) => ({
             year: item.year,
-            totalAssets: item.report.bs?.Assets || 0,
-            totalLiabilities: item.report.bs?.Liabilities || 0,
-            totalEquity: item.report.bs?.StockholdersEquity || 0,
+            totalAssets: item.report.bs?.find((r:any) => r.concept === 'Assets')?.value || 0,
+            totalLiabilities: item.report.bs?.find((r:any) => r.concept === 'Liabilities')?.value || 0,
+            totalEquity: item.report.bs?.find((r:any) => r.concept === 'StockholdersEquity')?.value || 0,
         })).slice(0,10);
         
         const cashFlow = data.map((item: any) => ({
             year: item.year,
-            operatingCashFlow: item.report.cf?.NetCashProvidedByUsedInOperatingActivities || 0,
-            investingCashFlow: item.report.cf?.NetCashProvidedByUsedInInvestingActivities || 0,
-            financingCashFlow: item.report.cf?.NetCashProvidedByUsedInFinancingActivities || 0,
+            operatingCashFlow: item.report.cf?.find((r:any) => r.concept === 'NetCashProvidedByUsedInOperatingActivities')?.value || 0,
+            investingCashFlow: item.report.cf?.find((r:any) => r.concept === 'NetCashProvidedByUsedInInvestingActivities')?.value || 0,
+            financingCashFlow: item.report.cf?.find((r:any) => r.concept === 'NetCashProvidedByUsedInFinancingActivities')?.value || 0,
         })).slice(0,10);
 
         const result: FinancialStatementsData = {
