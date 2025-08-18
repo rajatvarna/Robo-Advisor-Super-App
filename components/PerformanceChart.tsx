@@ -107,14 +107,14 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ transactions }) => 
             <div className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke={ "var(--color-brand-border)"} />
+                        <CartesianGrid strokeDasharray="3 3" stroke={"var(--color-brand-border)"} />
                         <XAxis dataKey="date" stroke={"var(--color-brand-text-secondary)"} tick={{ fontSize: 12 }} />
                         <YAxis stroke={"var(--color-brand-text-secondary)"} tickFormatter={(value) => `${value}%`} />
                         <Tooltip
                           formatter={(value) => `${(value as number).toFixed(2)}%`}
-                          contentStyle={{ backgroundColor: 'var(--color-brand-primary)', borderColor: 'var(--color-brand-border)' }}
+                          contentStyle={{ backgroundColor: 'var(--color-brand-primary)', borderColor: 'var(--color-brand-border)', borderRadius: '0.5rem' }}
                         />
-                        <Legend />
+                        <Legend wrapperStyle={{ color: "var(--color-brand-text-secondary)" }}/>
                         <Line type="monotone" dataKey="portfolioValue" name="My Portfolio" stroke="#38BDF8" strokeWidth={2} dot={false} />
                         <Line type="monotone" dataKey="benchmarkValue" name="S&P 500" stroke="#9CA3AF" strokeWidth={2} dot={false} />
                     </LineChart>

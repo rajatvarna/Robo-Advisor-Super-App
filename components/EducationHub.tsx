@@ -1,5 +1,4 @@
 
-
 import * as React from 'react';
 import { generateEducationalContent } from '../services/geminiService';
 import type { EducationalContent } from '../types';
@@ -32,7 +31,7 @@ const ContentTypeIcon: React.FC<{ type: EducationalContent['type'], className?: 
     }
 }
 
-const ContentCard: React.FC<{ item: EducationalContent }> = ({ item }) => (
+const ContentCard: React.FC<{ item: EducationalContent }> = React.memo(({ item }) => (
     <a href={item.url} target="_blank" rel="noopener noreferrer" className="block bg-brand-secondary rounded-lg border border-brand-border shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col">
         <div className="h-40 bg-brand-primary flex items-center justify-center">
              <ContentTypeIcon type={item.type} className="w-16 h-16 text-brand-text-secondary opacity-50" />
@@ -47,7 +46,7 @@ const ContentCard: React.FC<{ item: EducationalContent }> = ({ item }) => (
             <p className="text-xs text-brand-text-secondary mt-auto">Source: {item.sourceName}</p>
         </div>
     </a>
-);
+));
 
 
 const EducationHub: React.FC = () => {

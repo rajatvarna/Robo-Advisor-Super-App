@@ -1,6 +1,4 @@
 
-
-
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -19,7 +17,7 @@ import AlertsPage from './components/AlertsPage';
 import AddHoldingModal from './components/AddHoldingModal';
 import AchievementToast from './components/AchievementToast';
 import Spinner from './components/icons/Spinner';
-import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements, getTopBusinessNews, generateDashboardInsights, generatePortfolioAlerts } from './services/geminiService';
+import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements, generateDashboardInsights, generatePortfolioAlerts } from './services/geminiService';
 import * as financialDataService from './services/financialDataService';
 import * as brokerageService from './services/brokerageService';
 import type { View, DashboardData, Holding, Transaction, AddHoldingData, Achievement, UserWatchlist, InvestmentGoal, Quote, BaseDashboardData } from './types';
@@ -499,9 +497,6 @@ const AppContent: React.FC = () => {
                 return newData;
             });
             checkAndUnlockAchievements('portfolio_score', { score: score.score });
-            
-            // Fetch general data that should be refreshed
-            await getTopBusinessNews(apiMode);
 
           } catch(err: any) {
               console.error("Data refresh failed", err);
@@ -510,7 +505,7 @@ const AppContent: React.FC = () => {
         };
 
         refreshData(); // Initial call
-        const intervalId = setInterval(refreshData, 5 * 60 * 1000); // Refresh every 5 minutes
+        const intervalId = setInterval(refreshData, 15 * 60 * 1000); // Refresh every 15 minutes
 
         return () => clearInterval(intervalId);
     }

@@ -1,5 +1,6 @@
 
 
+
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert } from '../types';
 import * as FallbackData from './fallbackData';
@@ -391,47 +392,6 @@ export const generateFollowUpQuestions = async (chatHistory: ChatMessage[], apiM
     }
 };
 
-export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        // Return a mock 'done' operation with a sample video URL for fallback mode.
-        return {
-            done: true,
-            response: {
-                generatedVideos: [{
-                    video: {
-                        uri: 'https://storage.googleapis.com/generative-ai-vision/veo-demo-videos/prompt-with-video/a_cinematic_shot_of_a_woman_walking_through_a_paddy_field_in_the_paddy_field.mp4'
-                    }
-                }]
-            }
-        };
-    }
-    try {
-        const operation = await ai.models.generateVideos({
-            model: 'veo-2.0-generate-001',
-            prompt,
-            config: {
-                numberOfVideos: 1,
-            }
-        });
-        return operation;
-    } catch (error) {
-        throw handleApiError(error, 'video briefing generation');
-    }
-};
-
-export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        // Fallback mode operations are returned as 'done' immediately, so polling is not expected.
-        return operation;
-    }
-    try {
-        const updatedOperation = await ai.operations.getVideosOperation({ operation });
-        return updatedOperation;
-    } catch (error) {
-        throw handleApiError(error, 'video operation status check');
-    }
-};
-
 export const generatePortfolio = async (answers: QuestionnaireAnswers, apiMode: ApiMode): Promise<PortfolioSuggestion> => {
     if (apiMode === 'opensource') return FallbackData.generatePortfolio(answers);
     const prompt = `Based on these answers, act as a robo-advisor. Generate a portfolio suggestion. Total allocation must sum to 100.\n\nAnswers:\n- Age: ${answers.age}\n- Horizon: ${answers.horizon}\n- Goal: ${answers.goal}\n- Risk: ${answers.riskTolerance}\n- Liquidity: ${answers.liquidity}\n\nProvide JSON with risk profile, allocation percentages, and a clear explanation.`;
@@ -542,5 +502,41 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
         return data;
     } catch (error) {
         throw handleApiError(error, `stock comparison for ${tickers.join(', ')}`);
+    }
+};
+
+export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
+    if (apiMode === 'opensource') {
+        // Return a mock pending operation. The pollOperation function in the component will then call
+        // getVideoOperationStatus, which will return a completed state.
+        return { done: false, name: 'fallback-operation' };
+    }
+
+    try {
+        const operation = await ai.models.generateVideos({
+            model: 'veo-2.0-generate-001',
+            prompt: prompt,
+            config: {
+                numberOfVideos: 1,
+            },
+        });
+        return operation;
+    } catch (error) {
+        throw handleApiError(error, 'video briefing generation');
+    }
+};
+
+export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
+    if (apiMode === 'opensource') {
+        // In fallback mode, we simulate the operation completing successfully after one poll.
+        // The component logic in BriefingsPage.tsx will handle providing a sample video URL.
+        return { done: true, response: { generatedVideos: [] } };
+    }
+
+    try {
+        const updatedOperation = await ai.operations.getVideosOperation({ operation });
+        return updatedOperation;
+    } catch (error) {
+        throw handleApiError(error, 'video operation status check');
     }
 };

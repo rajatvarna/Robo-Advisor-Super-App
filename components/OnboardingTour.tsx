@@ -1,7 +1,7 @@
 
-
 import * as React from 'react';
 import Joyride, { Step } from 'react-joyride';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface OnboardingTourProps {
     run: boolean;
@@ -9,6 +9,8 @@ interface OnboardingTourProps {
 }
 
 const OnboardingTour: React.FC<OnboardingTourProps> = ({ run, onTourEnd }) => {
+    const { theme } = useTheme();
+
     const steps: Step[] = [
         {
             target: '#dashboard-nav-link',
@@ -46,16 +48,43 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ run, onTourEnd }) => {
             placement: 'bottom',
         },
         {
-            target: '#advisor-nav-link',
-            content: "Need guidance? The AI Advisor asks a few questions to suggest a personalized investment plan for you.",
-            placement: 'bottom',
-        },
-        {
-            target: '#chatbot-nav-link',
-            content: "Have any questions? Our AI Chatbot is available 24/7 to help you with financial concepts or app features.",
+            target: '#ai-tools-dropdown',
+            content: "Explore our AI Tools, like the AI Advisor and Chatbot, to get personalized guidance and answers to your financial questions.",
             placement: 'bottom',
         },
     ];
+
+    const tourStyles = {
+        options: {
+            arrowColor: theme === 'dark' ? '#1F2937' : '#FFFFFF',
+            backgroundColor: theme === 'dark' ? '#1F2937' : '#FFFFFF',
+            overlayColor: theme === 'dark' ? 'rgba(13, 17, 23, 0.8)' : 'rgba(0, 0, 0, 0.5)',
+            primaryColor: theme === 'dark' ? '#38BDF8' : '#2563EB',
+            textColor: theme === 'dark' ? '#F9FAFB' : '#111827',
+            zIndex: 1000,
+        },
+        tooltip: {
+            border: `1px solid ${theme === 'dark' ? '#374151' : '#E5E7EB'}`,
+            borderRadius: '8px',
+        },
+        buttonClose: {
+            color: '#9CA3AF',
+        },
+        buttonNext: {
+            backgroundColor: theme === 'dark' ? '#38BDF8' : '#2563EB',
+            borderRadius: '6px',
+            fontSize: '14px',
+            padding: '8px 16px',
+        },
+        buttonBack: {
+            color: '#9CA3AF',
+        },
+        buttonSkip: {
+            color: '#9CA3AF',
+            fontSize: '14px'
+        }
+    };
+
 
     return (
         <Joyride
@@ -69,36 +98,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ run, onTourEnd }) => {
                     onTourEnd();
                 }
             }}
-            styles={{
-                options: {
-                    arrowColor: '#161B22',
-                    backgroundColor: '#161B22',
-                    overlayColor: 'rgba(13, 17, 23, 0.8)',
-                    primaryColor: '#2F81F7',
-                    textColor: '#E6EDF3',
-                    zIndex: 1000,
-                },
-                tooltip: {
-                    border: '1px solid #30363D',
-                    borderRadius: '8px',
-                },
-                buttonClose: {
-                    color: '#8B949E',
-                },
-                buttonNext: {
-                    backgroundColor: '#2F81F7',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    padding: '8px 16px',
-                },
-                buttonBack: {
-                    color: '#8B949E',
-                },
-                buttonSkip: {
-                    color: '#8B949E',
-                    fontSize: '14px'
-                }
-            }}
+            styles={tourStyles}
         />
     );
 };
