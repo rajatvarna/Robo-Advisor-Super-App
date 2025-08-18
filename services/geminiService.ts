@@ -1,6 +1,5 @@
 
 
-
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert } from '../types';
 import * as FallbackData from './fallbackData';
@@ -81,16 +80,27 @@ const parseJsonFromText = (text: string, context: string): any => {
 };
 
 export const fetchStockDetailsForPortfolio = async (ticker: string, apiMode: ApiMode): Promise<Pick<Holding, 'companyName' | 'sector'>> => {
+    const cacheKey = `stock_details_${ticker}`;
+    const cached = cacheService.get<Pick<Holding, 'companyName' | 'sector'>>(cacheKey);
+    if (cached) return cached;
+    
     if (apiMode === 'opensource') return FallbackData.fetchStockDetailsForPortfolio(ticker);
     const prompt = `Act as a financial data API. For the ticker "${ticker.toUpperCase()}", provide the official company name and its GICS sector. Respond with a single, valid JSON object with keys "companyName" and "sector". Nothing else.`;
      try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: {type: Type.OBJECT, properties: {companyName: {type: Type.STRING}, sector: {type: Type.STRING}}}} });
         const data = JSON.parse(response.text.trim());
+        cacheService.set(cacheKey, data, 24 * 60 * 60 * 1000); // Cache for 24 hours
         return data;
     } catch (error) { throw handleApiError(error, `details for ticker ${ticker}`); }
 }
 
 export const generatePersonalizedNews = async (holdings: Holding[], watchlistTickers: string[], apiMode: ApiMode): Promise<NewsItem[]> => {
+    const holdingTickersKey = holdings.map(h => h.ticker).sort().join(',');
+    const watchlistTickersKey = [...new Set(watchlistTickers)].sort().join(',');
+    const cacheKey = `personalized_news_${holdingTickersKey}_${watchlistTickersKey}`;
+    const cached = cacheService.get<NewsItem[]>(cacheKey);
+    if (cached) return cached;
+
     if (apiMode === 'opensource') return FallbackData.generatePersonalizedNews(holdings.map(h => h.ticker), watchlistTickers);
     if (holdings.length === 0 && watchlistTickers.length === 0) return [];
 
@@ -122,6 +132,7 @@ export const generatePersonalizedNews = async (holdings: Holding[], watchlistTic
             if (!a.publishedAt || !b.publishedAt) return 0;
             return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
         });
+        cacheService.set(cacheKey, validNews, 2 * 60 * 60 * 1000); // Cache for 2 hours
         return validNews;
     } catch (error) { throw handleApiError(error, "personalized news"); }
 }
@@ -147,7 +158,7 @@ export const getTopBusinessNews = async (apiMode: ApiMode): Promise<NewsItem[]> 
             if (!a.publishedAt || !b.publishedAt) return 0;
             return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
         });
-        cacheService.set(cacheKey, validNews, 15 * 60 * 1000); // Cache for 15 minutes
+        cacheService.set(cacheKey, validNews, 60 * 60 * 1000); // Cache for 1 hour
         return validNews;
     } catch (error) {
         throw handleApiError(error, "top business news");
@@ -175,7 +186,7 @@ export const getCryptoNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
             if (!a.publishedAt || !b.publishedAt) return 0;
             return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
         });
-        cacheService.set(cacheKey, validNews, 15 * 60 * 1000); // Cache for 15 minutes
+        cacheService.set(cacheKey, validNews, 60 * 60 * 1000); // Cache for 1 hour
         return validNews;
     } catch (error) {
         throw handleApiError(error, "crypto news");
@@ -192,7 +203,7 @@ export const getTopCryptos = async (apiMode: ApiMode): Promise<CryptoData[]> => 
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const cryptos = parseJsonFromText(response.text, "top cryptos");
-        cacheService.set(cacheKey, cryptos, 15 * 60 * 1000); // Cache for 15 minutes
+        cacheService.set(cacheKey, cryptos, 60 * 60 * 1000); // Cache for 1 hour
         return cryptos;
     } catch (error) {
         throw handleApiError(error, "top cryptos");
@@ -201,6 +212,11 @@ export const getTopCryptos = async (apiMode: ApiMode): Promise<CryptoData[]> => 
 
 
 export const calculatePortfolioScore = async (holdings: Holding[], apiMode: ApiMode): Promise<PortfolioScore> => {
+    const holdingsKey = holdings.map(h => `${h.ticker}:${h.shares.toFixed(2)}`).sort().join(',');
+    const cacheKey = `portfolio_score_${holdingsKey}`;
+    const cached = cacheService.get<PortfolioScore>(cacheKey);
+    if(cached) return cached;
+
     if (apiMode === 'opensource') return FallbackData.calculatePortfolioScore(holdings);
     if(holdings.length === 0) return { score: 0, summary: "Add holdings to get a score."};
     const holdingsSummary = holdings.map(h => ({ ticker: h.ticker, value: h.totalValue, sector: h.sector }));
@@ -208,7 +224,9 @@ export const calculatePortfolioScore = async (holdings: Holding[], apiMode: ApiM
     const schema = { type: Type.OBJECT, properties: { score: {type: Type.NUMBER}, summary: {type: Type.STRING}}, required: ["score", "summary"] };
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema }});
-        return JSON.parse(response.text.trim());
+        const result = JSON.parse(response.text.trim());
+        cacheService.set(cacheKey, result, 2 * 60 * 60 * 1000); // Cache for 2 hours
+        return result;
     } catch (error) { throw handleApiError(error, "portfolio score"); }
 }
 
@@ -223,6 +241,16 @@ export const checkForAchievements = async (action: string, data: any, unlockedId
 }
 
 export const generateDashboardInsights = async (dashboardData: DashboardData, apiMode: ApiMode): Promise<string[]> => {
+    const keyParts = {
+        nw: dashboardData.netWorth.toFixed(0),
+        goal: dashboardData.goal?.name,
+        th: dashboardData.holdings.slice(0, 5).map(h => h.ticker).sort().join(','),
+        alloc: dashboardData.allocation.map(a => `${a.name}:${a.value.toFixed(0)}`).sort().join(',')
+    };
+    const cacheKey = `dashboard_insights_${JSON.stringify(keyParts)}`;
+    const cached = cacheService.get<string[]>(cacheKey);
+    if (cached) return cached;
+
     if (apiMode === 'opensource') return FallbackData.generateDashboardInsights();
     
     // Create a concise summary of the dashboard data for the prompt
@@ -254,13 +282,23 @@ export const generateDashboardInsights = async (dashboardData: DashboardData, ap
             config: { responseMimeType: "application/json", responseSchema: schema }
         });
         const result = JSON.parse(response.text.trim());
-        return result.insights || [];
+        const insights = result.insights || [];
+        cacheService.set(cacheKey, insights, 2 * 60 * 60 * 1000); // Cache for 2 hours
+        return insights;
     } catch (error) {
         throw handleApiError(error, "dashboard insights");
     }
 };
 
 export const generatePortfolioAlerts = async (dashboardData: DashboardData, apiMode: ApiMode): Promise<Alert[]> => {
+    const keyParts = {
+        h: dashboardData.holdings.map(h => `${h.ticker}:${h.dayChangePercent.toFixed(1)}`).sort().join(','),
+        alloc: dashboardData.allocation.map(a => `${a.name}:${a.value.toFixed(0)}`).sort().join(',')
+    };
+    const cacheKey = `portfolio_alerts_${JSON.stringify(keyParts)}`;
+    const cached = cacheService.get<Alert[]>(cacheKey);
+    if (cached) return cached;
+
     if (apiMode === 'opensource') return FallbackData.generatePortfolioAlerts(dashboardData);
     if (dashboardData.holdings.length === 0) return [];
 
@@ -305,11 +343,13 @@ export const generatePortfolioAlerts = async (dashboardData: DashboardData, apiM
 
         // Add timestamp and read status
         const alerts: Omit<Alert, 'timestamp' | 'read'>[] = alertsResult;
-        return alerts.map(alert => ({
+        const finalAlerts = alerts.map(alert => ({
             ...alert,
             timestamp: new Date().toISOString(),
             read: false
         }));
+        cacheService.set(cacheKey, finalAlerts, 2 * 60 * 60 * 1000); // Cache for 2 hours
+        return finalAlerts;
     } catch (error) {
         throw handleApiError(error, "portfolio alerts");
     }
@@ -317,27 +357,45 @@ export const generatePortfolioAlerts = async (dashboardData: DashboardData, apiM
 
 
 export const generateDividendData = async (holdings: Holding[], apiMode: ApiMode): Promise<Dividend[]> => {
+    const holdingsKey = holdings.map(h => `${h.ticker}:${h.shares.toFixed(2)}`).sort().join(',');
+    const cacheKey = `dividend_data_${holdingsKey}`;
+    const cached = cacheService.get<Dividend[]>(cacheKey);
+    if (cached) return cached;
+    
     if (apiMode === 'opensource') return FallbackData.generateDividendData(holdings);
     if(holdings.length === 0) return [];
     const prompt = `Act as a financial data API. Use Google Search to find the upcoming dividend information for the next 3 months for these holdings: ${JSON.stringify(holdings.map(h => ({ ticker: h.ticker, shares: h.shares })))}. For each stock that pays a dividend, provide its ticker, companyName, amountPerShare, totalAmount (calculated as shares * amountPerShare), payDate, and exDividendDate. Omit any non-dividend paying stocks. Respond with a single, valid JSON array of objects and nothing else.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }});
-        return parseJsonFromText(response.text, 'dividend data');
+        const data = parseJsonFromText(response.text, 'dividend data');
+        cacheService.set(cacheKey, data, 6 * 60 * 60 * 1000); // Cache for 6 hours
+        return data;
     } catch (error) { throw handleApiError(error, 'dividend data'); }
 }
 
 export const generateTaxLossOpportunities = async (holdings: Holding[], apiMode: ApiMode): Promise<TaxLossOpportunity[]> => {
+    const holdingsKey = holdings.map(h => `${h.ticker}:${h.unrealizedGain.toFixed(2)}`).sort().join(',');
+    const cacheKey = `tax_loss_opps_${holdingsKey}`;
+    const cached = cacheService.get<TaxLossOpportunity[]>(cacheKey);
+    if (cached) return cached;
+
     if (apiMode === 'opensource') return FallbackData.generateTaxLossOpportunities(holdings);
     if(holdings.length === 0) return [];
     const prompt = `Analyze for tax-loss harvesting. For each holding, the cost basis is provided. Identify up to 3 holdings with unrealized losses (current value < cost basis). For each, provide: ticker, companyName, sharesToSell (all shares), estimatedLoss, costBasis, currentValue, and a brief explanation. Holdings: ${JSON.stringify(holdings.map(h => ({ ticker: h.ticker, shares: h.shares, currentValue: h.totalValue, costBasis: h.costBasis })))}`;
     const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { ticker: {type: Type.STRING}, companyName: {type: Type.STRING}, sharesToSell: {type: Type.NUMBER}, estimatedLoss: {type: Type.NUMBER}, costBasis: {type: Type.NUMBER}, currentValue: {type: Type.NUMBER}, explanation: {type: Type.STRING} }, required: ["ticker", "companyName", "sharesToSell", "estimatedLoss", "costBasis", "currentValue", "explanation"]}};
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema }});
-        return JSON.parse(response.text.trim());
+        const data = JSON.parse(response.text.trim());
+        cacheService.set(cacheKey, data, 6 * 60 * 60 * 1000); // Cache for 6 hours
+        return data;
     } catch (error) { throw handleApiError(error, 'tax-loss opportunities'); }
 }
 
 export const generateEducationalContent = async (category: string, apiMode: ApiMode): Promise<EducationalContent[]> => {
+    const cacheKey = `edu_content_${category}`;
+    const cached = cacheService.get<EducationalContent[]>(cacheKey);
+    if (cached) return cached;
+
     if (apiMode === 'opensource') return FallbackData.generateEducationalContent(category);
     const prompt = `Act as a financial content curator. Use search to find 9 high-quality educational resources for "${category}". Cite sources by index. Respond with ONLY a JSON object: {"content": [...]}, where each item has id, type, title, summary, sourceName, sourceIndex. Do not invent URLs.`;
     try {
@@ -358,18 +416,63 @@ export const generateEducationalContent = async (category: string, apiMode: ApiM
         };
 
         const jsonText = response.text.trim();
-        return processJson(parseJsonFromText(jsonText, `educational content for ${category}`));
+        const result = processJson(parseJsonFromText(jsonText, `educational content for ${category}`));
+        cacheService.set(cacheKey, result, 24 * 60 * 60 * 1000); // Cache for 24 hours
+        return result;
 
     } catch (error) { throw handleApiError(error, `educational content for ${category}`); }
 };
 
 export const screenStocks = async (criteria: ScreenerCriteria, apiMode: ApiMode): Promise<ScreenerResult[]> => {
+    const cacheKey = `screener_${JSON.stringify(criteria)}`;
+    const cached = cacheService.get<ScreenerResult[]>(cacheKey);
+    if (cached) return cached;
+    
     if (apiMode === 'opensource') return FallbackData.screenStocks(criteria);
     const prompt = `Act as a US stock screener API. Use Google Search to find a list of up to 100 real US companies that match these criteria: Market Cap ($${criteria.marketCapMin}B - ${criteria.marketCapMax === Infinity ? 'any' : `$${criteria.marketCapMax}B`}), P/E Ratio (${criteria.peRatioMin} - ${criteria.peRatioMax === Infinity ? 'any' : criteria.peRatioMax}), Dividend Yield (${criteria.dividendYieldMin}% - ${criteria.dividendYieldMax === Infinity ? 'any' : `${criteria.dividendYieldMax}%`}), Sectors ([${criteria.sectors.join(', ') || 'Any'}]), Minimum Analyst Rating (${criteria.analystRating}). For market cap, use billions (e.g., 2100 for $2.1T). If a P/E or dividend yield is not applicable, return null. Respond with ONLY a valid JSON array of objects and nothing else.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
-        return parseJsonFromText(response.text, 'stock screener results') as ScreenerResult[];
+        const data = parseJsonFromText(response.text, 'stock screener results') as ScreenerResult[];
+        cacheService.set(cacheKey, data, 15 * 60 * 1000); // Cache for 15 minutes
+        return data;
     } catch (error) { throw handleApiError(error, 'stock screener results'); }
+};
+
+export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
+    if (apiMode === 'opensource') {
+        // Return a completed operation with no URI. The component will use a fallback video.
+        return {
+            done: true,
+            response: { generatedVideos: [] } // No video URI
+        };
+    }
+
+    try {
+        const operation = await ai.models.generateVideos({
+            model: 'veo-2.0-generate-001',
+            prompt: prompt,
+            config: {
+                numberOfVideos: 1,
+            },
+        });
+        return operation;
+    } catch (error) {
+        throw handleApiError(error, `video briefing generation`);
+    }
+};
+
+export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
+    if (apiMode === 'opensource') {
+        // In fallback, the operation from generateVideoBriefing is already 'done'.
+        return operation;
+    }
+    
+    try {
+        const updatedOperation = await ai.operations.getVideosOperation({ operation });
+        return updatedOperation;
+    } catch (error) {
+        throw handleApiError(error, `video operation status check`);
+    }
 };
 
 export const createChat = (apiMode: ApiMode): Chat => {
@@ -409,14 +512,14 @@ export const generateFinancials = async (ticker: string, apiMode: ApiMode): Prom
 
     if (apiMode === 'opensource') {
         const data = FallbackData.generateFinancials(ticker);
-        cacheService.set(cacheKey, data);
+        cacheService.set(cacheKey, data, 24 * 60 * 60 * 1000);
         return data;
     }
     const prompt = `Act as a financial data API. Use Google Search to find financial statement data for "${ticker}" for the last 10 fiscal years from sources like Morningstar or Yahoo Finance. Provide ONLY a valid JSON object with 'incomeStatement', 'balanceSheet', and 'cashFlow' arrays and nothing else.`;
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
         const data = parseJsonFromText(response.text, `financials for ${ticker}`) as FinancialStatementsData;
-        cacheService.set(cacheKey, data);
+        cacheService.set(cacheKey, data, 24 * 60 * 60 * 1000); // Cache for 24 hours
         return data;
     } catch (error) { throw handleApiError(error, `financials for ${ticker}`); }
 };
@@ -428,7 +531,7 @@ export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Pro
     
     if (apiMode === 'opensource') {
         const data = FallbackData.generateTranscripts(ticker);
-        cacheService.set(cacheKey, data);
+        cacheService.set(cacheKey, data, 24 * 60 * 60 * 1000);
         return data;
     }
     const prompt = `Use Google Search to find earnings call transcripts for "${ticker.toUpperCase()}". Find the 4 most recent ones. For each, provide the quarter, date, a concise summary, and a key quote. CITE YOUR SOURCES by index number. Respond with ONLY a valid JSON object of the format: {"transcripts": [{"quarter": "...", "date": "...", "summary": "...", "transcript": "...", "sourceIndex": 1}, ...]}. Do not invent URLs or sources.`;
@@ -448,7 +551,7 @@ export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Pro
         const text = response.text.trim();
         const parsedJson = parseJsonFromText(text, `transcripts for ${ticker}`);
         const result = processJson(parsedJson);
-        cacheService.set(cacheKey, result);
+        cacheService.set(cacheKey, result, 24 * 60 * 60 * 1000); // Cache for 24 hours
         return result;
 
     } catch (error) { throw handleApiError(error, `earnings transcripts for ${ticker}`); }
@@ -461,7 +564,7 @@ export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): P
 
     if (apiMode === 'opensource') {
         const data = FallbackData.generateStockAnalysis(ticker);
-        cacheService.set(cacheKey, data);
+        cacheService.set(cacheKey, data, 6 * 60 * 60 * 1000);
         return data;
     }
     const prompt = `Act as a senior analyst for "${ticker.toUpperCase()}". Use search to gather info. Provide analysis including: businessSummary, bullCase, bearCase, financialHealth (score 1-10 & summary), and 3 recentNews items (headline, summary, sentiment). CITE YOUR SOURCES by index number. Respond with ONLY a valid JSON object of the format: {"businessSummary": "...", "recentNews": [{"headline": "...", "summary": "...", "sentiment": "...", "sourceIndex": 1}], ...}. Do not invent URLs or sources.`;
@@ -478,7 +581,7 @@ export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): P
         const parsedJson = parseJsonFromText(text, `stock analysis for ${ticker}`);
         
         const result = processJson(parsedJson);
-        cacheService.set(cacheKey, result);
+        cacheService.set(cacheKey, result, 6 * 60 * 60 * 1000); // Cache for 6 hours
         return result;
     } catch (error) { throw handleApiError(error, `stock analysis for ${ticker}`); }
 }
@@ -490,7 +593,7 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
     
     if (apiMode === 'opensource') {
         const data = FallbackData.generateStockComparison(tickers);
-        cacheService.set(cacheKey, data);
+        cacheService.set(cacheKey, data, 6 * 60 * 60 * 1000);
         return data;
     }
     const prompt = `Act as a senior stock analyst API. Use Google Search to provide a detailed, side-by-side comparison for the stock tickers: ${tickers.join(', ')}. For each ticker, provide its company name, market cap (as a number in billions, e.g., 2100 for $2.1T), P/E ratio (as a number), dividend yield (as a number in percent, e.g., 1.5 for 1.5%), consensus analyst rating, a brief bull case, a brief bear case, and a one-sentence financial health summary. Provide the response as a single, valid JSON array and nothing else. If a value like P/E or dividend yield isn't applicable, use null.`;
@@ -498,45 +601,9 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
         const data = parseJsonFromText(response.text, `stock comparison for ${tickers.join(', ')}`) as StockComparisonData;
-        cacheService.set(cacheKey, data);
+        cacheService.set(cacheKey, data, 6 * 60 * 60 * 1000); // Cache for 6 hours
         return data;
     } catch (error) {
         throw handleApiError(error, `stock comparison for ${tickers.join(', ')}`);
-    }
-};
-
-export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        // Return a mock pending operation. The pollOperation function in the component will then call
-        // getVideoOperationStatus, which will return a completed state.
-        return { done: false, name: 'fallback-operation' };
-    }
-
-    try {
-        const operation = await ai.models.generateVideos({
-            model: 'veo-2.0-generate-001',
-            prompt: prompt,
-            config: {
-                numberOfVideos: 1,
-            },
-        });
-        return operation;
-    } catch (error) {
-        throw handleApiError(error, 'video briefing generation');
-    }
-};
-
-export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        // In fallback mode, we simulate the operation completing successfully after one poll.
-        // The component logic in BriefingsPage.tsx will handle providing a sample video URL.
-        return { done: true, response: { generatedVideos: [] } };
-    }
-
-    try {
-        const updatedOperation = await ai.operations.getVideosOperation({ operation });
-        return updatedOperation;
-    } catch (error) {
-        throw handleApiError(error, 'video operation status check');
     }
 };

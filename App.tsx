@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import Header from './components/Header';
 import RoboAdvisor from './components/RoboAdvisor';
@@ -505,7 +506,7 @@ const AppContent: React.FC = () => {
         };
 
         refreshData(); // Initial call
-        const intervalId = setInterval(refreshData, 15 * 60 * 1000); // Refresh every 15 minutes
+        const intervalId = setInterval(refreshData, 120 * 60 * 1000); // Refresh every 120 minutes
 
         return () => clearInterval(intervalId);
     }

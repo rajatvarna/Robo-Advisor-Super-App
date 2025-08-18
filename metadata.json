@@ -1,5 +1,7 @@
 {
-  "requestFramePermissions": [],
-  "name": "Robo Advisor Super App",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "name": "",
   "description": ""
 }
