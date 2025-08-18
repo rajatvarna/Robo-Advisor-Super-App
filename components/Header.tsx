@@ -21,18 +21,68 @@ const TrendingUpIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const SparklesIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.25 12h3.375a.375.375 0 0 1 .375.375v3.375a.375.375 0 0 1-.375.375h-3.375a.375.375 0 0 1-.375-.375v-3.375a.375.375 0 0 1 .375-.375ZM16.5 3.75h3.375a.375.375 0 0 1 .375.375v3.375a.375.375 0 0 1-.375.375h-3.375a.375.375 0 0 1-.375-.375V4.125a.375.375 0 0 1 .375-.375Z" />
   </svg>
 );
-const DotsHorizontalIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm.75 0a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.375 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm.75 0a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.375 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm.75 0a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z" />
-    </svg>
+const MoreIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" /></svg>
+);
+const ChartPieIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+  </svg>
+);
+const MagnifyingGlassIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+  </svg>
+);
+const BookOpenIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+  </svg>
+);
+const FilterIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.572a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+  </svg>
 );
 
 
-// --- Dropdown Components ---
-const Dropdown: React.FC<{ title: React.ReactNode; children: React.ReactNode; id?: string }> = ({ title, children, id }) => {
+// --- Main Header Components ---
+interface HeaderProps {
+  currentView: View;
+  setView: (view: View) => void;
+  onLogout: () => void;
+  unreadAlertsCount: number;
+}
+
+const NavButton: React.FC<{
+  view: View;
+  currentView: View;
+  setView: (view: View) => void;
+  children: React.ReactNode;
+  id?: string;
+}> = ({ view, currentView, setView, children, id }) => (
+  <button
+    id={id}
+    onClick={() => setView(view)}
+    className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+      currentView === view
+        ? 'bg-brand-accent text-white'
+        : 'text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text'
+    }`}
+  >
+    {children}
+  </button>
+);
+
+const Dropdown: React.FC<{
+    buttonContent: React.ReactNode;
+    children: React.ReactNode;
+    id?: string;
+}> = ({ buttonContent, children, id }) => {
     const [isOpen, setIsOpen] = React.useState(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
 
@@ -47,31 +97,18 @@ const Dropdown: React.FC<{ title: React.ReactNode; children: React.ReactNode; id
     }, []);
 
     return (
-        <div className="relative" ref={dropdownRef} id={id}>
+        <div className="relative" ref={dropdownRef}>
             <button
+                id={id}
                 onClick={() => setIsOpen(!isOpen)}
-                onMouseEnter={() => setIsOpen(true)}
-                onMouseLeave={(e) => {
-                    // Small delay to allow moving mouse to dropdown content
-                    setTimeout(() => {
-                        if (dropdownRef.current && !dropdownRef.current.contains(e.relatedTarget as Node)) {
-                           setIsOpen(false);
-                        }
-                    }, 100);
-                }}
-                className="px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 whitespace-nowrap flex items-center gap-1 text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text"
+                className="px-3 py-2 text-sm font-medium rounded-md transition-colors text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text flex items-center gap-1"
             >
-                {title}
-                <svg className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                {buttonContent}
+                <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
             </button>
             {isOpen && (
-                <div 
-                    onClick={() => setIsOpen(false)}
-                    onMouseEnter={() => setIsOpen(true)}
-                    onMouseLeave={() => setIsOpen(false)}
-                    className="absolute right-0 mt-2 w-56 origin-top-right bg-brand-primary border border-brand-border rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-20 animate-fade-in-up-fast"
-                >
-                    <div className="py-1">
+                <div className="absolute mt-2 w-56 bg-brand-primary border border-brand-border rounded-lg shadow-lg z-20 animate-fade-in-up-fast">
+                    <div className="p-2 space-y-1">
                         {children}
                     </div>
                 </div>
@@ -80,103 +117,84 @@ const Dropdown: React.FC<{ title: React.ReactNode; children: React.ReactNode; id
     );
 };
 
-const DropdownLink: React.FC<{ onClick: () => void; children: React.ReactNode; isActive: boolean }> = ({ onClick, children, isActive }) => (
-    <a
-        onClick={onClick}
-        className={`flex items-center gap-3 px-4 py-2 text-sm cursor-pointer ${
-            isActive 
-            ? 'bg-brand-accent text-white' 
-            : 'text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text'
-        }`}
+const DropdownLink: React.FC<{
+    view: View;
+    setView: (view: View) => void;
+    icon: React.ReactNode;
+    children: React.ReactNode;
+}> = ({ view, setView, icon, children }) => (
+    <button
+        onClick={() => setView(view)}
+        className="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md text-brand-text hover:bg-brand-secondary"
     >
-        {children}
-    </a>
+        <span className="text-brand-text-secondary">{icon}</span>
+        <span>{children}</span>
+    </button>
 );
 
 
-interface HeaderProps {
-  currentView: View;
-  setView: (view: View) => void;
-  onLogout: () => void;
-  unreadAlertsCount?: number;
-}
+const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout, unreadAlertsCount }) => {
+    const { theme, toggleTheme } = useTheme();
 
-const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout, unreadAlertsCount = 0 }) => {
-  const { theme, toggleTheme } = useTheme();
+    return (
+        <header className="bg-brand-primary border-b border-brand-border sticky top-0 z-10 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between h-16">
+                    {/* Left side: Logo and main navigation */}
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                             <svg className="h-8 w-8 text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15l3-3m-3 3l-3-3m3-3v6" />
+                            </svg>
+                        </div>
+                        <nav className="hidden md:flex items-baseline ml-10 space-x-2">
+                            <NavButton view="dashboard" currentView={currentView} setView={setView} id="dashboard-nav-link">Dashboard</NavButton>
+                            <NavButton view="portfolio" currentView={currentView} setView={setView} id="portfolio-nav-link">Portfolio</NavButton>
+                            <NavButton view="research" currentView={currentView} setView={setView} id="research-nav-link">Research</NavButton>
+                            
+                            <Dropdown buttonContent="Markets">
+                               <DropdownLink view="news" setView={setView} icon={<NewspaperIcon className="w-5 h-5"/>}>Top News</DropdownLink>
+                               <DropdownLink view="crypto" setView={setView} icon={<CryptoIcon className="w-5 h-5"/>}>Crypto</DropdownLink>
+                            </Dropdown>
 
-  const navLinkClasses = (view: View) =>
-    `px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 whitespace-nowrap flex items-center gap-2 ${
-      currentView === view
-        ? 'bg-brand-accent text-white'
-        : 'text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text'
-    }`;
+                             <Dropdown buttonContent="AI Tools" id="ai-tools-dropdown">
+                               <DropdownLink view="advisor" setView={setView} icon={<SparklesIcon className="w-5 h-5"/>}>AI Advisor</DropdownLink>
+                               <DropdownLink view="chatbot" setView={setView} icon={<BotIcon className="w-5 h-5"/>}>Chatbot</DropdownLink>
+                               <DropdownLink view="screener" setView={setView} icon={<FilterIcon className="w-5 h-5"/>}>Stock Screener</DropdownLink>
+                            </Dropdown>
 
-  return (
-    <header className="bg-brand-primary border-b border-brand-border sticky top-0 z-10 shadow-sm">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-               <svg className="h-9 w-9 text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15l3-3m-3 3l-3-3m3-3v6" />
-              </svg>
+                             <Dropdown buttonContent="More">
+                                <DropdownLink view="analytics" setView={setView} icon={<AnalyticsIcon className="w-5 h-5"/>}>Analytics</DropdownLink>
+                                <DropdownLink view="education" setView={setView} icon={<BookOpenIcon className="w-5 h-5"/>}>Education Hub</DropdownLink>
+                                <DropdownLink view="integrations" setView={setView} icon={<SettingsIcon className="w-5 h-5"/>}>Integrations</DropdownLink>
+                                <DropdownLink view="support" setView={setView} icon={<HeartIcon className="w-5 h-5"/>}>Support Us</DropdownLink>
+                            </Dropdown>
+                        </nav>
+                    </div>
+
+                    {/* Right side: Actions */}
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setView('alerts')} className="relative p-2 rounded-full text-brand-text-secondary hover:text-brand-text hover:bg-brand-secondary transition-colors" aria-label="View Alerts">
+                            <BellIcon className="h-6 w-6" />
+                            {unreadAlertsCount > 0 && (
+                                <span className="absolute top-1 right-1 flex h-4 w-4">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white text-xs items-center justify-center">{unreadAlertsCount}</span>
+                                </span>
+                            )}
+                        </button>
+                        <button onClick={toggleTheme} className="p-2 rounded-full text-brand-text-secondary hover:text-brand-text hover:bg-brand-secondary transition-colors" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+                            {theme === 'dark' ? <SunIcon className="h-6 w-6" /> : <MoonIcon className="h-6 w-6" />}
+                        </button>
+                        <button onClick={onLogout} className="text-sm font-medium text-brand-text-secondary hover:text-brand-text">
+                            Logout
+                        </button>
+                    </div>
+                </div>
             </div>
-            <span className="ml-3 text-xl font-extrabold text-brand-text hidden sm:inline">Robo Advisor</span>
-          </div>
-          <div className="flex items-center">
-            <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-              <a id="dashboard-nav-link" onClick={() => setView('dashboard')} className={navLinkClasses('dashboard')}>Dashboard</a>
-              <a id="portfolio-nav-link" onClick={() => setView('portfolio')} className={navLinkClasses('portfolio')}>Portfolio</a>
-              <a id="research-nav-link" onClick={() => setView('research')} className={navLinkClasses('research')}>Research</a>
-              
-              <Dropdown title={<div className="flex items-center gap-1"><TrendingUpIcon className="w-4 h-4" /> Markets</div>}>
-                  <DropdownLink onClick={() => setView('news')} isActive={currentView === 'news'}><NewspaperIcon className="w-5 h-5"/> Top News</DropdownLink>
-                  <DropdownLink onClick={() => setView('crypto')} isActive={currentView === 'crypto'}><CryptoIcon className="w-5 h-5"/> Crypto</DropdownLink>
-                  <DropdownLink onClick={() => setView('screener')} isActive={currentView === 'screener'}><svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-6a1 1 0 01-1-1v-6z" /></svg> Screener</DropdownLink>
-              </Dropdown>
-
-              <Dropdown id="ai-tools-dropdown" title={<div className="flex items-center gap-1"><SparklesIcon className="w-4 h-4" /> AI Tools</div>}>
-                  <DropdownLink onClick={() => setView('advisor')} isActive={currentView === 'advisor'}><BotIcon className="w-5 h-5"/> AI Advisor</DropdownLink>
-                  <DropdownLink onClick={() => setView('analytics')} isActive={currentView === 'analytics'}><AnalyticsIcon className="w-5 h-5"/> Analytics</DropdownLink>
-                  <DropdownLink onClick={() => setView('chatbot')} isActive={currentView === 'chatbot'}><svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg> Chatbot</DropdownLink>
-              </Dropdown>
-              
-              <Dropdown title={<DotsHorizontalIcon className="w-5 h-5" />}>
-                 <DropdownLink onClick={() => setView('education')} isActive={currentView === 'education'}><svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 14l9-5-9-5-9 5 9 5z" /><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222" /></svg> Education Hub</DropdownLink>
-                 <DropdownLink onClick={() => setView('integrations')} isActive={currentView === 'integrations'}><SettingsIcon className="w-5 h-5"/> Integrations</DropdownLink>
-                 <DropdownLink onClick={() => setView('support')} isActive={currentView === 'support'}><HeartIcon className="w-5 h-5"/> Support</DropdownLink>
-              </Dropdown>
-
-            </nav>
-            <button
-                onClick={() => setView('alerts')}
-                className="ml-4 p-2 rounded-full text-brand-text-secondary hover:bg-brand-secondary transition-colors relative"
-                aria-label="View alerts"
-            >
-                <BellIcon className="w-5 h-5" />
-                {unreadAlertsCount > 0 && (
-                    <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-brand-primary" />
-                )}
-            </button>
-            <button
-                onClick={toggleTheme}
-                className="ml-1 p-2 rounded-full text-brand-text-secondary hover:bg-brand-secondary transition-colors"
-                aria-label="Toggle theme"
-            >
-                {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
-            </button>
-            <button
-              onClick={onLogout}
-              className="ml-2 px-3 py-2 rounded-lg text-sm font-semibold border border-transparent text-brand-text-secondary hover:bg-brand-secondary hover:text-brand-text transition-colors duration-200 whitespace-nowrap"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
+        </header>
+    );
 };
 
 export default Header;

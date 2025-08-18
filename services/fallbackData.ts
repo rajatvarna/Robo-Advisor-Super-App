@@ -188,7 +188,7 @@ export const fetchHistoricalData = (ticker: string, startDate: string): {date: s
 };
 
 
-export const fetchStockDetailsForPortfolio = (ticker: string): Pick<Holding, 'companyName' | 'sector'> => ({
+export const fetchStockDetailsForPortfolio = (ticker: string): { companyName: string, sector: string } => ({
     companyName: `${ticker.toUpperCase()} Inc.`,
     sector: "Technology",
 });
@@ -425,6 +425,9 @@ export const generateFinancials = (ticker: string): FinancialStatementsData => (
         { year: 2023, operatingCashFlow: 30e9, investingCashFlow: -10e9, financingCashFlow: -15e9 },
         { year: 2022, operatingCashFlow: 28e9, investingCashFlow: -8e9, financingCashFlow: -12e9 },
     ],
+    incomeStatementKeys: ['revenue', 'netIncome'],
+    balanceSheetKeys: ['totalAssets', 'totalLiabilities', 'totalEquity'],
+    cashFlowKeys: ['operatingCashFlow', 'investingCashFlow', 'financingCashFlow'],
 });
 
 export const generateChartData = (ticker: string, timeframe: ChartTimeframe): StockChartDataPoint[] => {
@@ -451,7 +454,7 @@ export const generateTranscripts = (ticker: string): TranscriptsData => ({
         { quarter: 'Q2 2024 (Simulated)', date: '2024-07-25', summary: 'Summary of simulated earnings call.', transcript: 'We had a good quarter. We are optimistic about the future of our operations.', sourceIndex: 1 },
         { quarter: 'Q1 2024 (Simulated)', date: '2024-04-25', summary: 'Summary of Q1 simulated earnings call.', transcript: 'Q1 was solid for our main business segment.', sourceIndex: 1 }
     ],
-    sources: [{ uri: '#', title: 'Simulated Transcripts Inc.', index: 1 }]
+    sources: [{ uri: '#', title: 'Simulated Transcripts Inc.' }]
 });
 
 export const generateStockAnalysis = (ticker: string): StockAnalysisData => ({
@@ -459,7 +462,7 @@ export const generateStockAnalysis = (ticker: string): StockAnalysisData => ({
     bullCase: 'The company might perform well due to strong brand recognition and expansion into new markets.',
     bearCase: 'The company might face challenges from increased competition and shifting consumer preferences.',
     financialHealth: { score: 7, summary: 'Financial health is stable, with consistent revenue streams.' },
-    recentNews: [{ headline: 'Company Announces New Product Line', summary: "The company has revealed a new line of products expected to launch next quarter.", sentiment: 'Positive', sourceIndex: 1 }],
+    recentNews: [{ headline: 'Company Announces New Product Line', url: '#', source: 'Simulated News', summary: "The company has revealed a new line of products expected to launch next quarter.", sentiment: 'Positive', sourceIndex: 1, publishedAt: new Date().toISOString() }],
     sources: [{ uri: '#', title: 'Simulated Analysis Corp.', index: 1 }]
 });
 

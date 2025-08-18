@@ -80,115 +80,70 @@ const parseJsonFromText = (text: string, context: string): any => {
 };
 
 export const fetchStockDetailsForPortfolio = async (ticker: string, apiMode: ApiMode): Promise<Pick<Holding, 'companyName' | 'sector'>> => {
-    const cacheKey = `stock_details_${ticker}`;
-    const cached = cacheService.get<Pick<Holding, 'companyName' | 'sector'>>(cacheKey);
-    if (cached) return cached;
-    
-    if (apiMode === 'opensource') return FallbackData.fetchStockDetailsForPortfolio(ticker);
-    const prompt = `Act as a financial data API. For the ticker "${ticker.toUpperCase()}", provide the official company name and its GICS sector. Respond with a single, valid JSON object with keys "companyName" and "sector". Nothing else.`;
-     try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: {type: Type.OBJECT, properties: {companyName: {type: Type.STRING}, sector: {type: Type.STRING}}}} });
-        const data = JSON.parse(response.text.trim());
-        cacheService.set(cacheKey, data, 24 * 60 * 60 * 1000); // Cache for 24 hours
-        return data;
-    } catch (error) { throw handleApiError(error, `details for ticker ${ticker}`); }
+    return financialDataService.getCompanyProfile(ticker, apiMode);
 }
 
 export const generatePersonalizedNews = async (holdings: Holding[], watchlistTickers: string[], apiMode: ApiMode): Promise<NewsItem[]> => {
     const holdingTickersKey = holdings.map(h => h.ticker).sort().join(',');
     const watchlistTickersKey = [...new Set(watchlistTickers)].sort().join(',');
-    const cacheKey = `personalized_news_${holdingTickersKey}_${watchlistTickersKey}`;
+    const cacheKey = `personalized_news_finnhub_${holdingTickersKey}_${watchlistTickersKey}`;
     const cached = cacheService.get<NewsItem[]>(cacheKey);
     if (cached) return cached;
 
     if (apiMode === 'opensource') return FallbackData.generatePersonalizedNews(holdings.map(h => h.ticker), watchlistTickers);
     if (holdings.length === 0 && watchlistTickers.length === 0) return [];
-
-    // Limit tickers to avoid overly complex prompts that can cause internal errors
-    const topHoldingTickers = holdings
-        .sort((a, b) => b.totalValue - a.totalValue)
-        .slice(0, 10)
-        .map(h => h.ticker);
-    
-    const topWatchlistTickers = watchlistTickers.slice(0, 10);
-
-    const tickers = [...new Set([...topHoldingTickers, ...topWatchlistTickers])].join(', ');
-
-    if (!tickers) return [];
-
-    const prompt = `Act as a financial news curator. Prioritize reputable, verifiable sources like Bloomberg, Reuters, and the Wall Street Journal. Use Google Search to find 4 of the most recent, relevant news articles for these stocks: ${tickers}. Return the results sorted with the newest articles first. For each, provide its headline, a concise one-sentence summary, the source name, its direct and verifiable URL, and the publication date in ISO 8601 format. If a verifiable URL or publication date cannot be found, you MUST return null for that field. Respond with ONLY a valid JSON array of objects with keys "headline", "summary", "source", "url", and "publishedAt". Do not include markdown formatting or any other text outside the JSON array.`;
     
     try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
-        if (!response.text) {
-             throw new Error("The AI returned an empty response.");
-        }
-        const newsItems = parseJsonFromText(response.text, "personalized news");
-        if (!Array.isArray(newsItems)) {
-            throw new Error("Parsed JSON is not an array for personalized news.");
-        }
-        const validNews = newsItems.filter(item => item && typeof item === 'object' && item.headline && item.source);
-        validNews.sort((a, b) => {
+        const topHoldingTickers = holdings.sort((a, b) => b.totalValue - a.totalValue).slice(0, 5).map(h => h.ticker);
+        const tickers = [...new Set([...topHoldingTickers, ...watchlistTickers])];
+        if (tickers.length === 0) return [];
+
+        const newsPromises = tickers.map(ticker => financialDataService.getCompanyNews(ticker, apiMode));
+        const newsResults = await Promise.all(newsPromises);
+        
+        const allNews = newsResults.flat().sort((a, b) => {
             if (!a.publishedAt || !b.publishedAt) return 0;
             return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
         });
-        cacheService.set(cacheKey, validNews, 2 * 60 * 60 * 1000); // Cache for 2 hours
-        return validNews;
-    } catch (error) { throw handleApiError(error, "personalized news"); }
+
+        // Remove duplicates by URL
+        const uniqueNews = Array.from(new Map(allNews.map(item => [item.url, item])).values());
+        
+        const finalNews = uniqueNews.slice(0, 10);
+        cacheService.set(cacheKey, finalNews, 60 * 60 * 1000); // Cache for 1 hour
+        return finalNews;
+    } catch (error) {
+         console.error("Error fetching personalized news from Finnhub", error);
+         return FallbackData.generatePersonalizedNews(holdings.map(h=>h.ticker), watchlistTickers);
+    }
 }
 
 export const getTopBusinessNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
-    const cacheKey = 'top_business_news';
+    const cacheKey = 'top_business_news_finnhub';
     const cached = cacheService.get<NewsItem[]>(cacheKey);
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.getTopBusinessNews();
-    const prompt = `Act as a financial news aggregator. Prioritize major, verifiable news outlets like Bloomberg, Reuters, The Wall Street Journal, and Morningstar. Use Google Search to find 15 significant, recent business and financial news stories. Return the results sorted with the newest articles first. For each story, provide the headline, a concise one-sentence summary, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. If a verifiable URL or date cannot be found, you MUST return null for that field. Respond with ONLY a valid JSON array of objects, where each object has the keys "headline", "summary", "source", "url", and "publishedAt". Do not include any text outside the JSON array.`;
     try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
-        if (!response.text) {
-             throw new Error("The AI returned an empty response for top business news.");
-        }
-        const news = parseJsonFromText(response.text, "top business news");
-        if (!Array.isArray(news)) {
-            throw new Error("Parsed JSON is not an array for top business news.");
-        }
-        const validNews = news.filter(item => item && typeof item === 'object' && item.headline && item.source);
-        validNews.sort((a, b) => {
-            if (!a.publishedAt || !b.publishedAt) return 0;
-            return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-        });
-        cacheService.set(cacheKey, validNews, 60 * 60 * 1000); // Cache for 1 hour
-        return validNews;
-    } catch (error) {
+        const news = await financialDataService.getMarketNews('general', apiMode);
+        cacheService.set(cacheKey, news, 30 * 60 * 1000); // Cache for 30 minutes
+        return news;
+    } catch(error) {
         throw handleApiError(error, "top business news");
     }
 };
 
 export const getCryptoNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
-    const cacheKey = 'crypto_news';
+    const cacheKey = 'crypto_news_finnhub';
     const cached = cacheService.get<NewsItem[]>(cacheKey);
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.getCryptoNews();
-    const prompt = `Act as a crypto news aggregator. Prioritize major, verifiable sources like Coindesk, Cointelegraph, and The Block. Use Google Search to find 10 of the most recent, significant news stories about cryptocurrency. Return the results sorted with the newest articles first. For each story, provide the headline, the source name, the direct and verifiable URL to the article, and the publication date in ISO 8601 format. If a verifiable URL or publication date cannot be found, you MUST return null for that field. A summary is not needed. Respond with ONLY a valid JSON array of objects with keys "headline", "source", "url", and "publishedAt". Do not include any text outside the JSON array.`;
-    try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
-        if (!response.text) {
-            throw new Error("The AI returned an empty response for crypto news.");
-        }
-        const news = parseJsonFromText(response.text, "crypto news");
-         if (!Array.isArray(news)) {
-            throw new Error("Parsed JSON is not an array for crypto news.");
-        }
-        const validNews = news.filter(item => item && typeof item === 'object' && item.headline && item.source);
-        validNews.sort((a, b) => {
-            if (!a.publishedAt || !b.publishedAt) return 0;
-            return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-        });
-        cacheService.set(cacheKey, validNews, 60 * 60 * 1000); // Cache for 1 hour
-        return validNews;
-    } catch (error) {
+     try {
+        const news = await financialDataService.getMarketNews('crypto', apiMode);
+        cacheService.set(cacheKey, news, 30 * 60 * 1000); // Cache for 30 minutes
+        return news;
+    } catch(error) {
         throw handleApiError(error, "crypto news");
     }
 };
@@ -203,7 +158,7 @@ export const getTopCryptos = async (apiMode: ApiMode): Promise<CryptoData[]> => 
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const cryptos = parseJsonFromText(response.text, "top cryptos");
-        cacheService.set(cacheKey, cryptos, 60 * 60 * 1000); // Cache for 1 hour
+        cacheService.set(cacheKey, cryptos, 2 * 60 * 60 * 1000); // Cache for 2 hours
         return cryptos;
     } catch (error) {
         throw handleApiError(error, "top cryptos");
@@ -225,7 +180,7 @@ export const calculatePortfolioScore = async (holdings: Holding[], apiMode: ApiM
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema }});
         const result = JSON.parse(response.text.trim());
-        cacheService.set(cacheKey, result, 2 * 60 * 60 * 1000); // Cache for 2 hours
+        cacheService.set(cacheKey, result, 8 * 60 * 60 * 1000); // Cache for 8 hours
         return result;
     } catch (error) { throw handleApiError(error, "portfolio score"); }
 }
@@ -283,7 +238,7 @@ export const generateDashboardInsights = async (dashboardData: DashboardData, ap
         });
         const result = JSON.parse(response.text.trim());
         const insights = result.insights || [];
-        cacheService.set(cacheKey, insights, 2 * 60 * 60 * 1000); // Cache for 2 hours
+        cacheService.set(cacheKey, insights, 8 * 60 * 60 * 1000); // Cache for 8 hours
         return insights;
     } catch (error) {
         throw handleApiError(error, "dashboard insights");
@@ -348,13 +303,12 @@ export const generatePortfolioAlerts = async (dashboardData: DashboardData, apiM
             timestamp: new Date().toISOString(),
             read: false
         }));
-        cacheService.set(cacheKey, finalAlerts, 2 * 60 * 60 * 1000); // Cache for 2 hours
+        cacheService.set(cacheKey, finalAlerts, 8 * 60 * 60 * 1000); // Cache for 8 hours
         return finalAlerts;
     } catch (error) {
         throw handleApiError(error, "portfolio alerts");
     }
 };
-
 
 export const generateDividendData = async (holdings: Holding[], apiMode: ApiMode): Promise<Dividend[]> => {
     const holdingsKey = holdings.map(h => `${h.ticker}:${h.shares.toFixed(2)}`).sort().join(',');
@@ -433,46 +387,9 @@ export const screenStocks = async (criteria: ScreenerCriteria, apiMode: ApiMode)
     try {
         const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
         const data = parseJsonFromText(response.text, 'stock screener results') as ScreenerResult[];
-        cacheService.set(cacheKey, data, 15 * 60 * 1000); // Cache for 15 minutes
+        cacheService.set(cacheKey, data, 2 * 60 * 60 * 1000); // Cache for 2 hours
         return data;
     } catch (error) { throw handleApiError(error, 'stock screener results'); }
-};
-
-export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        // Return a completed operation with no URI. The component will use a fallback video.
-        return {
-            done: true,
-            response: { generatedVideos: [] } // No video URI
-        };
-    }
-
-    try {
-        const operation = await ai.models.generateVideos({
-            model: 'veo-2.0-generate-001',
-            prompt: prompt,
-            config: {
-                numberOfVideos: 1,
-            },
-        });
-        return operation;
-    } catch (error) {
-        throw handleApiError(error, `video briefing generation`);
-    }
-};
-
-export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
-    if (apiMode === 'opensource') {
-        // In fallback, the operation from generateVideoBriefing is already 'done'.
-        return operation;
-    }
-    
-    try {
-        const updatedOperation = await ai.operations.getVideosOperation({ operation });
-        return updatedOperation;
-    } catch (error) {
-        throw handleApiError(error, `video operation status check`);
-    }
 };
 
 export const createChat = (apiMode: ApiMode): Chat => {
@@ -506,22 +423,7 @@ export const generatePortfolio = async (answers: QuestionnaireAnswers, apiMode: 
 };
 
 export const generateFinancials = async (ticker: string, apiMode: ApiMode): Promise<FinancialStatementsData> => {
-    const cacheKey = `financials_${ticker}`;
-    const cachedData = cacheService.get<FinancialStatementsData>(cacheKey);
-    if (cachedData) return cachedData;
-
-    if (apiMode === 'opensource') {
-        const data = FallbackData.generateFinancials(ticker);
-        cacheService.set(cacheKey, data, 24 * 60 * 60 * 1000);
-        return data;
-    }
-    const prompt = `Act as a financial data API. Use Google Search to find financial statement data for "${ticker}" for the last 10 fiscal years from sources like Morningstar or Yahoo Finance. Provide ONLY a valid JSON object with 'incomeStatement', 'balanceSheet', and 'cashFlow' arrays and nothing else.`;
-    try {
-        const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
-        const data = parseJsonFromText(response.text, `financials for ${ticker}`) as FinancialStatementsData;
-        cacheService.set(cacheKey, data, 24 * 60 * 60 * 1000); // Cache for 24 hours
-        return data;
-    } catch (error) { throw handleApiError(error, `financials for ${ticker}`); }
+    return financialDataService.getFinancials(ticker, apiMode);
 };
 
 export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Promise<TranscriptsData> => {
@@ -540,12 +442,18 @@ export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Pro
         
         const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any, index: number) => ({ uri: chunk.web?.uri, title: chunk.web?.title, index: index + 1 })).filter(source => source.uri && source.title) ?? [];
 
-        if (groundingSources.length === 0) return { transcripts: [], sources: [] };
+        if (groundingSources.length === 0) {
+            return { 
+                transcripts: [], 
+                sources: [] 
+            };
+        }
 
-        const processJson = (parsedJson: any) => {
+        const processJson = (parsedJson: any): TranscriptsData => {
             const transcripts = parsedJson.transcripts || [];
             transcripts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            return { transcripts, sources: groundingSources };
+            const sources = groundingSources.map(s => ({ uri: s.uri, title: s.title || s.uri }));
+            return { transcripts, sources };
         };
 
         const text = response.text.trim();
@@ -605,5 +513,36 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
         return data;
     } catch (error) {
         throw handleApiError(error, `stock comparison for ${tickers.join(', ')}`);
+    }
+};
+
+export const generateVideoBriefing = async (prompt: string, apiMode: ApiMode): Promise<any> => {
+    if (apiMode === 'opensource') {
+        // Return a mock operation object for fallback mode
+        return { done: true, response: { generatedVideos: [{ video: { uri: 'fallback_video_url' } }] } };
+    }
+    try {
+        let operation = await ai.models.generateVideos({
+            model: 'veo-2.0-generate-001',
+            prompt: prompt,
+            config: {
+                numberOfVideos: 1,
+            }
+        });
+        return operation;
+    } catch (error) {
+        throw handleApiError(error, 'video briefing generation');
+    }
+};
+
+export const getVideoOperationStatus = async (operation: any, apiMode: ApiMode): Promise<any> => {
+    if (apiMode === 'opensource') {
+        return operation; // Fallback will be handled in the component
+    }
+    try {
+        const updatedOperation = await ai.operations.getVideosOperation({ operation: operation });
+        return updatedOperation;
+    } catch (error) {
+        throw handleApiError(error, 'video operation status');
     }
 };

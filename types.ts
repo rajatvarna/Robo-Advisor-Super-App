@@ -1,6 +1,6 @@
 
 
-export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto' | 'integrations' | 'alerts';
+export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto' | 'integrations' | 'alerts' | 'briefings';
 export type ApiMode = 'gemini' | 'opensource';
 
 export interface ChatMessage {
@@ -74,6 +74,7 @@ export interface NewsItem {
     publishedAt: string | null; // ISO 8601 format
     sentiment?: 'Positive' | 'Negative' | 'Neutral';
     ticker?: string; // Ticker it relates to
+    sourceIndex?: number;
 }
 
 export interface Alert {
@@ -189,12 +190,16 @@ export interface GroundingSource {
 export interface TranscriptsData {
     transcripts: {
         quarter: string;
+        year?: number;
         date: string;
         summary: string;
         transcript: string;
-        sourceIndex: number;
+        sourceIndex?: number;
     }[];
-    sources: GroundingSource[];
+    sources: {
+        uri: string;
+        title: string;
+    }[];
 }
 
 export interface StockAnalysisData {
@@ -205,13 +210,8 @@ export interface StockAnalysisData {
         score: number;
         summary: string;
     };
-    recentNews: {
-        headline: string;
-        summary: string;
-        sentiment: 'Positive' | 'Negative' | 'Neutral';
-        sourceIndex: number;
-    }[];
-    sources: GroundingSource[];
+    recentNews: NewsItem[];
+    sources?: GroundingSource[];
 }
 
 export interface ScreenerCriteria {
@@ -235,24 +235,18 @@ export interface ScreenerResult {
   analystRating: string;
 }
 
+export interface FinancialStatementItem {
+    year: number;
+    [key: string]: number;
+}
+
 export interface FinancialStatementsData {
-    incomeStatement: {
-        year: number;
-        revenue: number;
-        netIncome: number;
-    }[];
-    balanceSheet: {
-        year: number;
-        totalAssets: number;
-        totalLiabilities: number;
-        totalEquity: number;
-    }[];
-    cashFlow: {
-        year: number;
-        operatingCashFlow: number;
-        investingCashFlow: number;
-        financingCashFlow: number;
-    }[];
+    incomeStatement: FinancialStatementItem[];
+    balanceSheet: FinancialStatementItem[];
+    cashFlow: FinancialStatementItem[];
+    incomeStatementKeys: string[];
+    balanceSheetKeys: string[];
+    cashFlowKeys: string[];
 }
 
 // --- ANALYTICS PAGE ---

@@ -1,6 +1,8 @@
 
-import type { ApiMode, Quote, PortfolioHistoryPoint } from '../types';
+
+import type { ApiMode, Quote, PortfolioHistoryPoint, NewsItem, SecFiling, FinancialStatementsData } from '../types';
 import * as FallbackData from './fallbackData';
+import { cacheService } from './cacheService';
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 
@@ -78,7 +80,8 @@ export const fetchHistoricalData = async (ticker: string, startDate: string, api
             throw new Error(`Finnhub API error for ${ticker} history: ${response.statusText}`);
         }
         const data = await response.json();
-        if (data.s !== 'ok') {
+        if (data.s !== 'ok' || !data.t) {
+            console.warn(`No historical data from Finnhub for ${ticker}, using fallback.`);
             return FallbackData.fetchHistoricalData(ticker, startDate);
         }
         
@@ -92,3 +95,156 @@ export const fetchHistoricalData = async (ticker: string, startDate: string, api
         return FallbackData.fetchHistoricalData(ticker, startDate);
     }
 }
+
+export const getCompanyProfile = async (ticker: string, apiMode: ApiMode): Promise<{ companyName: string; sector: string; }> => {
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+        return FallbackData.fetchStockDetailsForPortfolio(ticker);
+    }
+    const cacheKey = `profile_${ticker}`;
+    const cached = cacheService.get<{ companyName: string; sector: string; }>(cacheKey);
+    if(cached) return cached;
+
+    try {
+        const response = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${FINNHUB_API_KEY}`);
+        if(!response.ok) throw new Error(`Finnhub profile error: ${response.statusText}`);
+        const data = await response.json();
+        if(!data.name) return FallbackData.fetchStockDetailsForPortfolio(ticker);
+
+        const profile = { companyName: data.name, sector: data.finnhubIndustry };
+        cacheService.set(cacheKey, profile, 24 * 60 * 60 * 1000); // 24 hour cache
+        return profile;
+    } catch (error) {
+        console.error(`Failed to fetch company profile for ${ticker}:`, error);
+        return FallbackData.fetchStockDetailsForPortfolio(ticker);
+    }
+};
+
+export const getCompanyNews = async (ticker: string, apiMode: ApiMode): Promise<NewsItem[]> => {
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+        return FallbackData.generatePersonalizedNews([ticker], []);
+    }
+    
+    const today = new Date();
+    const oneWeekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const from = oneWeekAgo.toISOString().split('T')[0];
+    const to = today.toISOString().split('T')[0];
+
+    try {
+        const response = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
+        if(!response.ok) throw new Error(`Finnhub company news error: ${response.statusText}`);
+        const data = await response.json();
+        
+        return data.slice(0, 5).map((item: any) => ({
+            headline: item.headline,
+            url: item.url,
+            source: item.source,
+            summary: item.summary,
+            publishedAt: new Date(item.datetime * 1000).toISOString(),
+            ticker: item.related,
+        }));
+    } catch (error) {
+        console.error(`Failed to fetch company news for ${ticker}:`, error);
+        return FallbackData.generatePersonalizedNews([ticker], []);
+    }
+};
+
+export const getMarketNews = async (category: 'general' | 'crypto', apiMode: ApiMode): Promise<NewsItem[]> => {
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+        return category === 'crypto' ? FallbackData.getCryptoNews() : FallbackData.getTopBusinessNews();
+    }
+    try {
+        const response = await fetch(`https://finnhub.io/api/v1/news?category=${category}&token=${FINNHUB_API_KEY}`);
+        if(!response.ok) throw new Error(`Finnhub market news error: ${response.statusText}`);
+        const data = await response.json();
+        return data.slice(0, 20).map((item: any): NewsItem => ({
+            headline: item.headline,
+            url: item.url,
+            source: item.source,
+            summary: item.summary,
+            publishedAt: new Date(item.datetime * 1000).toISOString(),
+            ticker: item.related,
+        }));
+    } catch(error) {
+        console.error(`Failed to fetch market news for ${category}:`, error);
+        return category === 'crypto' ? FallbackData.getCryptoNews() : FallbackData.getTopBusinessNews();
+    }
+};
+
+export const getFilings = async (ticker: string, apiMode: ApiMode): Promise<SecFiling[]> => {
+  if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+      return FallbackData.getFilings(ticker);
+  }
+  const cacheKey = `filings_finnhub_${ticker}`;
+  const cached = cacheService.get<SecFiling[]>(cacheKey);
+  if (cached) return cached;
+  try {
+      const response = await fetch(`https://finnhub.io/api/v1/stock/filings?symbol=${ticker}&token=${FINNHUB_API_KEY}`);
+      if (!response.ok) throw new Error(`Finnhub filings error: ${response.statusText}`);
+      const data = await response.json();
+      const filings = data.slice(0, 10).map((f: any): SecFiling => ({
+          accessionNumber: f.accessNumber,
+          filingDate: f.filedDate.split(' ')[0],
+          reportDate: f.acceptedDate.split(' ')[0],
+          form: f.form,
+          url: f.reportUrl,
+          primaryDocument: f.reportUrl,
+          primaryDocDescription: `${f.form} filing from ${f.filedDate}`
+      }));
+      cacheService.set(cacheKey, filings, 6 * 60 * 60 * 1000); // 6 hour cache
+      return filings;
+  } catch(error) {
+      console.error(`Failed to fetch filings for ${ticker}:`, error);
+      return FallbackData.getFilings(ticker);
+  }
+};
+
+export const getFinancials = async (ticker: string, apiMode: ApiMode): Promise<FinancialStatementsData> => {
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+        return FallbackData.generateFinancials(ticker);
+    }
+    const cacheKey = `financials_finnhub_${ticker}`;
+    const cached = cacheService.get<FinancialStatementsData>(cacheKey);
+    if (cached) return cached;
+
+    try {
+        const response = await fetch(`https://finnhub.io/api/v1/stock/financials-reported?symbol=${ticker}&freq=annual&token=${FINNHUB_API_KEY}`);
+        if (!response.ok) throw new Error(`Finnhub financials error: ${response.statusText}`);
+        const rawData = await response.json();
+        
+        const data = rawData.data;
+
+        const incomeStatement = data.map((item: any) => ({
+            year: item.year,
+            revenue: item.report.ic?.Revenues || 0,
+            netIncome: item.report.ic?.NetIncomeLoss || 0
+        })).slice(0,10);
+        
+        const balanceSheet = data.map((item: any) => ({
+            year: item.year,
+            totalAssets: item.report.bs?.Assets || 0,
+            totalLiabilities: item.report.bs?.Liabilities || 0,
+            totalEquity: item.report.bs?.StockholdersEquity || 0,
+        })).slice(0,10);
+        
+        const cashFlow = data.map((item: any) => ({
+            year: item.year,
+            operatingCashFlow: item.report.cf?.NetCashProvidedByUsedInOperatingActivities || 0,
+            investingCashFlow: item.report.cf?.NetCashProvidedByUsedInInvestingActivities || 0,
+            financingCashFlow: item.report.cf?.NetCashProvidedByUsedInFinancingActivities || 0,
+        })).slice(0,10);
+
+        const result: FinancialStatementsData = {
+            incomeStatement, balanceSheet, cashFlow,
+            incomeStatementKeys: ['revenue', 'netIncome'],
+            balanceSheetKeys: ['totalAssets', 'totalLiabilities', 'totalEquity'],
+            cashFlowKeys: ['operatingCashFlow', 'investingCashFlow', 'financingCashFlow'],
+        };
+
+        cacheService.set(cacheKey, result, 24 * 60 * 60 * 1000); // 24 hour cache
+        return result;
+
+    } catch (error) {
+        console.error(`Failed to fetch financials for ${ticker}:`, error);
+        return FallbackData.generateFinancials(ticker);
+    }
+};
