@@ -1,6 +1,6 @@
 
 
-import type { ApiMode, Quote, NewsItem, SecFiling, FinancialStatementsData } from '../types';
+import type { ApiMode, Quote, NewsItem, SecFiling, FinancialStatementsData, Dividend } from '../types';
 import * as FallbackData from './fallbackData';
 import { cacheService } from './cacheService';
 
@@ -238,5 +238,105 @@ export const getFinancials = async (ticker: string, apiMode: ApiMode): Promise<F
     } catch (error) {
         console.error(`Failed to fetch financials for ${ticker}:`, error);
         return FallbackData.generateFinancials(ticker);
+    }
+};
+
+export const getDividendData = async (ticker: string, apiMode: ApiMode): Promise<Omit<Dividend, 'companyName' | 'totalAmount'>[]> => {
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+        return [];
+    }
+    const today = new Date();
+    // Finnhub API requires a 'from' date for dividends, let's look back 30 days and forward one year
+    const fromDate = new Date();
+    fromDate.setDate(today.getDate() - 30);
+    const toDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+    
+    const from = fromDate.toISOString().split('T')[0];
+    const to = toDate.toISOString().split('T')[0];
+
+    try {
+        const response = await fetch(`https://finnhub.io/api/v1/stock/dividend2?symbol=${ticker}&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
+        if(!response.ok) throw new Error(`Finnhub dividend error: ${response.statusText}`);
+        const data = await response.json();
+        return data
+            .filter((d: any) => new Date(d.payDate) >= today) // Filter for future payment dates
+            .map((d: any) => ({
+                ticker: d.symbol,
+                amountPerShare: d.amount,
+                payDate: d.payDate,
+                exDividendDate: d.exDate,
+        }));
+    } catch (error) {
+        console.error(`Failed to fetch dividend data for ${ticker}:`, error);
+        return [];
+    }
+};
+
+export const getTranscripts = async (ticker: string, apiMode: ApiMode): Promise<any[]> => {
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+        const fbData = FallbackData.generateTranscripts(ticker);
+        return [{...fbData.transcripts[0], transcript: [{name: "CEO", speech: "This is a fallback transcript."}]}];
+    }
+    try {
+        const response = await fetch(`https://finnhub.io/api/v1/stock/transcript/list?symbol=${ticker}&token=${FINNHUB_API_KEY}`);
+        if(!response.ok) throw new Error(`Finnhub transcripts list error: ${response.statusText}`);
+        const listData = await response.json();
+
+        const latestTranscriptId = listData.transcripts[0]?.id;
+        if (!latestTranscriptId) return [];
+
+        const transcriptPromises = listData.transcripts.slice(0, 4).map(async (t: any) => {
+            const detailResponse = await fetch(`https://finnhub.io/api/v1/stock/transcript?id=${t.id}&token=${FINNHUB_API_KEY}`);
+            if(!detailResponse.ok) return null;
+            return await detailResponse.json();
+        });
+
+        const transcriptDetails = await Promise.all(transcriptPromises);
+        return transcriptDetails.filter(Boolean);
+
+    } catch (error) {
+        console.error(`Failed to fetch transcripts for ${ticker}:`, error);
+        return [];
+    }
+};
+
+export const getStockMetrics = async (ticker: string, apiMode: ApiMode): Promise<any> => {
+     if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+        return {
+            marketCap: 2000,
+            peRatio: 25,
+            dividendYield: 1.5,
+            analystRating: 'Buy'
+        };
+    }
+    try {
+        const metricsResponse = await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${ticker}&metric=all&token=${FINNHUB_API_KEY}`);
+        if(!metricsResponse.ok) throw new Error(`Finnhub metrics error: ${metricsResponse.statusText}`);
+        const metricsData = await metricsResponse.json();
+        
+        const recResponse = await fetch(`https://finnhub.io/api/v1/stock/recommendation?symbol=${ticker}&token=${FINNHUB_API_KEY}`);
+        if(!recResponse.ok) throw new Error(`Finnhub recommendation error: ${recResponse.statusText}`);
+        const recData = await recResponse.json();
+        
+        const latestRec = recData[0];
+        let rating = 'Hold';
+        if (latestRec) {
+            const total = latestRec.strongBuy + latestRec.buy + latestRec.hold + latestRec.sell + latestRec.strongSell;
+            if (total > 0) {
+                const buySide = latestRec.strongBuy + latestRec.buy;
+                if (buySide / total >= 0.7) rating = 'Strong Buy';
+                else if (buySide / total >= 0.4) rating = 'Buy';
+            }
+        }
+
+        return {
+            marketCap: metricsData.metric.marketCapitalization,
+            peRatio: metricsData.metric.peNormalizedAnnual,
+            dividendYield: metricsData.metric.dividendYieldIndicatedAnnual,
+            analystRating: rating
+        }
+    } catch (error) {
+         console.error(`Failed to fetch stock metrics for ${ticker}:`, error);
+         return { marketCap: null, peRatio: null, dividendYield: null, analystRating: 'N/A' };
     }
 };

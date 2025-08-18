@@ -451,10 +451,9 @@ export const generateChartData = (ticker: string, timeframe: ChartTimeframe): St
 
 export const generateTranscripts = (ticker: string): TranscriptsData => ({
     transcripts: [
-        { quarter: 'Q2 2024 (Simulated)', date: '2024-07-25', summary: 'Summary of simulated earnings call.', transcript: 'We had a good quarter. We are optimistic about the future of our operations.', sourceIndex: 1 },
-        { quarter: 'Q1 2024 (Simulated)', date: '2024-04-25', summary: 'Summary of Q1 simulated earnings call.', transcript: 'Q1 was solid for our main business segment.', sourceIndex: 1 }
-    ],
-    sources: [{ uri: '#', title: 'Simulated Transcripts Inc.' }]
+        { quarter: 'Q2 2024 (Simulated)', date: '2024-07-25', summary: 'Summary of simulated earnings call.', transcript: 'We had a good quarter. We are optimistic about the future of our operations.' },
+        { quarter: 'Q1 2024 (Simulated)', date: '2024-04-25', summary: 'Summary of Q1 simulated earnings call.', transcript: 'Q1 was solid for our main business segment.' }
+    ]
 });
 
 export const generateStockAnalysis = (ticker: string): StockAnalysisData => ({

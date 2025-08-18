@@ -194,11 +194,6 @@ export interface TranscriptsData {
         date: string;
         summary: string;
         transcript: string;
-        sourceIndex?: number;
-    }[];
-    sources: {
-        uri: string;
-        title: string;
     }[];
 }
 
