@@ -4,8 +4,6 @@ import type { ApiMode, Quote, NewsItem, SecFiling, FinancialStatementsData, Divi
 import * as FallbackData from './fallbackData';
 import { cacheService } from './cacheService';
 
-const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
-
 const handleApiError = (error: any, context: string): Error => {
     console.error(`Error fetching from Finnhub for ${context}:`, error);
     return new Error(`The Financial Data API call failed for ${context}. Please verify that the FINNHUB_API_KEY is configured correctly.`);
@@ -15,8 +13,10 @@ export const fetchQuotes = async (tickers: string[], apiMode: ApiMode): Promise<
     if (apiMode === 'opensource') {
         return FallbackData.fetchQuotes(tickers);
     }
-    if (!FINNHUB_API_KEY) {
-        console.warn("FINNHUB_API_KEY not set. Using fallback data for quotes.");
+
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+    if (!FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
+        console.warn("FINNHUB_API_KEY not set or is a placeholder. Using fallback data for quotes.");
         return FallbackData.fetchQuotes(tickers);
     }
 
@@ -58,8 +58,10 @@ export const fetchHistoricalData = async (ticker: string, startDate: string, api
     if (apiMode === 'opensource') {
         return FallbackData.fetchHistoricalData(ticker, startDate);
     }
-     if (!FINNHUB_API_KEY) {
-        console.warn("FINNHUB_API_KEY not set. Using fallback data for historical prices.");
+    
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+    if (!FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
+        console.warn("FINNHUB_API_KEY not set or is a placeholder. Using fallback data for historical prices.");
         return FallbackData.fetchHistoricalData(ticker, startDate);
     }
     
@@ -89,7 +91,8 @@ export const fetchHistoricalData = async (ticker: string, startDate: string, api
 }
 
 export const getCompanyProfile = async (ticker: string, apiMode: ApiMode): Promise<{ companyName: string; sector: string; }> => {
-    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
         return FallbackData.fetchStockDetailsForPortfolio(ticker);
     }
     const cacheKey = `profile_${ticker}`;
@@ -112,7 +115,8 @@ export const getCompanyProfile = async (ticker: string, apiMode: ApiMode): Promi
 };
 
 export const getCompanyNews = async (ticker: string, apiMode: ApiMode): Promise<NewsItem[]> => {
-    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
         return FallbackData.generatePersonalizedNews([ticker], []);
     }
     
@@ -141,7 +145,8 @@ export const getCompanyNews = async (ticker: string, apiMode: ApiMode): Promise<
 };
 
 export const getMarketNews = async (category: 'general' | 'crypto', apiMode: ApiMode): Promise<NewsItem[]> => {
-    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
         return category === 'crypto' ? FallbackData.getCryptoNews() : FallbackData.getTopBusinessNews();
     }
     try {
@@ -163,7 +168,8 @@ export const getMarketNews = async (category: 'general' | 'crypto', apiMode: Api
 };
 
 export const getFilings = async (ticker: string, apiMode: ApiMode): Promise<SecFiling[]> => {
-  if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+  const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+  if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
       return FallbackData.getFilings(ticker);
   }
   const cacheKey = `filings_finnhub_${ticker}`;
@@ -191,7 +197,8 @@ export const getFilings = async (ticker: string, apiMode: ApiMode): Promise<SecF
 };
 
 export const getFinancials = async (ticker: string, apiMode: ApiMode): Promise<FinancialStatementsData> => {
-    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
         return FallbackData.generateFinancials(ticker);
     }
     const cacheKey = `financials_finnhub_${ticker}`;
@@ -242,7 +249,8 @@ export const getFinancials = async (ticker: string, apiMode: ApiMode): Promise<F
 };
 
 export const getDividendData = async (ticker: string, apiMode: ApiMode): Promise<Omit<Dividend, 'companyName' | 'totalAmount'>[]> => {
-    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
         return [];
     }
     const today = new Date();
@@ -273,7 +281,8 @@ export const getDividendData = async (ticker: string, apiMode: ApiMode): Promise
 };
 
 export const getTranscripts = async (ticker: string, apiMode: ApiMode): Promise<any[]> => {
-    if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+    if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
         const fbData = FallbackData.generateTranscripts(ticker);
         return [{...fbData.transcripts[0], transcript: [{name: "CEO", speech: "This is a fallback transcript."}]}];
     }
@@ -301,7 +310,8 @@ export const getTranscripts = async (ticker: string, apiMode: ApiMode): Promise<
 };
 
 export const getStockMetrics = async (ticker: string, apiMode: ApiMode): Promise<any> => {
-     if (apiMode === 'opensource' || !FINNHUB_API_KEY) {
+     const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+     if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
         return {
             marketCap: 2000,
             peRatio: 25,

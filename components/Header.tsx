@@ -142,11 +142,18 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout, unreadA
                 <div className="flex items-center justify-between h-16">
                     {/* Left side: Logo and main navigation */}
                     <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                             <svg className="h-8 w-8 text-brand-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15l3-3m-3 3l-3-3m3-3v6" />
+                        <div className="flex items-center flex-shrink-0 cursor-pointer" onClick={() => setView('dashboard')}>
+                            <svg className="h-8 w-auto" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <linearGradient id="logo-gradient" x1="12" y1="2" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+                                        <stop stopColor="var(--color-brand-accent)"/>
+                                        <stop offset="1" stopColor="var(--color-brand-accent-hover)"/>
+                                    </linearGradient>
+                                </defs>
+                                <path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3z" fill="url(#logo-gradient)"/>
+                                <path d="M10.5 14.5l-3-3 1.41-1.41L10.5 11.67l4.59-4.59L16.5 8.5l-6 6z" fill="white" opacity="0.9"/>
                             </svg>
+                            <span className="ml-2 text-xl font-bold tracking-tight text-brand-text">RoboAdvisor</span>
                         </div>
                         <nav className="hidden md:flex items-baseline ml-10 space-x-2">
                             <NavButton view="dashboard" currentView={currentView} setView={setView} id="dashboard-nav-link">Dashboard</NavButton>
