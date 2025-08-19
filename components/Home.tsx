@@ -1,5 +1,4 @@
 
-
 import * as React from 'react';
 import GoogleIcon from './icons/GoogleIcon';
 import GithubIcon from './icons/GithubIcon';
@@ -116,15 +115,15 @@ const Home: React.FC<HomeProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-brand-body-bg text-brand-text font-sans flex flex-col items-center justify-center p-4 animate-fade-in">
       <div className="text-center mb-10 max-w-3xl">
-        <svg className="h-20 w-20 mx-auto mb-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg className="h-20 w-20 mx-auto mb-4" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <linearGradient id="logo-gradient" x1="12" y1="2" x2="12" y2="23" gradientUnits="userSpaceOnUse">
+                <linearGradient id="logo-gradient" x1="16" y1="4" x2="16" y2="28" gradientUnits="userSpaceOnUse">
                     <stop stopColor="var(--color-brand-accent)"/>
                     <stop offset="1" stopColor="var(--color-brand-accent-hover)"/>
                 </linearGradient>
             </defs>
-            <path d="M12 2.25C12 2.25 4.5 4.5 4.5 11.25c0 6.188 6.188 9.75 7.5 10.5 1.313-.75 7.5-4.313 7.5-10.5C19.5 4.5 12 2.25 12 2.25z" fill="url(#logo-gradient)"/>
-            <path d="M10.125 15l-3.375-3.375 1.05-1.05 2.325 2.325 5.175-5.175 1.05 1.05-6.225 6.225z" fill="white" opacity="0.95"/>
+            <path d="M16 4L4 28H28L16 4Z" fill="url(#logo-gradient)"/>
+            <path d="M16 4L10 18H22L16 4Z" fill="white" opacity="0.3"/>
         </svg>
         <h1 className="text-4xl sm:text-6xl font-extrabold text-brand-text tracking-tight">
           Your Personal AI <span className="text-brand-accent">Financial Co-pilot</span>
