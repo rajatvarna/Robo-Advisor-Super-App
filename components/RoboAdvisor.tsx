@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { questionnaire } from '../constants';
 import { generatePortfolio } from '../services/geminiService';
-import type { QuestionnaireAnswers, PortfolioSuggestion } from '../types';
+import type { QuestionnaireAnswers, PortfolioSuggestion, User } from '../types';
 import Spinner from './icons/Spinner';
 import AllocationComparison from './AllocationComparison';
 import { useApi } from '../contexts/ApiContext';
@@ -17,9 +17,10 @@ const initialAnswers: QuestionnaireAnswers = {
 
 interface RoboAdvisorProps {
   currentAllocation: { name: string; value: number }[];
+  user: User;
 }
 
-const RoboAdvisor: React.FC<RoboAdvisorProps> = ({ currentAllocation }) => {
+const RoboAdvisor: React.FC<RoboAdvisorProps> = ({ currentAllocation, user }) => {
   const [step, setStep] = React.useState(0);
   const [answers, setAnswers] = React.useState<QuestionnaireAnswers>(initialAnswers);
   const [suggestion, setSuggestion] = React.useState<PortfolioSuggestion | null>(null);

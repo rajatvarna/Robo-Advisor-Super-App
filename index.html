@@ -12,6 +12,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script src="process.env.js"></script>
+    <script src="firebase.config.js"></script>
     <script>
     tailwind.config = {
       theme: {
@@ -42,7 +43,9 @@
     "recharts": "https://esm.sh/recharts@2.12.7",
     "@google/genai": "https://esm.sh/@google/genai@^1.13.0",
     "react-joyride": "https://esm.sh/react-joyride@2.8.2",
-    "marked": "https://esm.sh/marked@13.0.2"
+    "marked": "https://esm.sh/marked@13.0.2",
+    "firebase/app": "https://esm.sh/firebase@10.12.2/app",
+    "firebase/auth": "https://esm.sh/firebase@10.12.2/auth"
   }
 }
 </script>
@@ -108,10 +111,10 @@
   .chatbot-content a { color: var(--color-brand-accent); text-decoration: underline; }
   .chatbot-content strong { font-weight: 600; color: var(--color-brand-text); }
   .chatbot-content code { background-color: rgba(128,128,128,0.2); padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-family: monospace; }
-  .chatbot-content blockquote { border-left: 4px solid var(--color-brand-border); padding-left: 1rem; color: var(--color-brand-text-secondary); margin-bottom: 0.75rem; }
+  .chatbot-content blockquote { border-left: 4px solid var(--color-brand-border); padding-left: 1rem; margin-left: 0; color: var(--color-brand-text-secondary); }
 </style>
-</head>
-  <body class="bg-brand-body-bg">
+  </head>
+  <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

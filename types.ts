@@ -1,6 +1,6 @@
 
 
-export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto' | 'integrations' | 'alerts';
+export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto' | 'integrations' | 'alerts' | 'subscription';
 export type ApiMode = 'gemini' | 'opensource';
 
 export interface ChatMessage {
@@ -13,9 +13,11 @@ export interface ChatMessage {
 }
 
 export interface User {
+  uid: string;
   name: string;
   email: string;
   memberSince: string;
+  subscription: 'free' | 'premium';
 }
 
 export interface AddHoldingData {

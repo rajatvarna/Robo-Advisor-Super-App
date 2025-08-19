@@ -20,7 +20,7 @@ import Spinner from './components/icons/Spinner';
 import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements, generateDashboardInsights, generatePortfolioAlerts } from './services/geminiService';
 import * as financialDataService from './services/financialDataService';
 import * as brokerageService from './services/brokerageService';
-import type { View, DashboardData, Holding, Transaction, AddHoldingData, Achievement, UserWatchlist, InvestmentGoal, Quote, BaseDashboardData } from './types';
+import type { View, DashboardData, Holding, Transaction, AddHoldingData, Achievement, UserWatchlist, InvestmentGoal, Quote, BaseDashboardData, User } from './types';
 import { ApiProvider, useApi } from './contexts/ApiContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ApiStatusBanner from './components/ApiStatusBanner';
@@ -29,16 +29,21 @@ import { ALL_ACHIEVEMENTS } from './services/fallbackData';
 import OnboardingTour from './components/OnboardingTour';
 import * as FallbackData from './services/fallbackData';
 import GoalSettingModal from './components/GoalSettingModal';
+import SubscriptionPage from './components/SubscriptionPage';
+import UpgradeModal from './components/UpgradeModal';
+import * as firebase from './services/firebaseService';
 
 const AppContent: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const [user, setUser] = React.useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = React.useState(true);
   const [view, setView] = React.useState<View>('dashboard');
   const [dashboardData, setDashboardData] = React.useState<DashboardData | null>(null);
   const [quotes, setQuotes] = React.useState<Record<string, Quote>>({});
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = React.useState(false);
+
   const [achievements, setAchievements] = React.useState<Achievement[]>([]);
   const [lastUnlockedAchievement, setLastUnlockedAchievement] = React.useState<Achievement | null>(null);
   const [runTour, setRunTour] = React.useState(false);
@@ -46,6 +51,30 @@ const AppContent: React.FC = () => {
 
   const { apiMode, setApiMode } = useApi();
 
+  const saveData = React.useCallback((data: DashboardData | null, uid: string) => {
+    if (data && uid) localStorage.setItem(`robo-advisor-data-${uid}`, JSON.stringify(data));
+  }, []);
+
+  // --- AUTHENTICATION ---
+  React.useEffect(() => {
+    const unsubscribe = firebase.onAuthStateChangedListener((appUser) => {
+      setUser(appUser);
+      setIsAuthLoading(false);
+      if (appUser) {
+        const savedData = localStorage.getItem(`robo-advisor-data-${appUser.uid}`);
+        if (savedData) {
+          const parsedData: DashboardData = JSON.parse(savedData);
+          setDashboardData(parsedData);
+          setAchievements(parsedData.achievements || ALL_ACHIEVEMENTS);
+        }
+      } else {
+        setDashboardData(null);
+      }
+      setIsLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+  
   const recalculateHoldings = React.useCallback((transactions: Transaction[], currentQuotes: Record<string, Quote>): Holding[] => {
     const holdingsMap = new Map<string, { shares: number; totalCost: number; companyName: string; sector?: string }>();
 
@@ -60,17 +89,16 @@ const AppContent: React.FC = () => {
         holding.shares += tx.shares;
         holding.totalCost += tx.totalValue;
       } else { // Sell
-        const costOfSoldShares = (holding.shares / holding.totalCost) * tx.shares;
+        const avgCostPerShare = holding.totalCost / holding.shares;
         holding.shares -= tx.shares;
-        holding.totalCost -= costOfSoldShares;
+        holding.totalCost -= tx.shares * avgCostPerShare;
       }
-      // Assuming company name from last transaction is most recent
       holding.companyName = tx.companyName;
       holding.sector = tx.sector;
     });
 
     return Array.from(holdingsMap.entries())
-      .filter(([, data]) => data.shares > 0.0001) // Filter out fully sold stocks
+      .filter(([, data]) => data.shares > 0.0001)
       .map(([ticker, data]) => {
         const quote = currentQuotes[ticker] || FallbackData.getFallbackQuote(ticker);
         const totalValue = data.shares * quote.currentPrice;
@@ -89,37 +117,12 @@ const AppContent: React.FC = () => {
       });
   }, []);
 
-  const saveDataToLocalStorage = React.useCallback((data: DashboardData | null) => {
-    if(data) localStorage.setItem('robo-advisor-data', JSON.stringify(data));
-  }, []);
-
-  // --- PERSISTENCE ---
+  // --- TIERED REAL-TIME PRICE UPDATES ---
   React.useEffect(() => {
-    const savedAuth = localStorage.getItem('robo-advisor-authenticated');
-    if (savedAuth === 'true') {
-      const savedData = localStorage.getItem('robo-advisor-data');
-      if (savedData) {
-        const parsedData: DashboardData = JSON.parse(savedData);
-        setDashboardData(parsedData);
-        setAchievements(parsedData.achievements || ALL_ACHIEVEMENTS);
-      }
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
-  }, []);
-  
-  // --- REAL-TIME PRICE UPDATES ---
-  React.useEffect(() => {
-    const updatePrices = async () => {
-      if (isAuthenticated && dashboardData) {
-        const allTickers = [
-          ...dashboardData.holdings.map(h => h.ticker),
-          ...dashboardData.watchlists.flatMap(wl => wl.tickers)
-        ];
-        if (allTickers.length === 0) return;
-        
+    const fetchQuotesForTickers = async (tickers: string[], isPortfolio: boolean) => {
+        if (tickers.length === 0) return;
         try {
-            const newQuotes = await financialDataService.fetchQuotes(allTickers, apiMode);
+            const newQuotes = await financialDataService.fetchQuotes(tickers, apiMode);
             setQuotes(prevQuotes => {
                 const updatedQuotes: Record<string, Quote> = {};
                 for (const ticker in newQuotes) {
@@ -130,21 +133,31 @@ const AppContent: React.FC = () => {
                 return { ...prevQuotes, ...updatedQuotes };
             });
         } catch(err: any) {
-             console.error("Failed to fetch price updates:", err);
+             console.error(`Failed to fetch ${isPortfolio ? 'portfolio' : 'watchlist'} price updates:`, err);
              if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
         }
-      }
     };
-    
-    updatePrices(); // Initial fetch
-    const interval = setInterval(updatePrices, 30000); // Update every 30 seconds
 
-    return () => clearInterval(interval);
-  }, [isAuthenticated, dashboardData?.holdings.length, dashboardData?.watchlists, apiMode, setApiMode]);
+    if (user && dashboardData) {
+        const portfolioTickers = dashboardData.holdings.map(h => h.ticker);
+        const watchlistTickers = [...new Set(dashboardData.watchlists.flatMap(wl => wl.tickers))].filter(t => !portfolioTickers.includes(t));
+
+        fetchQuotesForTickers(portfolioTickers, true);
+        fetchQuotesForTickers(watchlistTickers, false);
+
+        const portfolioInterval = setInterval(() => fetchQuotesForTickers(portfolioTickers, true), 30000); // High frequency for portfolio
+        const watchlistInterval = setInterval(() => fetchQuotesForTickers(watchlistTickers, false), 120000); // Lower frequency for watchlist
+
+        return () => {
+            clearInterval(portfolioInterval);
+            clearInterval(watchlistInterval);
+        };
+    }
+  }, [user, dashboardData?.holdings, dashboardData?.watchlists, apiMode, setApiMode]);
 
   // --- PORTFOLIO RECALCULATION ---
   React.useEffect(() => {
-    if (dashboardData && Object.keys(quotes).length > 0) {
+    if (dashboardData && Object.keys(quotes).length > 0 && user) {
       setDashboardData(prevData => {
         if (!prevData) return null;
         const newHoldings = recalculateHoldings(prevData.transactions, quotes);
@@ -160,38 +173,32 @@ const AppContent: React.FC = () => {
             value: (value / newNetWorth) * 100,
         })) : [];
 
-        return {
+        const updatedData = {
           ...prevData,
           holdings: newHoldings,
           netWorth: newNetWorth,
           allocation: newAllocation,
         };
+        saveData(updatedData, user.uid);
+        return updatedData;
       });
     }
-  }, [quotes, recalculateHoldings, dashboardData?.transactions]);
-
+  }, [quotes, recalculateHoldings, dashboardData?.transactions, user, saveData]);
   
   // --- USER ACTIONS ---
   const handleLogin = React.useCallback(() => {
-    setIsAuthenticated(true);
-    localStorage.setItem('robo-advisor-authenticated', 'true');
     setView('dashboard');
   }, []);
   
-  const handleLogout = React.useCallback(() => {
-    setIsAuthenticated(false);
-    setDashboardData(null);
-    setAchievements([]);
-    setQuotes({});
-    localStorage.clear();
+  const handleLogout = React.useCallback(async () => {
+    await firebase.signOutUser();
     setView('dashboard');
   }, []);
 
-  // Stable achievement checker that doesn't depend on dashboardData, preventing loops.
   const checkAndUnlockAchievements = React.useCallback((action: string, data: any) => {
+    if (!user) return;
     setDashboardData(prev => {
         if(!prev) return null;
-        
         const unlockedAchievementIds = prev.achievements.filter(a => a.unlocked).map(a => a.id);
         const newAchievements = checkForAchievements(action, data, unlockedAchievementIds);
 
@@ -209,14 +216,15 @@ const AppContent: React.FC = () => {
             if (latestUnlocked) setLastUnlockedAchievement(latestUnlocked);
             
             const newData = {...prev, achievements: updatedAchievements};
-            saveDataToLocalStorage(newData);
+            saveData(newData, user.uid);
             return newData;
         }
         return prev;
     });
-  }, [saveDataToLocalStorage, setLastUnlockedAchievement]);
+  }, [user, saveData]);
 
   const handleGenerateDemoData = React.useCallback(async () => {
+      if (!user) return;
       setIsLoading(true);
       setError(null);
       try {
@@ -243,6 +251,7 @@ const AppContent: React.FC = () => {
 
         const fullData: DashboardData = {
             ...baseData,
+            user,
             netWorth,
             allocation,
             holdings: liveHoldings,
@@ -256,15 +265,13 @@ const AppContent: React.FC = () => {
 
         setDashboardData(fullData);
         setQuotes(liveQuotes);
-        saveDataToLocalStorage(fullData);
+        saveData(fullData, user.uid);
 
-        const tourCompleted = localStorage.getItem('robo-advisor-tour-completed');
-        if (!tourCompleted) {
+        if (!localStorage.getItem(`robo-advisor-tour-completed-${user.uid}`)) {
           setTimeout(() => setRunTour(true), 500);
         }
         
-        const goalSet = localStorage.getItem('robo-advisor-goal-set');
-        if (!goalSet) {
+        if (!localStorage.getItem(`robo-advisor-goal-set-${user.uid}`)) {
            setTimeout(() => setIsGoalModalOpen(true), 600);
         }
 
@@ -274,14 +281,17 @@ const AppContent: React.FC = () => {
       } finally {
         setIsLoading(false);
       }
-  }, [saveDataToLocalStorage, apiMode]);
+  }, [saveData, apiMode, user, recalculateHoldings]);
 
   const handleTourEnd = React.useCallback(() => {
-    setRunTour(false);
-    localStorage.setItem('robo-advisor-tour-completed', 'true');
-  }, []);
+    if (user) {
+        setRunTour(false);
+        localStorage.setItem(`robo-advisor-tour-completed-${user.uid}`, 'true');
+    }
+  }, [user]);
   
   const handleAddHolding = React.useCallback(async (holdingData: AddHoldingData) => {
+      if(!user) return;
       const newQuote = await financialDataService.fetchQuotes([holdingData.ticker], apiMode);
       setQuotes(q => ({...q, ...newQuote}));
       const stockDetails = await fetchStockDetailsForPortfolio(holdingData.ticker, apiMode);
@@ -323,56 +333,47 @@ const AppContent: React.FC = () => {
               allocation: updatedAllocation,
               portfolioPerformance: [...prevData.portfolioPerformance, {date: new Date().toISOString().split('T')[0], price: updatedNetWorth}]
           };
-          saveDataToLocalStorage(newData);
+          saveData(newData, user.uid);
           const sectorCount = new Set(newData.holdings.map(h => h.sector).filter(Boolean)).size;
           checkAndUnlockAchievements('add_holding', { holdingsCount: newData.holdings.length, sectorCount });
           return newData;
       });
 
-  }, [apiMode, quotes, recalculateHoldings, checkAndUnlockAchievements, saveDataToLocalStorage]);
+  }, [apiMode, quotes, recalculateHoldings, checkAndUnlockAchievements, saveData, user]);
   
   const handleRunScreener = React.useCallback(() => {
       checkAndUnlockAchievements('run_screener', {});
   }, [checkAndUnlockAchievements]);
 
   const handleSetGoal = React.useCallback((goal: InvestmentGoal) => {
+    if (!user) return;
     setDashboardData(prev => {
         if(!prev) return null;
         const newData = { ...prev, goal };
-        saveDataToLocalStorage(newData);
+        saveData(newData, user.uid);
         return newData;
     });
-    localStorage.setItem('robo-advisor-goal-set', 'true');
+    localStorage.setItem(`robo-advisor-goal-set-${user.uid}`, 'true');
     setIsGoalModalOpen(false);
-  }, [saveDataToLocalStorage]);
+  }, [saveData, user]);
 
   const handleSyncBrokerage = React.useCallback(async (brokerage: 'Interactive Brokers') => {
+      if (!user) return;
       setIsLoading(true);
       setError(null);
       try {
-          let brokeragePortfolio: BaseDashboardData;
-          if (brokerage === 'Interactive Brokers') {
-              brokeragePortfolio = await brokerageService.syncInteractiveBrokersPortfolio(apiMode);
-          } else {
-              throw new Error("Unsupported brokerage.");
-          }
-
+          const brokeragePortfolio = await brokerageService.syncInteractiveBrokersPortfolio(apiMode);
           const allTickers = brokeragePortfolio.holdings.map(h => h.ticker);
           const liveQuotes = await financialDataService.fetchQuotes(allTickers, apiMode);
           setQuotes(liveQuotes);
-          
           const liveHoldings = recalculateHoldings(brokeragePortfolio.transactions, liveQuotes);
           const netWorth = liveHoldings.reduce((sum, h) => sum + h.totalValue, 0);
-
           const allocationMap = new Map<string, number>();
           liveHoldings.forEach(h => {
               const sector = h.sector || 'Stocks';
               allocationMap.set(sector, (allocationMap.get(sector) || 0) + h.totalValue);
           });
-          const allocation = netWorth > 0 ? Array.from(allocationMap.entries()).map(([name, value]) => ({
-              name,
-              value: (value / netWorth) * 100,
-          })) : [];
+          const allocation = netWorth > 0 ? Array.from(allocationMap.entries()).map(([name, value]) => ({ name, value: (value / netWorth) * 100 })) : [];
 
           setDashboardData(prevData => {
               if (!prevData) return null;
@@ -382,15 +383,9 @@ const AppContent: React.FC = () => {
                   transactions: brokeragePortfolio.transactions,
                   netWorth,
                   allocation,
-                  integrations: {
-                      ...prevData.integrations,
-                      interactiveBrokers: {
-                          connected: true,
-                          lastSync: new Date().toISOString(),
-                      },
-                  },
+                  integrations: { ...prevData.integrations, interactiveBrokers: { connected: true, lastSync: new Date().toISOString() } },
               };
-              saveDataToLocalStorage(newData);
+              saveData(newData, user.uid);
               return newData;
           });
       } catch (err: any) {
@@ -398,75 +393,75 @@ const AppContent: React.FC = () => {
       } finally {
           setIsLoading(false);
       }
-  }, [apiMode, recalculateHoldings, saveDataToLocalStorage]);
+  }, [apiMode, recalculateHoldings, saveData, user]);
 
   const handleDisconnectBrokerage = React.useCallback((brokerage: 'Interactive Brokers') => {
+    if (!user) return;
     setDashboardData(prev => {
         if (!prev) return null;
         const newData = {
             ...prev,
-            integrations: {
-                ...prev.integrations,
-                interactiveBrokers: {
-                    connected: false,
-                },
-            },
+            integrations: { ...prev.integrations, interactiveBrokers: { connected: false } },
         };
-        saveDataToLocalStorage(newData);
+        saveData(newData, user.uid);
         return newData;
     });
-  }, [saveDataToLocalStorage]);
+  }, [saveData, user]);
 
-    // --- WATCHLIST ACTIONS ---
   const handleAddWatchlist = (name: string) => {
+      if(!user) return;
       setDashboardData(prev => {
           if (!prev) return null;
           const newWatchlist: UserWatchlist = { id: `wl-${Date.now()}`, name, tickers: [] };
           const newData = { ...prev, watchlists: [...prev.watchlists, newWatchlist] };
-          saveDataToLocalStorage(newData);
+          saveData(newData, user.uid);
           return newData;
       });
   };
 
   const handleRenameWatchlist = (id: string, newName: string) => {
+      if(!user) return;
       setDashboardData(prev => {
           if (!prev) return null;
           const updatedWatchlists = prev.watchlists.map(wl => wl.id === id ? { ...wl, name: newName } : wl);
           const newData = { ...prev, watchlists: updatedWatchlists };
-          saveDataToLocalStorage(newData);
+          saveData(newData, user.uid);
           return newData;
       });
   };
 
   const handleDeleteWatchlist = (id: string) => {
+      if(!user) return;
       setDashboardData(prev => {
           if (!prev) return null;
           const updatedWatchlists = prev.watchlists.filter(wl => wl.id !== id);
           const newData = { ...prev, watchlists: updatedWatchlists };
-          saveDataToLocalStorage(newData);
+          saveData(newData, user.uid);
           return newData;
       });
   };
 
   const handleUpdateWatchlistTickers = (id: string, tickers: string[]) => {
+      if(!user) return;
       setDashboardData(prev => {
           if (!prev) return null;
           const updatedWatchlists = prev.watchlists.map(wl => wl.id === id ? { ...wl, tickers: tickers } : wl);
           const newData = { ...prev, watchlists: updatedWatchlists };
-          saveDataToLocalStorage(newData);
+          saveData(newData, user.uid);
           return newData;
       });
   };
 
   const handleMarkAllAlertsRead = React.useCallback(() => {
+    if (!user) return;
     setDashboardData(prev => {
         if (!prev) return null;
         const updatedAlerts = prev.alerts.map(a => ({ ...a, read: true }));
         const newData = { ...prev, alerts: updatedAlerts };
-        saveDataToLocalStorage(newData);
+        saveData(newData, user.uid);
         return newData;
     });
-  }, [saveDataToLocalStorage]);
+  }, [saveData, user]);
 
   const handleApiError = (err: any) => {
         if (err.message.includes('QUOTA_EXCEEDED')) {
@@ -479,7 +474,7 @@ const AppContent: React.FC = () => {
   
   // --- DATA REFRESHING & POLLING ---
   React.useEffect(() => {
-    if (isAuthenticated && dashboardData) {
+    if (user && dashboardData) {
         const refreshData = async () => {
           try {
             const allWatchlistTickers = dashboardData.watchlists.flatMap(wl => wl.tickers);
@@ -489,34 +484,34 @@ const AppContent: React.FC = () => {
                 generateDashboardInsights(dashboardData, apiMode),
                 generatePortfolioAlerts(dashboardData, apiMode),
             ]);
-
             setDashboardData(d => {
                 if(!d) return null;
                 const existingAlertIds = new Set(d.alerts.map(a => a.id));
                 const newUniqueAlerts = alerts.filter(a => !existingAlertIds.has(a.id));
                 const updatedAlerts = [...d.alerts, ...newUniqueAlerts];
-
                 const newData = {...d, personalizedNews: news, portfolioScore: score, dashboardInsights: insights, alerts: updatedAlerts };
-                saveDataToLocalStorage(newData);
+                saveData(newData, user.uid);
                 return newData;
             });
             checkAndUnlockAchievements('portfolio_score', { score: score.score });
-
           } catch(err: any) {
               console.error("Data refresh failed", err);
               if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
           }
         };
-
         refreshData();
         const intervalId = setInterval(refreshData, 480 * 60 * 1000); // Refresh every 8 hours
-
         return () => clearInterval(intervalId);
     }
-  }, [isAuthenticated, dashboardData?.holdings.length, dashboardData?.watchlists.length, apiMode, setApiMode, checkAndUnlockAchievements, saveDataToLocalStorage]);
+  }, [user, dashboardData?.holdings.length, dashboardData?.watchlists.length, apiMode, setApiMode, checkAndUnlockAchievements, saveData]);
 
+  if (isAuthLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen"><Spinner /><p className="mt-4 text-brand-text-secondary">Loading...</p></div>
+    );
+  }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Home onLogin={handleLogin} />;
   }
   
@@ -525,10 +520,7 @@ const AppContent: React.FC = () => {
   const renderView = () => {
     if (isLoading && !dashboardData) {
       return (
-        <div className="flex flex-col items-center justify-center h-96">
-          <Spinner />
-          <p className="mt-4 text-brand-text-secondary">Loading your financial universe...</p>
-        </div>
+        <div className="flex flex-col items-center justify-center h-96"><Spinner /><p className="mt-4 text-brand-text-secondary">Loading your financial universe...</p></div>
       );
     }
     if (error && view !== 'dashboard') {
@@ -545,7 +537,12 @@ const AppContent: React.FC = () => {
       case 'screener':
         return <Screener onRunScreener={handleRunScreener} />;
       case 'advisor':
-        return dashboardData?.holdings && dashboardData.holdings.length > 0 ? <RoboAdvisor currentAllocation={dashboardData.allocation} /> : <div className="text-center mt-12 text-brand-text-secondary">Please add holdings or generate demo data to use the AI Advisor.</div>;
+        if (user.subscription !== 'premium') {
+            setIsUpgradeModalOpen(true);
+            setView('dashboard'); // Revert view to avoid showing empty page
+            return null;
+        }
+        return dashboardData?.holdings && dashboardData.holdings.length > 0 ? <RoboAdvisor user={user} currentAllocation={dashboardData.allocation} /> : <div className="text-center mt-12 text-brand-text-secondary">Please add holdings or generate demo data to use the AI Advisor.</div>;
       case 'chatbot':
         return <Chatbot />;
       case 'education':
@@ -560,6 +557,8 @@ const AppContent: React.FC = () => {
         return <IntegrationsPage data={dashboardData} onSync={handleSyncBrokerage} onDisconnect={handleDisconnectBrokerage} />;
        case 'alerts':
         return <AlertsPage alerts={dashboardData?.alerts || []} onMarkAllRead={handleMarkAllAlertsRead} />;
+      case 'subscription':
+        return <SubscriptionPage />;
       case 'support':
         return <DonationPage />;
       default:
@@ -574,28 +573,11 @@ const AppContent: React.FC = () => {
       <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full flex-grow">
         {renderView()}
       </main>
-      {isAuthenticated && dashboardData && <OnboardingTour run={runTour} onTourEnd={handleTourEnd} />}
-      {isModalOpen && (
-          <AddHoldingModal 
-              onClose={() => setIsModalOpen(false)}
-              onAddHolding={handleAddHolding}
-          />
-      )}
-      {isGoalModalOpen && (
-          <GoalSettingModal
-              onClose={() => {
-                  setIsGoalModalOpen(false);
-                  localStorage.setItem('robo-advisor-goal-set', 'true'); // User dismissed it
-              }}
-              onSetGoal={handleSetGoal}
-          />
-      )}
-      {lastUnlockedAchievement && (
-          <AchievementToast 
-            achievement={lastUnlockedAchievement}
-            onDismiss={() => setLastUnlockedAchievement(null)}
-          />
-      )}
+      {user && dashboardData && <OnboardingTour run={runTour} onTourEnd={handleTourEnd} />}
+      {isModalOpen && <AddHoldingModal onClose={() => setIsModalOpen(false)} onAddHolding={handleAddHolding} />}
+      {isUpgradeModalOpen && <UpgradeModal onClose={() => setIsUpgradeModalOpen(false)} onUpgrade={() => { setIsUpgradeModalOpen(false); setView('subscription'); }} />}
+      {isGoalModalOpen && <GoalSettingModal onClose={() => { setIsGoalModalOpen(false); if(user) localStorage.setItem(`robo-advisor-goal-set-${user.uid}`, 'true'); }} onSetGoal={handleSetGoal} />}
+      {lastUnlockedAchievement && <AchievementToast achievement={lastUnlockedAchievement} onDismiss={() => setLastUnlockedAchievement(null)} />}
        <footer className="text-center p-4 text-brand-text-secondary text-xs border-t border-brand-border mt-auto flex-shrink-0 bg-brand-primary">
           <p>Robo Advisor Super App. Financial data is provided by financial APIs, but use for informational purposes only and should not be used for real investment decisions.</p>
         </footer>

@@ -1,5 +1,6 @@
 
 
+
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert } from '../types';
 import * as FallbackData from './fallbackData';
@@ -12,7 +13,7 @@ let ai: GoogleGenAI | null = null;
 
 const getAiClient = (): GoogleGenAI => {
     if (!ai) {
-        const API_KEY = process.env.API_KEY;
+        const API_KEY = (window as any).process?.env?.API_KEY;
         if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
             throw new Error("API_KEY environment variable not set or is a placeholder. The application cannot start.");
         }
@@ -163,7 +164,7 @@ export const getCryptoNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
     if (apiMode === 'opensource') return FallbackData.getCryptoNews();
      try {
         const news = await financialDataService.getMarketNews('crypto', apiMode);
-        cacheService.set(cacheKey, news, 30 * 60 * 1000); // Cache for 30 minutes
+        cacheService.set(cacheKey, news, 60 * 60 * 1000); // Cache for 1 hour
         return news;
     } catch(error) {
         throw handleApiError(error, "crypto news");
@@ -180,7 +181,7 @@ export const getTopCryptos = async (apiMode: ApiMode): Promise<CryptoData[]> => 
     try {
         const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const cryptos = parseJsonFromText(response.text, "top cryptos");
-        cacheService.set(cacheKey, cryptos, 2 * 60 * 60 * 1000); // Cache for 2 hours
+        cacheService.set(cacheKey, cryptos, 6 * 60 * 60 * 1000); // Cache for 6 hours
         return cryptos;
     } catch (error) {
         throw handleApiError(error, "top cryptos");
@@ -346,295 +347,4 @@ export const generatePortfolioAlerts = async (dashboardData: DashboardData, apiM
             read: false
         }));
         cacheService.set(cacheKey, finalAlerts, 8 * 60 * 60 * 1000); // Cache for 8 hours
-        return finalAlerts;
-    } catch (error) {
-        throw handleApiError(error, "portfolio alerts");
-    }
-};
-
-export const generateDividendData = async (holdings: Holding[], apiMode: ApiMode): Promise<Dividend[]> => {
-    const holdingsKey = holdings.map(h => `${h.ticker}:${h.shares.toFixed(2)}`).sort().join(',');
-    const cacheKey = `dividend_data_finnhub_${holdingsKey}`;
-    const cached = cacheService.get<Dividend[]>(cacheKey);
-    if (cached) return cached;
-
-    if (apiMode === 'opensource') return FallbackData.generateDividendData(holdings);
-    if(holdings.length === 0) return [];
-
-    try {
-        const allDividends: Dividend[] = [];
-        
-        const dividendPromises = holdings.map(async (holding) => {
-            const dividendInfos = await financialDataService.getDividendData(holding.ticker, apiMode);
-            return dividendInfos.map(div => ({
-                ...div,
-                companyName: holding.companyName,
-                totalAmount: holding.shares * div.amountPerShare
-            }));
-        });
-
-        const results = await Promise.all(dividendPromises);
-        results.flat().forEach(div => allDividends.push(div));
-        
-        const sortedDividends = allDividends.sort((a,b) => new Date(a.payDate).getTime() - new Date(b.payDate).getTime());
-
-        cacheService.set(cacheKey, sortedDividends, 6 * 60 * 60 * 1000); // Cache for 6 hours
-        return sortedDividends;
-    } catch (error) { 
-        console.error("Error processing dividend data:", error);
-        throw handleApiError(error, 'dividend data');
-    }
-}
-
-export const generateTaxLossOpportunities = async (holdings: Holding[], apiMode: ApiMode): Promise<TaxLossOpportunity[]> => {
-    const holdingsKey = holdings.map(h => `${h.ticker}:${h.unrealizedGain.toFixed(2)}`).sort().join(',');
-    const cacheKey = `tax_loss_opps_${holdingsKey}`;
-    const cached = cacheService.get<TaxLossOpportunity[]>(cacheKey);
-    if (cached) return cached;
-
-    if (apiMode === 'opensource') return FallbackData.generateTaxLossOpportunities(holdings);
-    if(holdings.length === 0) return [];
-    const prompt = `Analyze for tax-loss harvesting. For each holding, the cost basis is provided. Identify up to 3 holdings with unrealized losses (current value < cost basis). For each, provide: ticker, companyName, sharesToSell (all shares), estimatedLoss, costBasis, currentValue, and a brief explanation. Holdings: ${JSON.stringify(holdings.map(h => ({ ticker: h.ticker, shares: h.shares, currentValue: h.totalValue, costBasis: h.costBasis })))}`;
-    const schema = { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { ticker: {type: Type.STRING}, companyName: {type: Type.STRING}, sharesToSell: {type: Type.NUMBER}, estimatedLoss: {type: Type.NUMBER}, costBasis: {type: Type.NUMBER}, currentValue: {type: Type.NUMBER}, explanation: {type: Type.STRING} }, required: ["ticker", "companyName", "sharesToSell", "estimatedLoss", "costBasis", "currentValue", "explanation"]}};
-    try {
-        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema }});
-        const data = JSON.parse(response.text.trim());
-        cacheService.set(cacheKey, data, 6 * 60 * 60 * 1000); // Cache for 6 hours
-        return data;
-    } catch (error) { throw handleApiError(error, 'tax-loss opportunities'); }
-}
-
-export const generateEducationalContent = async (category: string, apiMode: ApiMode): Promise<EducationalContent[]> => {
-    const cacheKey = `edu_content_${category}`;
-    const cached = cacheService.get<EducationalContent[]>(cacheKey);
-    if (cached) return cached;
-
-    if (apiMode === 'opensource') return FallbackData.generateEducationalContent(category);
-    const prompt = `Act as a financial content curator. Use search to find 9 high-quality educational resources for "${category}". Cite sources by index. Respond with ONLY a JSON object: {"content": [...]}, where each item has id, type, title, summary, sourceName, sourceIndex. Do not invent URLs.`;
-    try {
-        const response: GenerateContentResponse = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] } });
-        const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any, index: number) => ({ uri: chunk.web?.uri, title: chunk.web?.title, index: index + 1 })).filter(source => source.uri && source.title) ?? [];
-        if (groundingSources.length === 0) return [];
-        
-        const processJson = (parsedJson: any) => {
-            const generatedContent = parsedJson.content;
-            if (!Array.isArray(generatedContent)) return [];
-            return generatedContent.map((item: any) => {
-                const source = groundingSources.find(s => s.index === item.sourceIndex);
-                if (source) {
-                    return { ...item, url: source.uri };
-                }
-                return null;
-            }).filter((item): item is EducationalContent => item !== null);
-        };
-
-        const jsonText = response.text.trim();
-        const result = processJson(parseJsonFromText(jsonText, `educational content for ${category}`));
-        cacheService.set(cacheKey, result, 24 * 60 * 60 * 1000); // Cache for 24 hours
-        return result;
-
-    } catch (error) { throw handleApiError(error, `educational content for ${category}`); }
-};
-
-export const screenStocks = async (criteria: ScreenerCriteria, apiMode: ApiMode): Promise<ScreenerResult[]> => {
-    const cacheKey = `screener_${JSON.stringify(criteria)}`;
-    const cached = cacheService.get<ScreenerResult[]>(cacheKey);
-    if (cached) return cached;
-    
-    if (apiMode === 'opensource') return FallbackData.screenStocks(criteria);
-    const prompt = `Act as a US stock screener API. Use Google Search to find a list of up to 100 real US companies that match these criteria: Market Cap ($${criteria.marketCapMin}B - ${criteria.marketCapMax === Infinity ? 'any' : `$${criteria.marketCapMax}B`}), P/E Ratio (${criteria.peRatioMin} - ${criteria.peRatioMax === Infinity ? 'any' : criteria.peRatioMax}), Dividend Yield (${criteria.dividendYieldMin}% - ${criteria.dividendYieldMax === Infinity ? 'any' : `${criteria.dividendYieldMax}%`}), Sectors ([${criteria.sectors.join(', ') || 'Any'}]), Minimum Analyst Rating (${criteria.analystRating}). For market cap, use billions (e.g., 2100 for $2.1T). If a P/E or dividend yield is not applicable, return null. Respond with ONLY a valid JSON array of objects and nothing else.`;
-    try {
-        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}] }, });
-        const data = parseJsonFromText(response.text, 'stock screener results') as ScreenerResult[];
-        cacheService.set(cacheKey, data, 2 * 60 * 60 * 1000); // Cache for 2 hours
-        return data;
-    } catch (error) { throw handleApiError(error, 'stock screener results'); }
-};
-
-export const createChat = (apiMode: ApiMode): Chat => {
-    const systemInstruction = `You are a friendly financial assistant for the "Robo Advisor Super App". Provide helpful, clear answers about finance, markets, and app features. You can analyze images of portfolios, charts, or documents. Do not give personalized financial advice. Frame answers as educational. Refuse to discuss harmful, unethical, or illegal topics by politely stating you are a financial assistant.`;
-    if (apiMode === 'opensource') return FallbackData.createChat();
-    return getAiClient().chats.create({ model: 'gemini-2.5-flash', config: { systemInstruction: systemInstruction, }, });
-};
-
-export const generateFollowUpQuestions = async (chatHistory: ChatMessage[], apiMode: ApiMode): Promise<string[]> => {
-    if (apiMode === 'opensource') return FallbackData.generateFollowUpQuestions(chatHistory);
-    const historyText = chatHistory.map(m => `${m.role}: ${m.text}`).join('\n');
-    const prompt = `Based on this conversation, generate 3 concise, relevant follow-up questions the user might ask next:\n\n${historyText}\n\nProvide the response as a JSON object with a "questions" array.`;
-    const schema = { type: Type.OBJECT, properties: { questions: { type: Type.ARRAY, description: "An array of 3 short, relevant follow-up questions.", items: { type: Type.STRING } } }, required: ["questions"] };
-    try {
-        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema, }, });
-        return JSON.parse(response.text.trim()).questions || [];
-    } catch (error) {
-        if (!checkIsQuotaError(error)) console.error("Error generating follow-up questions:", error);
-        throw handleApiError(error, "follow-up questions");
-    }
-};
-
-export const generatePortfolio = async (answers: QuestionnaireAnswers, apiMode: ApiMode): Promise<PortfolioSuggestion> => {
-    if (apiMode === 'opensource') return FallbackData.generatePortfolio(answers);
-    const prompt = `Based on these answers, act as a robo-advisor. Generate a portfolio suggestion. Total allocation must sum to 100.\n\nAnswers:\n- Age: ${answers.age}\n- Horizon: ${answers.horizon}\n- Goal: ${answers.goal}\n- Risk: ${answers.riskTolerance}\n- Liquidity: ${answers.liquidity}\n\nProvide JSON with risk profile, allocation percentages, and a clear explanation.`;
-    const schema = { type: Type.OBJECT, properties: { riskProfile: { type: Type.STRING }, allocation: { type: Type.OBJECT, properties: { stocks: { type: Type.NUMBER }, bonds: { type: Type.NUMBER }, cash: { type: Type.NUMBER }, commodities: { type: Type.NUMBER }, realEstate: { type: Type.NUMBER }, }, required: ['stocks', 'bonds', 'cash', 'commodities', 'realEstate'] }, explanation: { type: Type.STRING }, }, required: ['riskProfile', 'allocation', 'explanation'] };
-    try {
-      const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema, }, });
-      return JSON.parse(response.text.trim()) as PortfolioSuggestion;
-    } catch (error) { throw handleApiError(error, 'portfolio suggestion'); }
-};
-
-export const generateFinancials = async (ticker: string, apiMode: ApiMode): Promise<FinancialStatementsData> => {
-    return financialDataService.getFinancials(ticker, apiMode);
-};
-
-export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Promise<TranscriptsData> => {
-    const cacheKey = `transcripts_hybrid_${ticker}`;
-    const cachedData = cacheService.get<TranscriptsData>(cacheKey);
-    if (cachedData) return cachedData;
-    
-    if (apiMode === 'opensource') {
-        const data = FallbackData.generateTranscripts(ticker);
-        cacheService.set(cacheKey, data, 24 * 60 * 60 * 1000);
-        return data;
-    }
-    
-    try {
-        const rawTranscripts = await financialDataService.getTranscripts(ticker, apiMode);
-        if (rawTranscripts.length === 0) {
-            return { transcripts: [] };
-        }
-
-        const transcriptContent = rawTranscripts.map(t => ({
-            quarter: t.quarter,
-            year: t.year,
-            date: t.time.split(' ')[0],
-            content: t.transcript.slice(0, 25).map((line: any) => `${line.name}: ${line.speech}`).join('\n') // Send a snippet
-        }));
-        
-        const prompt = `Act as a financial analyst. For each of the following earnings call transcript snippets, provide a concise one-paragraph summary and extract the single most impactful key quote. Respond with ONLY a valid JSON object of the format: {"transcripts": [{"quarter": "Q1", "year": 2024, "summary": "...", "transcript": "..."}]}. The 'transcript' field should contain the key quote. Match the quarter and year from the input. Snippets: ${JSON.stringify(transcriptContent)}`;
-
-        const schema = {
-            type: Type.OBJECT,
-            properties: {
-                transcripts: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            quarter: { type: Type.STRING },
-                            year: { type: Type.NUMBER },
-                            summary: { type: Type.STRING },
-                            transcript: { type: Type.STRING, description: "The single most impactful quote." }
-                        },
-                        required: ["quarter", "year", "summary", "transcript"]
-                    }
-                }
-            },
-            required: ["transcripts"]
-        };
-        
-        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: schema } });
-        
-        const parsedJson = parseJsonFromText(response.text, `transcript analysis for ${ticker}`);
-
-        const result: TranscriptsData = {
-             transcripts: parsedJson.transcripts.map((analyzed: any) => {
-                const original = transcriptContent.find(t => t.quarter === analyzed.quarter && t.year === analyzed.year);
-                return { ...analyzed, date: original ? original.date : new Date().toISOString().split('T')[0] };
-            })
-        };
-
-        result.transcripts.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        cacheService.set(cacheKey, result, 24 * 60 * 60 * 1000); // Cache for 24 hours
-        return result;
-
-    } catch (error) { throw handleApiError(error, `earnings transcripts for ${ticker}`); }
-};
-
-export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): Promise<StockAnalysisData> => {
-    const cacheKey = `analysis_${ticker}`;
-    const cachedData = cacheService.get<StockAnalysisData>(cacheKey);
-    if (cachedData) return cachedData;
-
-    if (apiMode === 'opensource') {
-        const data = FallbackData.generateStockAnalysis(ticker);
-        cacheService.set(cacheKey, data, 6 * 60 * 60 * 1000);
-        return data;
-    }
-    const prompt = `Act as a senior analyst for "${ticker.toUpperCase()}". Use search to gather info. Provide analysis including: businessSummary, bullCase, bearCase, financialHealth (score 1-10 & summary), and 3 recentNews items (headline, summary, sentiment). CITE YOUR SOURCES by index number. Respond with ONLY a valid JSON object of the format: {"businessSummary": "...", "recentNews": [{"headline": "...", "summary": "...", "sentiment": "...", "sourceIndex": 1}], ...}. Do not invent URLs or sources.`;
-    try {
-        const response: GenerateContentResponse = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{googleSearch: {}}], }, });
-
-        const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any, index: number) => ({ uri: chunk.web?.uri, title: chunk.web?.title, index: index + 1 })).filter(source => source.uri && source.title) ?? [];
-
-        const processJson = (parsedJson: any) => {
-            return { ...parsedJson, sources: groundingSources };
-        };
-
-        const text = response.text.trim();
-        const parsedJson = parseJsonFromText(text, `stock analysis for ${ticker}`);
-        
-        const result = processJson(parsedJson);
-        cacheService.set(cacheKey, result, 6 * 60 * 60 * 1000); // Cache for 6 hours
-        return result;
-    } catch (error) { throw handleApiError(error, `stock analysis for ${ticker}`); }
-}
-
-export const generateStockComparison = async (tickers: string[], apiMode: ApiMode): Promise<StockComparisonData> => {
-    const cacheKey = `comparison_hybrid_${tickers.sort().join('_')}`;
-    const cachedData = cacheService.get<StockComparisonData>(cacheKey);
-    if (cachedData) return cachedData;
-    
-    if (apiMode === 'opensource') {
-        const data = FallbackData.generateStockComparison(tickers);
-        cacheService.set(cacheKey, data, 6 * 60 * 60 * 1000);
-        return data;
-    }
-   
-    try {
-        const metricsPromises = tickers.map(async ticker => {
-            const [profile, metrics] = await Promise.all([
-                financialDataService.getCompanyProfile(ticker, apiMode),
-                financialDataService.getStockMetrics(ticker, apiMode)
-            ]);
-            return {
-                ticker,
-                companyName: profile.companyName,
-                ...metrics
-            };
-        });
-
-        const quantitativeData = await Promise.all(metricsPromises);
-        
-        const prompt = `Act as a senior stock analyst. I have provided quantitative data for several stocks. For each stock, generate a brief, insightful bull case, bear case, and a one-sentence financial health summary. Respond with ONLY a valid JSON array where each object contains only the ticker, bullCase, bearCase, and financialHealthSummary. Data: ${JSON.stringify(quantitativeData)}`;
-
-        const qualitativeSchema = {
-            type: Type.ARRAY,
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    ticker: { type: Type.STRING },
-                    bullCase: { type: Type.STRING },
-                    bearCase: { type: Type.STRING },
-                    financialHealthSummary: { type: Type.STRING }
-                },
-                required: ["ticker", "bullCase", "bearCase", "financialHealthSummary"]
-            }
-        };
-
-        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: qualitativeSchema }});
-        
-        const qualitativeData = parseJsonFromText(response.text, `stock comparison analysis for ${tickers.join(', ')}`);
-
-        // Merge quantitative and qualitative data
-        const finalData: StockComparisonData = quantitativeData.map(quantItem => {
-            const qualItem = qualitativeData.find((q: any) => q.ticker === quantItem.ticker);
-            return { ...quantItem, ...qualItem };
-        });
-
-        cacheService.set(cacheKey, finalData, 6 * 60 * 60 * 1000); // Cache for 6 hours
-        return finalData;
-
-    } catch (error) {
-        throw handleApiError(error, `stock comparison for ${tickers.join(', ')}`);
-    }
-};
+        return finalAlerts

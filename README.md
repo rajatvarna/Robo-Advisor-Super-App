@@ -16,7 +16,8 @@ This application is packed with features that cater to both novice and experienc
     *   **Goal Tracking:** Set financial goals and visualize your progress.
 
 *   **📈 Comprehensive Portfolio Management:**
-    *   Track holdings, transactions, and overall net worth.
+    *   **Persistent User Accounts:** Securely sign up and log in with Google or Email/Password via Firebase Authentication.
+    *   Track holdings, transactions, and overall net worth on a per-user basis.
     *   Visualize sector allocation with interactive pie charts.
     *   Manually add new holdings and transactions.
 
@@ -28,7 +29,7 @@ This application is packed with features that cater to both novice and experienc
     *   Compare up to 5 stocks side-by-side with a detailed, AI-generated analysis.
 
 *   **🧠 AI-Driven Tools:**
-    *   **AI Robo Advisor:** Answer a simple questionnaire to receive a personalized asset allocation suggestion and rationale.
+    *   **AI Robo Advisor (Premium):** Answer a simple questionnaire to receive a personalized asset allocation suggestion and rationale.
     *   **AI Chatbot:** An interactive assistant that can answer financial questions and even analyze uploaded images of charts or portfolios.
     *   **"What-If" Scenario Tool:** Simulate a trade to see its potential impact on your portfolio score before you act.
 
@@ -42,6 +43,7 @@ This application is packed with features that cater to both novice and experienc
     *   **Smart Alerts:** Receive AI-generated notifications for significant price movements, news events, or portfolio changes.
 
 *   **⚙️ Modern UX & Integrations:**
+    *   **Monetization Ready:** Built-in freemium model with a subscription page and premium feature gating.
     *   **Brokerage Sync (Simulated):** "Connect" to Interactive Brokers to sync your portfolio automatically.
     *   **Light/Dark Mode:** A sleek, modern interface with theme support.
     *   **Gamification:** Unlock achievements for reaching financial milestones.
@@ -50,6 +52,7 @@ This application is packed with features that cater to both novice and experienc
 ## 🛠️ Tech Stack
 
 *   **Frontend:** React, TypeScript, Tailwind CSS
+*   **Authentication:** **Firebase Authentication**
 *   **Charting:** Recharts, TradingView Lightweight Charts API
 *   **Primary AI:** **Google Gemini API** (`@google/genai`)
 *   **Financial Data:** **Finnhub API** (for real-time quotes and historical prices)
@@ -61,10 +64,11 @@ This project is a static web application and does not require a complex build pr
 
 ### Prerequisites
 
-You need API keys from two services to run the application in live mode:
+You need API keys from three services to run the application in live mode:
 
-1.  **Google Gemini API Key:** Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-2.  **Finnhub API Key:** Get a free key from [Finnhub.io](https://finnhub.io/).
+1.  **Firebase Project:** Create a new project in the [Firebase Console](https://console.firebase.google.com/).
+2.  **Google Gemini API Key:** Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+3.  **Finnhub API Key:** Get a free key from [Finnhub.io](https://finnhub.io/).
 
 ### Installation & Configuration
 
@@ -74,13 +78,29 @@ You need API keys from two services to run the application in live mode:
     cd robo-advisor-super-app
     ```
 
-2.  **Create an environment file:**
-    In the root directory, create a file named `process.env.js`. This file will store your secret API keys.
+2.  **Configure Firebase:**
+    *   In the Firebase Console, go to your project's **Settings > General**.
+    *   Under "Your apps", create a new **Web app**.
+    *   Copy the `firebaseConfig` object provided.
+    *   Create a new file in the root directory named `firebase.config.js`.
+    *   Paste your configuration into it like this:
+    ```javascript
+    // firebase.config.js
+    const firebaseConfig = {
+      apiKey: "AIza...",
+      authDomain: "your-project.firebaseapp.com",
+      // ... and so on
+    };
+    window.firebaseConfig = firebaseConfig;
+    ```
+    *   In the Firebase Console, go to **Authentication > Sign-in method** and enable "Email/Password" and "Google" as providers.
 
-3.  **Add your API keys to `process.env.js`:**
+3.  **Configure API Keys:**
+    *   In the root directory, create a file named `process.env.js`.
+    *   Add your Gemini and Finnhub API keys:
     ```javascript
     // process.env.js
-    const process = {
+    window.process = {
       env: {
         API_KEY: 'YOUR_GEMINI_API_KEY_HERE',
         FINNHUB_API_KEY: 'YOUR_FINNHUB_API_KEY_HERE',
@@ -89,17 +109,7 @@ You need API keys from two services to run the application in live mode:
     ```
     > **Note:** This method is for demonstration purposes. In a production environment, use a secure method for managing environment variables.
 
-4.  **Import the environment file:**
-    Uncomment the following line at the top of your `index.html` file:
-    ```html
-    <!-- <script src="process.env.js"></script> -->
-    ```
-    It should look like this:
-    ```html
-    <script src="process.env.js"></script>
-    ```
-
-5.  **Run the application:**
+4.  **Run the application:**
     Use a simple local server to host the files. A popular choice is the [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) extension for Visual Studio Code.
     *   Install the extension.
     *   Right-click `index.html` and select "Open with Live Server".
@@ -124,6 +134,7 @@ This ensures a seamless user experience for demos and development, and provides 
 
 The application logic is cleanly separated into a `services` directory, abstracting away the data-fetching and AI processing from the UI components.
 
+*   **`firebaseService.ts`:** Centralizes all Firebase Authentication logic, including sign-in, sign-out, and state listeners.
 *   **`geminiService.ts`:** The AI brain of the app. It handles all prompt engineering, API calls to Gemini, and JSON parsing for qualitative data.
 *   **`financialDataService.ts`:** Fetches quantitative market data (prices, history) from Finnhub.
 *   **`cacheService.ts`:** A simple in-memory cache with a Time-to-Live (TTL) reduces redundant API calls for data that doesn't change frequently (e.g., news, stock analysis), improving performance and saving costs.
@@ -132,8 +143,8 @@ The application logic is cleanly separated into a `services` directory, abstract
 
 The app stays up-to-date with two primary polling mechanisms initiated in `App.tsx`:
 
-1.  **Price Updates (30 seconds):** `financialDataService.fetchQuotes` is called to get the latest prices for all stocks in the portfolio and watchlists.
-2.  **AI Data Refresh (5 minutes):** A main refresh loop fetches new personalized news, dashboard insights, portfolio alerts, and recalculates the portfolio score.
+1.  **Price Updates (Tiered):** A smart polling system fetches prices more frequently for the user's active portfolio (every 30 seconds) than for their watchlist (every 2 minutes).
+2.  **AI Data Refresh:** A main refresh loop fetches new personalized news, dashboard insights, portfolio alerts, and recalculates the portfolio score.
 
 ## 📁 File Structure
 
@@ -141,30 +152,22 @@ The app stays up-to-date with two primary polling mechanisms initiated in `App.t
 .
 ├── components/
 │   ├── icons/              # SVG icon components
-│   ├── AnalyticsPage.tsx   # Main analytics view with tabs
 │   ├── App.tsx             # Core application logic and state management
 │   ├── Chatbot.tsx         # AI chat interface
 │   ├── DashboardPage.tsx   # Main user dashboard
 │   ├── Header.tsx          # Top navigation bar
 │   ├── Home.tsx            # Login/landing page
-│   ├── PortfolioPage.tsx   # Detailed portfolio view
-│   ├── ResearchPage.tsx    # Stock analysis and comparison tools
-│   ├── RoboAdvisor.tsx     # AI-powered portfolio suggestion tool
-│   ├── Screener.tsx        # AI stock screener
-│   └── ...                 # Other UI components (cards, modals, etc.)
+│   ├── ...                 # Other UI components
 ├── contexts/
 │   ├── ApiContext.tsx      # Manages API mode (live vs. fallback)
 │   └── ThemeContext.tsx    # Manages light/dark theme
 ├── services/
-│   ├── brokerageService.ts # Simulates brokerage integration
-│   ├── cacheService.ts     # In-memory TTL cache
-│   ├── fallbackData.ts     # Provides mock data for offline mode
-│   ├── financialDataService.ts # Fetches data from Finnhub API
+│   ├── firebaseService.ts  # Handles Firebase Authentication
 │   ├── geminiService.ts    # All calls to the Google Gemini API
-│   ├── secDataService.ts   # Fetches SEC filings via Gemini
-│   └── tickerData.ts       # Static list of tickers for autocomplete
+│   ├── ...                 # Other data and utility services
 ├── types.ts                # All TypeScript interfaces and type definitions
-├── constants.ts            # Application constants (e.g., questionnaire)
+├── firebase.config.js      # Firebase configuration (user-provided)
+├── process.env.js          # API key configuration (user-provided)
 ├── index.html              # Main HTML entry point
 ├── index.tsx               # React application entry point
 └── README.md               # This file
