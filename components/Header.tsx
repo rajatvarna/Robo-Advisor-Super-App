@@ -150,8 +150,8 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout, unreadA
                                         <stop offset="1" stopColor="var(--color-brand-accent-hover)"/>
                                     </linearGradient>
                                 </defs>
-                                <path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3z" fill="url(#logo-gradient)"/>
-                                <path d="M10.5 14.5l-3-3 1.41-1.41L10.5 11.67l4.59-4.59L16.5 8.5l-6 6z" fill="white" opacity="0.9"/>
+                                <path d="M12 2.25C12 2.25 4.5 4.5 4.5 11.25c0 6.188 6.188 9.75 7.5 10.5 1.313-.75 7.5-4.313 7.5-10.5C19.5 4.5 12 2.25 12 2.25z" fill="url(#logo-gradient)"/>
+                                <path d="M10.125 15l-3.375-3.375 1.05-1.05 2.325 2.325 5.175-5.175 1.05 1.05-6.225 6.225z" fill="white" opacity="0.95"/>
                             </svg>
                             <span className="ml-2 text-xl font-bold tracking-tight text-brand-text">RoboAdvisor</span>
                         </div>
