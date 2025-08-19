@@ -2,7 +2,7 @@
 // This file is used to simulate environment variables for the static frontend application.
 // In a real production environment, use a more secure method for managing API keys.
 
-const process = {
+window.process = {
   env: {
     // Replace with your Google Gemini API Key
     API_KEY: 'YOUR_GEMINI_API_KEY_HERE',
