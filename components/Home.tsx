@@ -4,11 +4,7 @@ import GoogleIcon from './icons/GoogleIcon';
 import Spinner from './icons/Spinner';
 import * as firebase from '../services/firebaseService';
 
-interface HomeProps {
-  onLogin: () => void; // This prop might be removed if not needed post-auth
-}
-
-const Home: React.FC<HomeProps> = ({ onLogin }) => {
+const Home: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [email, setEmail] = React.useState('');

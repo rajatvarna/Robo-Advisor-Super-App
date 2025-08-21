@@ -186,9 +186,6 @@ const AppContent: React.FC = () => {
   }, [quotes, recalculateHoldings, dashboardData?.transactions, user, saveData]);
   
   // --- USER ACTIONS ---
-  const handleLogin = React.useCallback(() => {
-    setView('dashboard');
-  }, []);
   
   const handleLogout = React.useCallback(async () => {
     await firebase.signOutUser();
@@ -512,7 +509,7 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <Home onLogin={handleLogin} />;
+    return <Home />;
   }
   
   const unreadAlertsCount = dashboardData?.alerts?.filter(a => !a.read).length ?? 0;

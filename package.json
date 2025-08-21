@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "robo-advisor-super-app",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -14,7 +14,8 @@
     "recharts": "2.12.7",
     "@google/genai": "^1.13.0",
     "react-joyride": "2.8.2",
-    "marked": "13.0.2"
+    "marked": "13.0.2",
+    "firebase": "^12.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

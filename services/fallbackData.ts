@@ -241,7 +241,7 @@ export const generateDashboardData = async (): Promise<DashboardData> => {
     }];
     
     const baseData: BaseDashboardData = {
-        user: { name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01' },
+        user: { uid: 'demo-user-uid', name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01', subscription: 'free' },
         holdings,
         transactions,
         watchlists,
@@ -297,7 +297,7 @@ export const getInteractiveBrokersPortfolio = (): BaseDashboardData => {
     }));
 
     return {
-        user: { name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01' },
+        user: { uid: 'demo-user-uid', name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01', subscription: 'free' },
         holdings,
         transactions,
         watchlists: [], // Synced portfolios usually don't bring watchlists
