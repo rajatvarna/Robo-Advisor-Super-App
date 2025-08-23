@@ -5,14 +5,14 @@ import * as FallbackData from './fallbackData';
 import { ALL_ACHIEVEMENTS } from './fallbackData';
 import { cacheService } from './cacheService';
 import * as financialDataService from './financialDataService';
+import { API_KEY } from 'app-config';
 
 
 let ai: GoogleGenAI | null = null;
 
 const getAiClient = (): GoogleGenAI => {
     if (!ai) {
-        const API_KEY = (window as any).process?.env?.API_KEY;
-        if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+        if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY_HERE' || API_KEY === 'DEMO_API_KEY') {
             throw new Error("API_KEY environment variable not set or is a placeholder. The application cannot start.");
         }
         ai = new GoogleGenAI({ apiKey: API_KEY });

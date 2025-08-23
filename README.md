@@ -1,4 +1,3 @@
-
 # Robo Advisor Super App
 
 Welcome to the Robo Advisor Super App, a feature-rich, AI-powered financial dashboard designed to provide comprehensive portfolio analysis, deep-dive stock research, and personalized, actionable insights. This application leverages the power of the Google Gemini API to transform raw financial data into an intelligent, proactive co-pilot for your investment journey.
@@ -16,8 +15,8 @@ This application is packed with features that cater to both novice and experienc
     *   **Goal Tracking:** Set financial goals and visualize your progress.
 
 *   **📈 Comprehensive Portfolio Management:**
-    *   **Persistent User Accounts:** Securely sign up and log in with Google or Email/Password via Firebase Authentication.
-    *   Track holdings, transactions, and overall net worth on a per-user basis.
+    *   **Guest Mode with Local Persistence:** The app operates in a seamless guest mode. All your data (portfolio, watchlists, etc.) is saved directly to your browser's local storage, ensuring a persistent experience across sessions without needing an account.
+    *   Track holdings, transactions, and overall net worth.
     *   Visualize sector allocation with interactive pie charts.
     *   Manually add new holdings and transactions.
 
@@ -52,7 +51,6 @@ This application is packed with features that cater to both novice and experienc
 ## 🛠️ Tech Stack
 
 *   **Frontend:** React, TypeScript, Tailwind CSS
-*   **Authentication:** **Firebase Authentication**
 *   **Charting:** Recharts, TradingView Lightweight Charts API
 *   **Primary AI:** **Google Gemini API** (`@google/genai`)
 *   **Financial Data:** **Finnhub API** (for real-time quotes and historical prices)
@@ -64,11 +62,12 @@ This project is a static web application and does not require a complex build pr
 
 ### Prerequisites
 
-You need API keys from three services to run the application in live mode:
+To run the application in live mode with AI features, you will need API keys from two services:
 
-1.  **Firebase Project:** Create a new project in the [Firebase Console](https://console.firebase.google.com/).
-2.  **Google Gemini API Key:** Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-3.  **Finnhub API Key:** Get a free key from [Finnhub.io](https://finnhub.io/).
+1.  **Google Gemini API Key:** Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+2.  **Finnhub API Key:** Get a free key from [Finnhub.io](https://finnhub.io/).
+
+> The app will function in a robust offline "fallback mode" with simulated data if keys are not provided.
 
 ### Installation & Configuration
 
@@ -78,38 +77,20 @@ You need API keys from three services to run the application in live mode:
     cd robo-advisor-super-app
     ```
 
-2.  **Configure Firebase:**
-    *   In the Firebase Console, go to your project's **Settings > General**.
-    *   Under "Your apps", create a new **Web app**.
-    *   Copy the `firebaseConfig` object provided.
-    *   Create a new file in the root directory named `firebase.config.js`.
-    *   Paste your configuration into it like this:
-    ```javascript
-    // firebase.config.js
-    const firebaseConfig = {
-      apiKey: "AIza...",
-      authDomain: "your-project.firebaseapp.com",
-      // ... and so on
-    };
-    window.firebaseConfig = firebaseConfig;
-    ```
-    *   In the Firebase Console, go to **Authentication > Sign-in method** and enable "Email/Password" and "Google" as providers.
-
-3.  **Configure API Keys:**
-    *   In the root directory, create a file named `process.env.js`.
-    *   Add your Gemini and Finnhub API keys:
+2.  **Configure API Keys:**
+    *   Open the `process.env.js` file in the root directory.
+    *   Replace the placeholder values for `API_KEY` (Gemini) and `FINNHUB_API_KEY` with your actual keys.
     ```javascript
     // process.env.js
-    window.process = {
-      env: {
-        API_KEY: 'YOUR_GEMINI_API_KEY_HERE',
-        FINNHUB_API_KEY: 'YOUR_FINNHUB_API_KEY_HERE',
-      }
-    };
+    
+    // Replace with your Google Gemini API Key
+    export const API_KEY = 'YOUR_GEMINI_API_KEY_HERE';
+        
+    // Replace with your Finnhub API Key
+    export const FINNHUB_API_KEY = 'YOUR_FINNHUB_API_KEY_HERE';
     ```
-    > **Note:** This method is for demonstration purposes. In a production environment, use a secure method for managing environment variables.
 
-4.  **Run the application:**
+3.  **Run the application:**
     Use a simple local server to host the files. A popular choice is the [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) extension for Visual Studio Code.
     *   Install the extension.
     *   Right-click `index.html` and select "Open with Live Server".
@@ -134,7 +115,6 @@ This ensures a seamless user experience for demos and development, and provides 
 
 The application logic is cleanly separated into a `services` directory, abstracting away the data-fetching and AI processing from the UI components.
 
-*   **`firebaseService.ts`:** Centralizes all Firebase Authentication logic, including sign-in, sign-out, and state listeners.
 *   **`geminiService.ts`:** The AI brain of the app. It handles all prompt engineering, API calls to Gemini, and JSON parsing for qualitative data.
 *   **`financialDataService.ts`:** Fetches quantitative market data (prices, history) from Finnhub.
 *   **`cacheService.ts`:** A simple in-memory cache with a Time-to-Live (TTL) reduces redundant API calls for data that doesn't change frequently (e.g., news, stock analysis), improving performance and saving costs.
@@ -156,17 +136,14 @@ The app stays up-to-date with two primary polling mechanisms initiated in `App.t
 │   ├── Chatbot.tsx         # AI chat interface
 │   ├── DashboardPage.tsx   # Main user dashboard
 │   ├── Header.tsx          # Top navigation bar
-│   ├── Home.tsx            # Login/landing page
 │   ├── ...                 # Other UI components
 ├── contexts/
 │   ├── ApiContext.tsx      # Manages API mode (live vs. fallback)
 │   └── ThemeContext.tsx    # Manages light/dark theme
 ├── services/
-│   ├── firebaseService.ts  # Handles Firebase Authentication
 │   ├── geminiService.ts    # All calls to the Google Gemini API
 │   ├── ...                 # Other data and utility services
 ├── types.ts                # All TypeScript interfaces and type definitions
-├── firebase.config.js      # Firebase configuration (user-provided)
 ├── process.env.js          # API key configuration (user-provided)
 ├── index.html              # Main HTML entry point
 ├── index.tsx               # React application entry point

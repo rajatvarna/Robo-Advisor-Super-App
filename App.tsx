@@ -5,7 +5,6 @@ import RoboAdvisor from './components/RoboAdvisor';
 import ResearchPage from './components/ResearchPage';
 import EducationHub from './components/EducationHub';
 import Chatbot from './components/Chatbot';
-import Home from './components/Home';
 import Screener from './components/Screener';
 import DashboardPage from './components/DashboardPage';
 import PortfolioPage from './components/PortfolioPage';
@@ -31,11 +30,16 @@ import * as FallbackData from './services/fallbackData';
 import GoalSettingModal from './components/GoalSettingModal';
 import SubscriptionPage from './components/SubscriptionPage';
 import UpgradeModal from './components/UpgradeModal';
-import * as firebase from './services/firebaseService';
 
-const AppContent: React.FC = () => {
-  const [user, setUser] = React.useState<User | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = React.useState(true);
+const guestUser: User = {
+  uid: 'guest',
+  name: 'Guest User',
+  email: 'guest@example.com',
+  memberSince: new Date().toISOString(),
+  subscription: 'free',
+};
+
+const AppContent: React.FC<{ user: User, onResetData: () => void; }> = ({ user, onResetData }) => {
   const [view, setView] = React.useState<View>('dashboard');
   const [dashboardData, setDashboardData] = React.useState<DashboardData | null>(null);
   const [quotes, setQuotes] = React.useState<Record<string, Quote>>({});
@@ -51,28 +55,27 @@ const AppContent: React.FC = () => {
 
   const { apiMode, setApiMode } = useApi();
 
-  const saveData = React.useCallback((data: DashboardData | null, uid: string) => {
-    if (data && uid) localStorage.setItem(`robo-advisor-data-${uid}`, JSON.stringify(data));
+  const saveData = React.useCallback((data: DashboardData | null) => {
+    if (data) localStorage.setItem('robo-advisor-data-guest', JSON.stringify(data));
   }, []);
 
-  // --- AUTHENTICATION ---
   React.useEffect(() => {
-    const unsubscribe = firebase.onAuthStateChangedListener((appUser) => {
-      setUser(appUser);
-      setIsAuthLoading(false);
-      if (appUser) {
-        const savedData = localStorage.getItem(`robo-advisor-data-${appUser.uid}`);
-        if (savedData) {
-          const parsedData: DashboardData = JSON.parse(savedData);
-          setDashboardData(parsedData);
-          setAchievements(parsedData.achievements || ALL_ACHIEVEMENTS);
-        }
-      } else {
+    setIsLoading(true);
+    const savedData = localStorage.getItem('robo-advisor-data-guest');
+    if (savedData) {
+      try {
+        const parsedData: DashboardData = JSON.parse(savedData);
+        setDashboardData(parsedData);
+        setAchievements(parsedData.achievements || ALL_ACHIEVEMENTS);
+      } catch (e) {
+        console.error("Failed to parse saved data, starting fresh.", e);
+        localStorage.removeItem('robo-advisor-data-guest');
         setDashboardData(null);
       }
-      setIsLoading(false);
-    });
-    return unsubscribe;
+    } else {
+        setDashboardData(null);
+    }
+    setIsLoading(false);
   }, []);
   
   const recalculateHoldings = React.useCallback((transactions: Transaction[], currentQuotes: Record<string, Quote>): Holding[] => {
@@ -89,7 +92,7 @@ const AppContent: React.FC = () => {
         holding.shares += tx.shares;
         holding.totalCost += tx.totalValue;
       } else { // Sell
-        const avgCostPerShare = holding.totalCost / holding.shares;
+        const avgCostPerShare = holding.shares > 0 ? holding.totalCost / holding.shares : 0;
         holding.shares -= tx.shares;
         holding.totalCost -= tx.shares * avgCostPerShare;
       }
@@ -138,7 +141,7 @@ const AppContent: React.FC = () => {
         }
     };
 
-    if (user && dashboardData) {
+    if (dashboardData) {
         const portfolioTickers = dashboardData.holdings.map(h => h.ticker);
         const watchlistTickers = [...new Set(dashboardData.watchlists.flatMap(wl => wl.tickers))].filter(t => !portfolioTickers.includes(t));
 
@@ -153,11 +156,11 @@ const AppContent: React.FC = () => {
             clearInterval(watchlistInterval);
         };
     }
-  }, [user, dashboardData?.holdings, dashboardData?.watchlists, apiMode, setApiMode]);
+  }, [dashboardData?.holdings, dashboardData?.watchlists, apiMode, setApiMode]);
 
   // --- PORTFOLIO RECALCULATION ---
   React.useEffect(() => {
-    if (dashboardData && Object.keys(quotes).length > 0 && user) {
+    if (dashboardData && Object.keys(quotes).length > 0) {
       setDashboardData(prevData => {
         if (!prevData) return null;
         const newHoldings = recalculateHoldings(prevData.transactions, quotes);
@@ -179,21 +182,15 @@ const AppContent: React.FC = () => {
           netWorth: newNetWorth,
           allocation: newAllocation,
         };
-        saveData(updatedData, user.uid);
+        saveData(updatedData);
         return updatedData;
       });
     }
-  }, [quotes, recalculateHoldings, dashboardData?.transactions, user, saveData]);
+  }, [quotes, recalculateHoldings, dashboardData?.transactions, saveData]);
   
   // --- USER ACTIONS ---
   
-  const handleLogout = React.useCallback(async () => {
-    await firebase.signOutUser();
-    setView('dashboard');
-  }, []);
-
   const checkAndUnlockAchievements = React.useCallback((action: string, data: any) => {
-    if (!user) return;
     setDashboardData(prev => {
         if(!prev) return null;
         const unlockedAchievementIds = prev.achievements.filter(a => a.unlocked).map(a => a.id);
@@ -213,15 +210,14 @@ const AppContent: React.FC = () => {
             if (latestUnlocked) setLastUnlockedAchievement(latestUnlocked);
             
             const newData = {...prev, achievements: updatedAchievements};
-            saveData(newData, user.uid);
+            saveData(newData);
             return newData;
         }
         return prev;
     });
-  }, [user, saveData]);
+  }, [saveData]);
 
   const handleGenerateDemoData = React.useCallback(async () => {
-      if (!user) return;
       setIsLoading(true);
       setError(null);
       try {
@@ -262,13 +258,13 @@ const AppContent: React.FC = () => {
 
         setDashboardData(fullData);
         setQuotes(liveQuotes);
-        saveData(fullData, user.uid);
+        saveData(fullData);
 
-        if (!localStorage.getItem(`robo-advisor-tour-completed-${user.uid}`)) {
+        if (!localStorage.getItem('robo-advisor-tour-completed-guest')) {
           setTimeout(() => setRunTour(true), 500);
         }
         
-        if (!localStorage.getItem(`robo-advisor-goal-set-${user.uid}`)) {
+        if (!localStorage.getItem('robo-advisor-goal-set-guest')) {
            setTimeout(() => setIsGoalModalOpen(true), 600);
         }
 
@@ -281,14 +277,11 @@ const AppContent: React.FC = () => {
   }, [saveData, apiMode, user, recalculateHoldings]);
 
   const handleTourEnd = React.useCallback(() => {
-    if (user) {
-        setRunTour(false);
-        localStorage.setItem(`robo-advisor-tour-completed-${user.uid}`, 'true');
-    }
-  }, [user]);
+    setRunTour(false);
+    localStorage.setItem('robo-advisor-tour-completed-guest', 'true');
+  }, []);
   
   const handleAddHolding = React.useCallback(async (holdingData: AddHoldingData) => {
-      if(!user) return;
       const newQuote = await financialDataService.fetchQuotes([holdingData.ticker], apiMode);
       setQuotes(q => ({...q, ...newQuote}));
       const stockDetails = await fetchStockDetailsForPortfolio(holdingData.ticker, apiMode);
@@ -330,32 +323,30 @@ const AppContent: React.FC = () => {
               allocation: updatedAllocation,
               portfolioPerformance: [...prevData.portfolioPerformance, {date: new Date().toISOString().split('T')[0], price: updatedNetWorth}]
           };
-          saveData(newData, user.uid);
+          saveData(newData);
           const sectorCount = new Set(newData.holdings.map(h => h.sector).filter(Boolean)).size;
           checkAndUnlockAchievements('add_holding', { holdingsCount: newData.holdings.length, sectorCount });
           return newData;
       });
 
-  }, [apiMode, quotes, recalculateHoldings, checkAndUnlockAchievements, saveData, user]);
+  }, [apiMode, quotes, recalculateHoldings, checkAndUnlockAchievements, saveData]);
   
   const handleRunScreener = React.useCallback(() => {
       checkAndUnlockAchievements('run_screener', {});
   }, [checkAndUnlockAchievements]);
 
   const handleSetGoal = React.useCallback((goal: InvestmentGoal) => {
-    if (!user) return;
     setDashboardData(prev => {
         if(!prev) return null;
         const newData = { ...prev, goal };
-        saveData(newData, user.uid);
+        saveData(newData);
         return newData;
     });
-    localStorage.setItem(`robo-advisor-goal-set-${user.uid}`, 'true');
+    localStorage.setItem('robo-advisor-goal-set-guest', 'true');
     setIsGoalModalOpen(false);
-  }, [saveData, user]);
+  }, [saveData]);
 
   const handleSyncBrokerage = React.useCallback(async (brokerage: 'Interactive Brokers') => {
-      if (!user) return;
       setIsLoading(true);
       setError(null);
       try {
@@ -382,7 +373,7 @@ const AppContent: React.FC = () => {
                   allocation,
                   integrations: { ...prevData.integrations, interactiveBrokers: { connected: true, lastSync: new Date().toISOString() } },
               };
-              saveData(newData, user.uid);
+              saveData(newData);
               return newData;
           });
       } catch (err: any) {
@@ -390,75 +381,69 @@ const AppContent: React.FC = () => {
       } finally {
           setIsLoading(false);
       }
-  }, [apiMode, recalculateHoldings, saveData, user]);
+  }, [apiMode, recalculateHoldings, saveData]);
 
   const handleDisconnectBrokerage = React.useCallback((brokerage: 'Interactive Brokers') => {
-    if (!user) return;
     setDashboardData(prev => {
         if (!prev) return null;
         const newData = {
             ...prev,
             integrations: { ...prev.integrations, interactiveBrokers: { connected: false } },
         };
-        saveData(newData, user.uid);
+        saveData(newData);
         return newData;
     });
-  }, [saveData, user]);
+  }, [saveData]);
 
   const handleAddWatchlist = (name: string) => {
-      if(!user) return;
       setDashboardData(prev => {
           if (!prev) return null;
           const newWatchlist: UserWatchlist = { id: `wl-${Date.now()}`, name, tickers: [] };
           const newData = { ...prev, watchlists: [...prev.watchlists, newWatchlist] };
-          saveData(newData, user.uid);
+          saveData(newData);
           return newData;
       });
   };
 
   const handleRenameWatchlist = (id: string, newName: string) => {
-      if(!user) return;
       setDashboardData(prev => {
           if (!prev) return null;
           const updatedWatchlists = prev.watchlists.map(wl => wl.id === id ? { ...wl, name: newName } : wl);
           const newData = { ...prev, watchlists: updatedWatchlists };
-          saveData(newData, user.uid);
+          saveData(newData);
           return newData;
       });
   };
 
   const handleDeleteWatchlist = (id: string) => {
-      if(!user) return;
       setDashboardData(prev => {
           if (!prev) return null;
           const updatedWatchlists = prev.watchlists.filter(wl => wl.id !== id);
           const newData = { ...prev, watchlists: updatedWatchlists };
-          saveData(newData, user.uid);
+          saveData(newData);
           return newData;
       });
   };
 
   const handleUpdateWatchlistTickers = (id: string, tickers: string[]) => {
-      if(!user) return;
       setDashboardData(prev => {
           if (!prev) return null;
           const updatedWatchlists = prev.watchlists.map(wl => wl.id === id ? { ...wl, tickers: tickers } : wl);
           const newData = { ...prev, watchlists: updatedWatchlists };
-          saveData(newData, user.uid);
+          saveData(newData);
           return newData;
       });
   };
 
   const handleMarkAllAlertsRead = React.useCallback(() => {
-    if (!user) return;
     setDashboardData(prev => {
         if (!prev) return null;
         const updatedAlerts = prev.alerts.map(a => ({ ...a, read: true }));
         const newData = { ...prev, alerts: updatedAlerts };
-        saveData(newData, user.uid);
+        saveData(newData);
         return newData;
     });
-  }, [saveData, user]);
+  }, [saveData]);
 
   const handleApiError = (err: any) => {
         if (err.message.includes('QUOTA_EXCEEDED')) {
@@ -471,7 +456,7 @@ const AppContent: React.FC = () => {
   
   // --- DATA REFRESHING & POLLING ---
   React.useEffect(() => {
-    if (user && dashboardData) {
+    if (dashboardData) {
         const refreshData = async () => {
           try {
             const allWatchlistTickers = dashboardData.watchlists.flatMap(wl => wl.tickers);
@@ -487,7 +472,7 @@ const AppContent: React.FC = () => {
                 const newUniqueAlerts = alerts.filter(a => !existingAlertIds.has(a.id));
                 const updatedAlerts = [...d.alerts, ...newUniqueAlerts];
                 const newData = {...d, personalizedNews: news, portfolioScore: score, dashboardInsights: insights, alerts: updatedAlerts };
-                saveData(newData, user.uid);
+                saveData(newData);
                 return newData;
             });
             checkAndUnlockAchievements('portfolio_score', { score: score.score });
@@ -500,17 +485,7 @@ const AppContent: React.FC = () => {
         const intervalId = setInterval(refreshData, 480 * 60 * 1000); // Refresh every 8 hours
         return () => clearInterval(intervalId);
     }
-  }, [user, dashboardData?.holdings.length, dashboardData?.watchlists.length, apiMode, setApiMode, checkAndUnlockAchievements, saveData]);
-
-  if (isAuthLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen"><Spinner /><p className="mt-4 text-brand-text-secondary">Loading...</p></div>
-    );
-  }
-
-  if (!user) {
-    return <Home />;
-  }
+  }, [dashboardData?.holdings.length, dashboardData?.watchlists.length, apiMode, setApiMode, checkAndUnlockAchievements, saveData]);
   
   const unreadAlertsCount = dashboardData?.alerts?.filter(a => !a.read).length ?? 0;
 
@@ -566,14 +541,14 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-brand-body-bg text-brand-text font-sans flex flex-col">
       <ApiStatusBanner />
-      <Header currentView={view} setView={setView} onLogout={handleLogout} unreadAlertsCount={unreadAlertsCount} />
+      <Header currentView={view} setView={setView} onResetData={onResetData} unreadAlertsCount={unreadAlertsCount} />
       <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full flex-grow">
         {renderView()}
       </main>
-      {user && dashboardData && <OnboardingTour run={runTour} onTourEnd={handleTourEnd} />}
+      {dashboardData && <OnboardingTour run={runTour} onTourEnd={handleTourEnd} />}
       {isModalOpen && <AddHoldingModal onClose={() => setIsModalOpen(false)} onAddHolding={handleAddHolding} />}
       {isUpgradeModalOpen && <UpgradeModal onClose={() => setIsUpgradeModalOpen(false)} onUpgrade={() => { setIsUpgradeModalOpen(false); setView('subscription'); }} />}
-      {isGoalModalOpen && <GoalSettingModal onClose={() => { setIsGoalModalOpen(false); if(user) localStorage.setItem(`robo-advisor-goal-set-${user.uid}`, 'true'); }} onSetGoal={handleSetGoal} />}
+      {isGoalModalOpen && <GoalSettingModal onClose={() => { setIsGoalModalOpen(false); localStorage.setItem('robo-advisor-goal-set-guest', 'true'); }} onSetGoal={handleSetGoal} />}
       {lastUnlockedAchievement && <AchievementToast achievement={lastUnlockedAchievement} onDismiss={() => setLastUnlockedAchievement(null)} />}
        <footer className="text-center p-4 text-brand-text-secondary text-xs border-t border-brand-border mt-auto flex-shrink-0 bg-brand-primary">
           <p>Robo Advisor Super App. Financial data is provided by financial APIs, but use for informational purposes only and should not be used for real investment decisions.</p>
@@ -582,12 +557,21 @@ const AppContent: React.FC = () => {
   );
 };
 
-const App: React.FC = () => (
-    <ApiProvider>
-        <ThemeProvider>
-            <AppContent />
-        </ThemeProvider>
-    </ApiProvider>
-);
+const App: React.FC = () => {
+    const handleResetData = () => {
+        localStorage.removeItem('robo-advisor-data-guest');
+        localStorage.removeItem('robo-advisor-tour-completed-guest');
+        localStorage.removeItem('robo-advisor-goal-set-guest');
+        window.location.reload();
+    };
+
+    return (
+        <ApiProvider>
+            <ThemeProvider>
+                <AppContent user={guestUser} onResetData={handleResetData} />
+            </ThemeProvider>
+        </ApiProvider>
+    );
+};
 
 export default App;

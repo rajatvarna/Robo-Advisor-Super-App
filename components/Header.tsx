@@ -74,11 +74,11 @@ const NavLink: React.FC<{ view: View, currentView: View, setView: (view: View) =
 interface HeaderProps {
     currentView: View;
     setView: (view: View) => void;
-    onLogout: () => void;
+    onResetData: () => void;
     unreadAlertsCount: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout, unreadAlertsCount }) => {
+const Header: React.FC<HeaderProps> = ({ currentView, setView, onResetData, unreadAlertsCount }) => {
     const { theme, toggleTheme } = useTheme();
 
     return (
@@ -134,7 +134,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, setView, onLogout, unreadA
                         <button onClick={toggleTheme} className="p-2 text-brand-text-secondary hover:text-brand-text hover:bg-brand-secondary rounded-full">
                             {theme === 'dark' ? <SunIcon className="w-6 h-6" /> : <MoonIcon className="w-6 h-6" />}
                         </button>
-                        <button onClick={onLogout} className="text-sm font-semibold text-brand-text-secondary hover:text-brand-text">Logout</button>
+                        <button onClick={onResetData} className="text-sm font-semibold text-brand-text-secondary hover:text-brand-text">Reset Data</button>
                     </div>
                 </div>
             </div>

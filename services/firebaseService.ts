@@ -11,12 +11,10 @@ import {
     type User as FirebaseUser
 } from 'firebase/auth';
 import type { User } from '../types';
+import { firebaseConfig } from 'firebase-config';
 
-// This file expects window.firebaseConfig to be set by firebase.config.js
-const firebaseConfig = (window as any).firebaseConfig;
-
-if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
-    console.error("Firebase config is not set up correctly. Please check your firebase.config.js file.");
+if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("DEMO_API_KEY")) {
+    console.error("Firebase config is not set up correctly. Please check your firebase.config.js file and ensure you have replaced the demo key.");
 }
 
 const firebaseApp = initializeApp(firebaseConfig);

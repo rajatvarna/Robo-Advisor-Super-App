@@ -1,6 +1,7 @@
 
 import * as React from 'react';
 import type { ApiMode } from '../types';
+import { API_KEY } from 'app-config';
 
 interface ApiContextType {
     apiMode: ApiMode;
@@ -10,9 +11,19 @@ interface ApiContextType {
 
 const ApiContext = React.createContext<ApiContextType | undefined>(undefined);
 
+const isValidGeminiKey = API_KEY && !API_KEY.includes('YOUR_GEMINI_API_KEY') && API_KEY !== 'DEMO_API_KEY';
+
 export const ApiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [apiMode, setApiMode] = React.useState<ApiMode>('gemini');
+    const [apiMode, setApiMode] = React.useState<ApiMode>(isValidGeminiKey ? 'gemini' : 'opensource');
     const isFallbackMode = apiMode === 'opensource';
+
+    // This effect ensures that if the user tries to switch to 'gemini' mode (e.g., via a "Retry" button)
+    // but the key is still invalid, it will revert back to 'opensource' mode.
+    React.useEffect(() => {
+        if (!isValidGeminiKey && apiMode === 'gemini') {
+            setApiMode('opensource');
+        }
+    }, [apiMode]);
     
     return (
         <ApiContext.Provider value={{ apiMode, setApiMode, isFallbackMode }}>

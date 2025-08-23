@@ -10,7 +10,7 @@ import BotIcon from './icons/BotIcon';
 import UserIcon from './icons/UserIcon';
 import PaperclipIcon from './icons/PaperclipIcon';
 import XCircleIcon from './icons/XCircleIcon';
-import { marked } from 'https://esm.sh/marked@13.0.2';
+import { marked } from 'marked';
 import { useApi } from '../contexts/ApiContext';
 
 const Chatbot: React.FC = () => {

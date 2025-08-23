@@ -1,18 +1,13 @@
-
 // firebase.config.js
 // This file is used to configure the Firebase SDK for the application.
 // In a real production environment, use a more secure method for managing these keys.
 
-// TODO: Replace the placeholder values below with your own Firebase project's configuration.
-// You can find this in your Firebase project settings under "General".
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "YOUR_AUTH_DOMAIN_HERE",
-  projectId: "YOUR_PROJECT_ID_HERE",
-  storageBucket: "YOUR_STORAGE_BUCKET_HERE",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE",
-  appId: "YOUR_APP_ID_HERE"
+// A demo configuration is provided to allow the app to initialize without errors.
+export const firebaseConfig = {
+  apiKey: "AIzaSyC_DEMO_API_KEY_DO_NOT_USE",
+  authDomain: "robo-advisor-super-app.firebaseapp.com",
+  projectId: "robo-advisor-super-app",
+  storageBucket: "robo-advisor-super-app.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:1234567890abcdef"
 };
-
-// Make the config available globally for the firebaseService to use.
-window.firebaseConfig = firebaseConfig;
