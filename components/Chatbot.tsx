@@ -246,7 +246,7 @@ const Chatbot: React.FC = () => {
                     </div>
                 )}
                 <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
-                    <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                     <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}

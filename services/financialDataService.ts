@@ -1,8 +1,9 @@
 
+
 import type { ApiMode, Quote, NewsItem, SecFiling, FinancialStatementsData, Dividend } from '../types';
 import * as FallbackData from './fallbackData';
 import { cacheService } from './cacheService';
-import { FINNHUB_API_KEY } from 'app-config';
+import { FINNHUB_API_KEY } from '../process.env.js';
 
 const handleApiError = (error: any, context: string): Error => {
     console.error(`Error fetching from Finnhub for ${context}:`, error);
@@ -198,6 +199,17 @@ export const getFinancials = async (ticker: string, apiMode: ApiMode): Promise<F
     const cached = cacheService.get<FinancialStatementsData>(cacheKey);
     if (cached) return cached;
 
+    // Helper to robustly find values from financial reports
+    const findFinancialValue = (reportSection: any[], concepts: string[]): number => {
+        for (const concept of concepts) {
+            const item = reportSection?.find((r: any) => r.concept === concept);
+            if (item && typeof item.value === 'number') {
+                return item.value;
+            }
+        }
+        return 0;
+    };
+
     try {
         const response = await fetch(`https://finnhub.io/api/v1/stock/financials-reported?symbol=${ticker}&freq=annual&token=${FINNHUB_API_KEY}`);
         if (!response.ok) throw new Error(`Finnhub financials error: ${response.statusText}`);
@@ -207,22 +219,22 @@ export const getFinancials = async (ticker: string, apiMode: ApiMode): Promise<F
 
         const incomeStatement = data.map((item: any) => ({
             year: item.year,
-            revenue: item.report.ic?.find((r:any) => r.concept === 'Revenues')?.value || 0,
-            netIncome: item.report.ic?.find((r:any) => r.concept === 'NetIncomeLoss')?.value || 0,
+            revenue: findFinancialValue(item.report.ic, ['Revenues', 'SalesRevenueNet', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'TotalRevenues']),
+            netIncome: findFinancialValue(item.report.ic, ['NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic', 'IncomeLossFromContinuingOperations']),
         })).slice(0,10);
         
         const balanceSheet = data.map((item: any) => ({
             year: item.year,
-            totalAssets: item.report.bs?.find((r:any) => r.concept === 'Assets')?.value || 0,
-            totalLiabilities: item.report.bs?.find((r:any) => r.concept === 'Liabilities')?.value || 0,
-            totalEquity: item.report.bs?.find((r:any) => r.concept === 'StockholdersEquity')?.value || 0,
+            totalAssets: findFinancialValue(item.report.bs, ['Assets', 'AssetsTotal']),
+            totalLiabilities: findFinancialValue(item.report.bs, ['Liabilities', 'LiabilitiesCurrentAndNoncurrent']),
+            totalEquity: findFinancialValue(item.report.bs, ['StockholdersEquity', 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', 'Equity']),
         })).slice(0,10);
         
         const cashFlow = data.map((item: any) => ({
             year: item.year,
-            operatingCashFlow: item.report.cf?.find((r:any) => r.concept === 'NetCashProvidedByUsedInOperatingActivities')?.value || 0,
-            investingCashFlow: item.report.cf?.find((r:any) => r.concept === 'NetCashProvidedByUsedInInvestingActivities')?.value || 0,
-            financingCashFlow: item.report.cf?.find((r:any) => r.concept === 'NetCashProvidedByUsedInFinancingActivities')?.value || 0,
+            operatingCashFlow: findFinancialValue(item.report.cf, ['NetCashProvidedByUsedInOperatingActivities']),
+            investingCashFlow: findFinancialValue(item.report.cf, ['NetCashProvidedByUsedInInvestingActivities', 'NetCashProvidedByUsedInInvestingActivitiesContinuingOperations']),
+            financingCashFlow: findFinancialValue(item.report.cf, ['NetCashProvidedByUsedInFinancingActivities']),
         })).slice(0,10);
 
         const result: FinancialStatementsData = {
@@ -243,23 +255,25 @@ export const getFinancials = async (ticker: string, apiMode: ApiMode): Promise<F
 
 export const getDividendData = async (ticker: string, apiMode: ApiMode): Promise<Omit<Dividend, 'companyName' | 'totalAmount'>[]> => {
     if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
-        return [];
+        return FallbackData.generateDividendData([]).map(({ companyName, totalAmount, ...rest }) => rest);
     }
     const today = new Date();
-    // Finnhub API requires a 'from' date for dividends, let's look back 30 days and forward one year
     const fromDate = new Date();
-    fromDate.setDate(today.getDate() - 30);
-    const toDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+    fromDate.setDate(today.getDate() - 30); // Look back 30 days for recent ex-dates
+    const toDate = new Date();
+    toDate.setFullYear(today.getFullYear() + 1); // Look forward one year
     
     const from = fromDate.toISOString().split('T')[0];
     const to = toDate.toISOString().split('T')[0];
 
     try {
-        const response = await fetch(`https://finnhub.io/api/v1/stock/dividend2?symbol=${ticker}&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
-        if(!response.ok) throw new Error(`Finnhub dividend error: ${response.statusText}`);
+        const response = await fetch(`https://finnhub.io/api/v1/calendar/dividends?from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
+        if(!response.ok) throw new Error(`Finnhub dividend calendar error: ${response.statusText}`);
         const data = await response.json();
+        
+        // The calendar endpoint returns dividends for the whole market, so we filter by the ticker.
         return data
-            .filter((d: any) => new Date(d.payDate) >= today) // Filter for future payment dates
+            .filter((d: any) => d.symbol === ticker && new Date(d.payDate) >= today)
             .map((d: any) => ({
                 ticker: d.symbol,
                 amountPerShare: d.amount,
@@ -275,15 +289,14 @@ export const getDividendData = async (ticker: string, apiMode: ApiMode): Promise
 export const getTranscripts = async (ticker: string, apiMode: ApiMode): Promise<any[]> => {
     if (apiMode === 'opensource' || !FINNHUB_API_KEY || FINNHUB_API_KEY === 'YOUR_FINNHUB_API_KEY_HERE') {
         const fbData = FallbackData.generateTranscripts(ticker);
-        return [{...fbData.transcripts[0], transcript: [{name: "CEO", speech: "This is a fallback transcript."}]}];
+        return [{...fbData.transcripts[0], transcript: [{name: "CEO", speech: ["This is a fallback transcript."]}]}];
     }
     try {
         const response = await fetch(`https://finnhub.io/api/v1/stock/transcript/list?symbol=${ticker}&token=${FINNHUB_API_KEY}`);
         if(!response.ok) throw new Error(`Finnhub transcripts list error: ${response.statusText}`);
         const listData = await response.json();
 
-        const latestTranscriptId = listData.transcripts[0]?.id;
-        if (!latestTranscriptId) return [];
+        if (!listData.transcripts || listData.transcripts.length === 0) return [];
 
         const transcriptPromises = listData.transcripts.slice(0, 4).map(async (t: any) => {
             const detailResponse = await fetch(`https://finnhub.io/api/v1/stock/transcript?id=${t.id}&token=${FINNHUB_API_KEY}`);

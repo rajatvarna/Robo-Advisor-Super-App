@@ -1,11 +1,12 @@
 
+
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
 import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert } from '../types';
 import * as FallbackData from './fallbackData';
 import { ALL_ACHIEVEMENTS } from './fallbackData';
 import { cacheService } from './cacheService';
 import * as financialDataService from './financialDataService';
-import { API_KEY } from 'app-config';
+import { API_KEY } from '../process.env.js';
 
 
 let ai: GoogleGenAI | null = null;
@@ -455,8 +456,19 @@ export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Pro
         const rawTranscripts = await financialDataService.getTranscripts(ticker, apiMode);
         if (rawTranscripts.length === 0) return { transcripts: [] };
 
+        const transcriptsForPrompt = rawTranscripts.map(t => ({
+            quarter: t.quarter,
+            year: t.year,
+            date: t.time, // Use 'time' field which contains the date
+            // Combine speaker and speech into a single string for the AI to process
+            transcript: (t.transcript || [])
+                .map((line: { name: string, speech: string[] }) => `${line.name}:\n${(line.speech || []).join('\n')}`)
+                .join('\n\n')
+                .slice(0, 15000) // Truncate for performance
+        }));
+
         const prompt = `You are a financial analyst specializing in summarizing earnings calls. For each of the following earnings call transcripts, provide a concise one-paragraph summary and extract one single key quote that best represents the tone of the call.
-        Transcripts: ${JSON.stringify(rawTranscripts.map(t => ({ quarter: t.quarter, year: t.year, date: t.date, transcript: t.transcript.slice(0, 15000) })))}
+        Transcripts: ${JSON.stringify(transcriptsForPrompt)}
         Respond with ONLY a valid JSON object with a single key "transcripts". The value should be an array of objects, each with keys: "quarter", "year", "date", "summary", and "transcript" (this should contain the key quote).`;
         
         const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt });

@@ -1,7 +1,7 @@
 
 import * as React from 'react';
 import type { ApiMode } from '../types';
-import { API_KEY } from 'app-config';
+import { API_KEY } from '../process.env.js';
 
 interface ApiContextType {
     apiMode: ApiMode;
@@ -11,7 +11,7 @@ interface ApiContextType {
 
 const ApiContext = React.createContext<ApiContextType | undefined>(undefined);
 
-const isValidGeminiKey = API_KEY && !API_KEY.includes('YOUR_GEMINI_API_KEY') && API_KEY !== 'DEMO_API_KEY';
+const isValidGeminiKey = API_KEY && (API_KEY as string) !== 'YOUR_GEMINI_API_KEY_HERE' && (API_KEY as string) !== 'DEMO_API_KEY';
 
 export const ApiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [apiMode, setApiMode] = React.useState<ApiMode>(isValidGeminiKey ? 'gemini' : 'opensource');

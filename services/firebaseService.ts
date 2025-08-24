@@ -11,7 +11,7 @@ import {
     type User as FirebaseUser
 } from 'firebase/auth';
 import type { User } from '../types';
-import { firebaseConfig } from 'firebase-config';
+import { firebaseConfig } from '../firebase.config.js';
 
 if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("DEMO_API_KEY")) {
     console.error("Firebase config is not set up correctly. Please check your firebase.config.js file and ensure you have replaced the demo key.");
