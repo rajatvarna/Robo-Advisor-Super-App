@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import type { Quote, UserWatchlist } from '../types';
 import StarSolidIcon from './icons/StarSolidIcon';
@@ -184,6 +183,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ watchlists, quotes, onUpdateWatch
                 <ManageWatchlistsModal
                     watchlists={watchlists}
                     onClose={() => setIsManageModalOpen(false)}
+                    onUpdateWatchlistTickers={onUpdateWatchlistTickers}
                     {...manageProps}
                 />
             )}
