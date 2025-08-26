@@ -135,7 +135,13 @@ const CryptoPage: React.FC = () => {
             return (
                 <div className="text-center my-8 text-red-400 p-4 bg-red-900/20 rounded-lg max-w-2xl mx-auto">
                     <p className="font-bold">Could not load crypto data</p>
-                    <p>{error}</p>
+                    <p className="mb-4">{error}</p>
+                    <button
+                        onClick={() => fetchData()}
+                        className="px-6 py-2 rounded-md bg-brand-accent text-white hover:bg-brand-accent-hover transition-colors"
+                    >
+                        Retry
+                    </button>
                 </div>
             );
         }

@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import { generateEducationalContent } from '../services/geminiService';
 import type { EducationalContent } from '../types';
@@ -57,27 +58,28 @@ const EducationHub: React.FC = () => {
     const [error, setError] = React.useState<string | null>(null);
     const { apiMode, setApiMode } = useApi();
 
-    React.useEffect(() => {
-        const fetchContent = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const result = await generateEducationalContent(activeCategory, apiMode);
-                setContent(result);
-            } catch (err: any) {
-                if (err.message.includes('QUOTA_EXCEEDED')) {
-                    setApiMode('opensource');
-                    setError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
-                } else {
-                    setError(err.message || 'Failed to load educational content.');
-                }
-                setContent([]);
-            } finally {
-                setIsLoading(false);
+    const fetchContent = React.useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const result = await generateEducationalContent(activeCategory, apiMode);
+            setContent(result);
+        } catch (err: any) {
+            if (err.message.includes('QUOTA_EXCEEDED')) {
+                setApiMode('opensource');
+                setError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
+            } else {
+                setError(err.message || 'Failed to load educational content.');
             }
-        };
-        fetchContent();
+            setContent([]);
+        } finally {
+            setIsLoading(false);
+        }
     }, [activeCategory, apiMode, setApiMode]);
+
+    React.useEffect(() => {
+        fetchContent();
+    }, [fetchContent]);
 
     return (
         <div className="space-y-8 animate-fade-in">
@@ -112,7 +114,13 @@ const EducationHub: React.FC = () => {
             {error && (
                 <div className="text-center my-8 text-red-400 p-4 bg-red-900/20 rounded-lg max-w-2xl mx-auto">
                     <p className="font-bold">Could not load content</p>
-                    <p>{error}</p>
+                    <p className="mb-4">{error}</p>
+                    <button
+                        onClick={fetchContent}
+                        className="px-6 py-2 rounded-md bg-brand-accent text-white hover:bg-brand-accent-hover transition-colors"
+                    >
+                        Retry
+                    </button>
                 </div>
             )}
             

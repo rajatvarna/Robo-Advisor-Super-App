@@ -124,7 +124,7 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, onUpdateWatchli
     switch(activeTab) {
       case 'overview': return <StockAnalysis analysis={analysis} />;
       case 'financials': return <FinancialStatements data={financials} />;
-      case 'filings': return <SecFilings filings={filings || []} />;
+      case 'filings': return <SecFilings filings={filings} />;
       case 'transcripts': return <EarningsTranscripts transcriptsData={transcriptsData} />;
       default: return <div className="flex items-center justify-center h-64"><Spinner/></div>;
     }
@@ -169,8 +169,23 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, onUpdateWatchli
     <div className="container mx-auto">
       <TickerInput onTickerSubmit={handleTickerSubmit} isLoading={isLoading} />
       
-      {isLoading && <div className="flex flex-col items-center justify-center h-96"><Spinner /><p className="mt-4 text-brand-text-secondary">Fetching financial universe...</p></div>}
-      {error && <div className="text-center my-8 text-red-400 p-4 bg-red-900/20 rounded-lg max-w-2xl mx-auto"><p className="font-bold">Error</p><p>{error}</p></div>}
+      {isLoading && <div className="flex flex-col items-center justify-center h-96"><Spinner /><p className="mt-4 text-brand-text-secondary">Fetching financial universe for {ticker}...</p></div>}
+      
+      {error && (
+            <div className="text-center my-8 text-red-400 p-4 bg-red-900/20 rounded-lg max-w-2xl mx-auto">
+                <p className="font-bold">An Error Occurred</p>
+                <p className="mb-4">{error}</p>
+                {ticker && (
+                    <button
+                        onClick={() => handleTickerSubmit(ticker)}
+                        className="px-6 py-2 rounded-md bg-brand-accent text-white hover:bg-brand-accent-hover transition-colors"
+                    >
+                        Try Again
+                    </button>
+                )}
+            </div>
+        )}
+
 
       {!isLoading && ticker && (
         <div className="mt-8 space-y-6 animate-fade-in">

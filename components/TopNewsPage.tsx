@@ -29,26 +29,27 @@ const TopNewsPage: React.FC = () => {
     const [error, setError] = React.useState<string | null>(null);
     const { apiMode, setApiMode } = useApi();
 
-    React.useEffect(() => {
-        const fetchNews = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const results = await getTopBusinessNews(apiMode);
-                setNews(results);
-            } catch (err: any) {
-                 if (err.message.includes('QUOTA_EXCEEDED')) {
-                    setApiMode('opensource');
-                    setError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
-                } else {
-                    setError(err.message || 'Failed to load top news.');
-                }
-            } finally {
-                setIsLoading(false);
+    const fetchNews = React.useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const results = await getTopBusinessNews(apiMode);
+            setNews(results);
+        } catch (err: any) {
+             if (err.message.includes('QUOTA_EXCEEDED')) {
+                setApiMode('opensource');
+                setError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
+            } else {
+                setError(err.message || 'Failed to load top news.');
             }
-        };
-        fetchNews();
+        } finally {
+            setIsLoading(false);
+        }
     }, [apiMode, setApiMode]);
+
+    React.useEffect(() => {
+        fetchNews();
+    }, [fetchNews]);
 
     const renderContent = () => {
         if (isLoading) {
@@ -64,7 +65,13 @@ const TopNewsPage: React.FC = () => {
             return (
                 <div className="text-center my-8 text-red-400 p-4 bg-red-900/20 rounded-lg max-w-2xl mx-auto">
                     <p className="font-bold">Could not load news</p>
-                    <p>{error}</p>
+                    <p className="mb-4">{error}</p>
+                    <button
+                        onClick={fetchNews}
+                        className="px-6 py-2 rounded-md bg-brand-accent text-white hover:bg-brand-accent-hover transition-colors"
+                    >
+                        Retry
+                    </button>
                 </div>
             );
         }

@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import type { Transaction, PortfolioHistoryPoint } from '../types';
@@ -92,7 +93,12 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ transactions }) => 
     }, [transactions, apiMode]);
 
     if (isLoading) {
-        return <div className="h-80 flex items-center justify-center bg-brand-secondary rounded-lg border border-brand-border"><Spinner/></div>;
+        return (
+            <div className="h-80 flex flex-col items-center justify-center bg-brand-secondary rounded-lg border border-brand-border">
+                <Spinner/>
+                <p className="mt-4 text-brand-text-secondary">Calculating historical performance...</p>
+            </div>
+        );
     }
     if (error) {
         return <div className="h-80 flex items-center justify-center bg-red-900/20 rounded-lg text-red-400 p-4">{error}</div>;

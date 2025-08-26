@@ -1,9 +1,10 @@
 import * as React from 'react';
 import type { SecFiling } from '../types';
 import DownloadIcon from './icons/DownloadIcon';
+import Spinner from './icons/Spinner';
 
 interface SecFilingsProps {
-  filings: SecFiling[];
+  filings: SecFiling[] | null;
 }
 
 const SecFilings: React.FC<SecFilingsProps> = ({ filings }) => {
@@ -13,7 +14,12 @@ const SecFilings: React.FC<SecFilingsProps> = ({ filings }) => {
         <h3 className="text-lg font-bold text-brand-text">Recent SEC Filings</h3>
       </div>
       <div className="overflow-y-auto p-2 flex-grow">
-        {filings.length > 0 ? (
+        {filings === null ? (
+            <div className="flex flex-col items-center justify-center h-full">
+                <Spinner />
+                <p className="mt-2 text-sm text-brand-text-secondary">Loading filings...</p>
+            </div>
+        ) : filings.length > 0 ? (
           <ul className="space-y-2">
             {filings.map((filing) => (
               <li key={filing.accessionNumber} className="bg-brand-primary p-3 rounded-md border border-brand-border hover:bg-gray-700 transition-colors">
