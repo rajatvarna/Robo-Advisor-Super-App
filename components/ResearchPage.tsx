@@ -1,5 +1,4 @@
 
-
 import * as React from 'react';
 import TickerInput from './TickerInput';
 import SecFilings from './SecFilings';
@@ -20,10 +19,56 @@ import { useApi } from '../contexts/ApiContext';
 
 type DashboardTab = 'overview' | 'financials' | 'filings' | 'transcripts';
 
+interface ResearchNotesProps {
+    note: string;
+    onSave: (note: string) => void;
+}
+
+const ResearchNotes: React.FC<ResearchNotesProps> = ({ note, onSave }) => {
+    const [text, setText] = React.useState(note);
+    const [isEditing, setIsEditing] = React.useState(false);
+
+    React.useEffect(() => {
+        setText(note);
+    }, [note]);
+
+    const handleSave = () => {
+        onSave(text);
+        setIsEditing(false);
+    };
+
+    return (
+        <div className="bg-brand-secondary border border-brand-border rounded-lg shadow-lg p-4">
+            <h3 className="text-lg font-bold text-brand-text mb-2">My Notes</h3>
+            <textarea
+                value={text}
+                onChange={(e) => {
+                    setText(e.target.value);
+                    if (!isEditing) setIsEditing(true);
+                }}
+                placeholder="Record your research, thoughts, and price targets here..."
+                className="w-full h-32 p-2 bg-brand-primary border border-brand-border rounded-md text-sm text-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition"
+            />
+            {isEditing && (
+                <div className="flex justify-end mt-2">
+                    <button
+                        onClick={handleSave}
+                        className="px-4 py-1.5 text-sm font-semibold bg-brand-accent text-white rounded-md hover:bg-brand-accent-hover"
+                    >
+                        Save Note
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
 interface ResearchPageProps {
   watchlists: UserWatchlist[];
+  notes: Record<string, string>;
   onUpdateWatchlistTickers: (id: string, tickers: string[]) => void;
   onAddWatchlist: (name: string) => void;
+  onUpdateNote: (ticker: string, note: string) => void;
 }
 
 const TabButton: React.FC<{
@@ -45,7 +90,7 @@ const TabButton: React.FC<{
 );
 
 
-const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, onUpdateWatchlistTickers, onAddWatchlist }) => {
+const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdateWatchlistTickers, onAddWatchlist, onUpdateNote }) => {
   const [ticker, setTicker] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -196,7 +241,18 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, onUpdateWatchli
             </button>
           </div>
           
-          <StockChart ticker={ticker} />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+                <StockChart ticker={ticker} />
+            </div>
+            <div>
+                 <ResearchNotes
+                    note={notes[ticker] || ''}
+                    onSave={(note) => onUpdateNote(ticker, note)}
+                />
+            </div>
+          </div>
+
 
           <div className="border-b border-brand-border"><nav className="-mb-px flex space-x-4" aria-label="Tabs">
               <TabButton label="Overview" isActive={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />

@@ -247,11 +247,13 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
             allocation,
             holdings: liveHoldings,
             portfolioPerformance: [{ date: new Date().toISOString().split('T')[0], price: netWorth }],
-            personalizedNews: [],
+            personalizedNews: FallbackData.generatePersonalizedNews(liveHoldings.map(h => h.ticker), []),
             dashboardInsights: FallbackData.generateDashboardInsights(),
             portfolioScore: { score: 78, summary: "A well-diversified portfolio with solid holdings." },
             achievements: initializedAchievements,
             alerts: FallbackData.generatePortfolioAlerts({ holdings: liveHoldings } as DashboardData),
+            dismissedNewsIds: [],
+            notes: {},
         };
 
         setDashboardData(fullData);
@@ -442,6 +444,26 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
         return newData;
     });
   }, [saveData]);
+  
+  const handleDismissNews = React.useCallback((newsId: string) => {
+      setDashboardData(prev => {
+          if (!prev) return null;
+          const updatedDismissed = [...(prev.dismissedNewsIds || []), newsId];
+          const newData = { ...prev, dismissedNewsIds: updatedDismissed };
+          saveData(newData);
+          return newData;
+      });
+  }, [saveData]);
+
+  const handleUpdateNote = React.useCallback((ticker: string, note: string) => {
+      setDashboardData(prev => {
+          if (!prev) return null;
+          const updatedNotes = { ...(prev.notes || {}), [ticker]: note };
+          const newData = { ...prev, notes: updatedNotes };
+          saveData(newData);
+          return newData;
+      });
+  }, [saveData]);
 
   const handleApiError = (err: any) => {
         if (err.message.includes('QUOTA_EXCEEDED')) {
@@ -499,11 +521,11 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
 
     switch (view) {
       case 'dashboard':
-        return <DashboardPage data={dashboardData} quotes={quotes} onGenerateDemo={handleGenerateDemoData} onAddHolding={() => setIsModalOpen(true)} error={error} onAddWatchlist={handleAddWatchlist} onRenameWatchlist={handleRenameWatchlist} onDeleteWatchlist={handleDeleteWatchlist} onUpdateWatchlistTickers={handleUpdateWatchlistTickers} />;
+        return <DashboardPage data={dashboardData} quotes={quotes} onGenerateDemo={handleGenerateDemoData} onAddHolding={() => setIsModalOpen(true)} error={error} onAddWatchlist={handleAddWatchlist} onRenameWatchlist={handleRenameWatchlist} onDeleteWatchlist={handleDeleteWatchlist} onUpdateWatchlistTickers={handleUpdateWatchlistTickers} onDismissNews={handleDismissNews} />;
       case 'portfolio':
         return <PortfolioPage data={dashboardData} onGenerateDemo={handleGenerateDemoData} onAddHolding={() => setIsModalOpen(true)} />;
       case 'research':
-        return <ResearchPage watchlists={dashboardData?.watchlists || []} onUpdateWatchlistTickers={handleUpdateWatchlistTickers} onAddWatchlist={handleAddWatchlist} />;
+        return <ResearchPage watchlists={dashboardData?.watchlists || []} notes={dashboardData?.notes || {}} onUpdateWatchlistTickers={handleUpdateWatchlistTickers} onAddWatchlist={handleAddWatchlist} onUpdateNote={handleUpdateNote} />;
       case 'screener':
         return <Screener onRunScreener={handleRunScreener} />;
       case 'advisor':
@@ -532,7 +554,7 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
       case 'support':
         return <DonationPage />;
       default:
-        return <DashboardPage data={dashboardData} quotes={quotes} onGenerateDemo={handleGenerateDemoData} onAddHolding={() => setIsModalOpen(true)} error={error} onAddWatchlist={handleAddWatchlist} onRenameWatchlist={handleRenameWatchlist} onDeleteWatchlist={handleDeleteWatchlist} onUpdateWatchlistTickers={handleUpdateWatchlistTickers}/>;
+        return <DashboardPage data={dashboardData} quotes={quotes} onGenerateDemo={handleGenerateDemoData} onAddHolding={() => setIsModalOpen(true)} error={error} onAddWatchlist={handleAddWatchlist} onRenameWatchlist={handleRenameWatchlist} onDeleteWatchlist={handleDeleteWatchlist} onUpdateWatchlistTickers={handleUpdateWatchlistTickers} onDismissNews={handleDismissNews}/>;
     }
   };
 

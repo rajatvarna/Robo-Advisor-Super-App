@@ -23,9 +23,10 @@ interface DashboardPageProps {
   onRenameWatchlist: (id: string, newName: string) => void;
   onDeleteWatchlist: (id: string) => void;
   onUpdateWatchlistTickers: (id: string, tickers: string[]) => void;
+  onDismissNews: (newsId: string) => void;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ data, quotes, onGenerateDemo, onAddHolding, error, ...watchlistProps }) => {
+const DashboardPage: React.FC<DashboardPageProps> = ({ data, quotes, onGenerateDemo, onAddHolding, error, onDismissNews, ...watchlistProps }) => {
   if (!data) {
     return (
         <>
@@ -39,7 +40,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, quotes, onGenerateD
     );
   }
 
-  const { user, netWorth, holdings, portfolioScore, achievements, personalizedNews, watchlists, goal, dashboardInsights } = data;
+  const { user, netWorth, holdings, portfolioScore, achievements, personalizedNews, watchlists, goal, dashboardInsights, dismissedNewsIds } = data;
   
   const dayGain = holdings.reduce((acc, h) => acc + (h.dayChange * h.shares), 0);
   const totalOriginalValue = holdings.reduce((acc, h) => acc + ((h.currentPrice - h.dayChange) * h.shares), 0);
@@ -69,7 +70,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, quotes, onGenerateD
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 <div id="personalized-news-feed">
-                  <PersonalizedNewsFeed news={personalizedNews || []} holdings={holdings} watchlists={watchlists}/>
+                  <PersonalizedNewsFeed 
+                    news={personalizedNews || []} 
+                    holdings={holdings} 
+                    watchlists={watchlists}
+                    dismissedNewsIds={dismissedNewsIds || []}
+                    onDismissNews={onDismissNews}
+                  />
                 </div>
                 <div id="achievements-list">
                   <AchievementsList achievements={achievements || []} />

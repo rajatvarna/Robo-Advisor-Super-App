@@ -77,6 +77,7 @@ export interface NewsItem {
     sentiment?: 'Positive' | 'Negative' | 'Neutral';
     ticker?: string; // Ticker it relates to
     sourceIndex?: number;
+    id: string; // Unique ID for dismissal
 }
 
 export interface Alert {
@@ -141,6 +142,8 @@ export interface DashboardData extends BaseDashboardData {
     integrations: {
         interactiveBrokers: BrokerageIntegration;
     };
+    dismissedNewsIds?: string[];
+    notes?: Record<string, string>; // ticker -> note content
 }
 
 export type ChartTimeframe = '1Y' | '5Y' | '10Y';

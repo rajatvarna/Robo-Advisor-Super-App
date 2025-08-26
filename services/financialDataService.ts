@@ -127,7 +127,9 @@ export const getCompanyNews = async (ticker: string, apiMode: ApiMode): Promise<
         if(!response.ok) throw new Error(`Finnhub company news error: ${response.statusText}`);
         const data = await response.json();
         
+        // FIX: Property 'id' is missing in type '{ headline: any; url: any; source: any; summary: any; publishedAt: string; ticker: any; }' but required in type 'NewsItem'.
         return data.slice(0, 5).map((item: any): NewsItem => ({
+            id: item.id.toString(),
             headline: item.headline,
             url: item.url,
             source: item.source,
@@ -149,7 +151,9 @@ export const getMarketNews = async (category: 'general' | 'crypto', apiMode: Api
         const response = await fetch(`https://finnhub.io/api/v1/news?category=${category}&token=${FINNHUB_API_KEY}`);
         if(!response.ok) throw new Error(`Finnhub market news error: ${response.statusText}`);
         const data = await response.json();
+        // FIX: Property 'id' is missing in type '{ headline: any; url: any; source: any; summary: any; publishedAt: string; ticker: any; }' but required in type 'NewsItem'.
         return data.slice(0, 20).map((item: any): NewsItem => ({
+            id: item.id.toString(),
             headline: item.headline,
             url: item.url,
             source: item.source,

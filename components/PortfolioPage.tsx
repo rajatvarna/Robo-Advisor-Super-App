@@ -10,6 +10,7 @@ const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF6666', '#A0E7E5', '#B4F8C8', '#FBE7C6'];
 
 type PortfolioTab = 'holdings' | 'transactions';
+type TransactionFilter = 'all' | 'buy' | 'sell';
 
 const HoldingRow: React.FC<{h: Holding}> = React.memo(({ h }) => {
     const [flashClass, setFlashClass] = React.useState('');
@@ -23,15 +24,22 @@ const HoldingRow: React.FC<{h: Holding}> = React.memo(({ h }) => {
     }, [h.isUpdating, h.currentPrice, h.dayChange]);
     
     const isGain = h.unrealizedGain >= 0;
+    const isDayGain = h.dayChange >= 0;
+    const dayGainTotal = h.dayChange * h.shares;
+    const costPerShare = h.costBasis / h.shares;
 
     return (
         <tr className={`transition-colors duration-500 hover:bg-brand-border/20 ${flashClass}`}>
             <td className="py-4 px-4 font-bold text-brand-accent">{h.ticker}</td>
             <td className="py-4 px-4 text-brand-text-secondary hidden md:table-cell">{h.companyName}</td>
             <td className="py-4 px-4 text-right tabular-nums text-brand-text">{h.shares.toFixed(2)}</td>
+            <td className="py-4 px-4 text-right tabular-nums text-brand-text hidden lg:table-cell">{formatCurrency(costPerShare)}</td>
             <td className="py-4 px-4 text-right tabular-nums text-brand-text">{formatCurrency(h.currentPrice)}</td>
+            <td className={`py-4 px-4 text-right tabular-nums hidden sm:table-cell ${isDayGain ? 'text-green-500' : 'text-red-500'}`}>
+                {formatCurrency(dayGainTotal)}
+            </td>
             <td className="py-4 px-4 text-right tabular-nums font-bold text-brand-text">{formatCurrency(h.totalValue)}</td>
-            <td className={`py-4 px-4 text-right tabular-nums font-semibold ${isGain ? 'text-green-500' : 'text-red-500'}`}>
+            <td className={`py-4 px-4 text-right tabular-nums font-semibold hidden lg:table-cell ${isGain ? 'text-green-500' : 'text-red-500'}`}>
                 {formatCurrency(h.unrealizedGain)} ({h.unrealizedGainPercent.toFixed(2)}%)
             </td>
         </tr>
@@ -52,12 +60,18 @@ const TransactionRow: React.FC<{ tx: Transaction }> = React.memo(({ tx }) => (
 
 const PortfolioPage: React.FC<{ data: DashboardData | null; onGenerateDemo: () => void; onAddHolding: () => void; }> = ({ data, onGenerateDemo, onAddHolding }) => {
   const [activeTab, setActiveTab] = React.useState<PortfolioTab>('holdings');
+  const [transactionFilter, setTransactionFilter] = React.useState<TransactionFilter>('all');
 
   if (!data || data.holdings.length === 0) {
     return <EmptyState onPrimaryClick={onAddHolding} onSecondaryClick={onGenerateDemo} />;
   }
 
   const { holdings, allocation, transactions } = data;
+  
+  const filteredTransactions = React.useMemo(() => {
+    if (transactionFilter === 'all') return transactions;
+    return transactions.filter(tx => tx.type.toLowerCase() === transactionFilter);
+  }, [transactions, transactionFilter]);
 
   const renderContent = () => {
     if (activeTab === 'holdings') {
@@ -69,9 +83,11 @@ const PortfolioPage: React.FC<{ data: DashboardData | null; onGenerateDemo: () =
                             <th className="py-3 px-4">Symbol</th>
                             <th className="py-3 px-4 hidden md:table-cell">Company</th>
                             <th className="py-3 px-4 text-right">Shares</th>
+                            <th className="py-3 px-4 text-right hidden lg:table-cell">Cost/Share</th>
                             <th className="py-3 px-4 text-right">Price</th>
+                            <th className="py-3 px-4 text-right hidden sm:table-cell">Today's Gain</th>
                             <th className="py-3 px-4 text-right">Total Value</th>
-                            <th className="py-3 px-4 text-right">Unrealized Gain</th>
+                            <th className="py-3 px-4 text-right hidden lg:table-cell">Total Gain</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-brand-border">
@@ -96,7 +112,7 @@ const PortfolioPage: React.FC<{ data: DashboardData | null; onGenerateDemo: () =
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-brand-border">
-                        {transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
+                        {filteredTransactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
                     </tbody>
                 </table>
             </div>
@@ -118,11 +134,22 @@ const PortfolioPage: React.FC<{ data: DashboardData | null; onGenerateDemo: () =
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-brand-secondary rounded-lg border border-brand-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-xl">
-                 <div className="p-4 border-b border-brand-border">
+                 <div className="p-4 border-b border-brand-border flex justify-between items-center">
                     <div className="flex gap-4">
                        <button onClick={() => setActiveTab('holdings')} className={`pb-2 border-b-2 text-sm font-semibold ${activeTab === 'holdings' ? 'text-brand-accent border-brand-accent' : 'text-brand-text-secondary border-transparent hover:text-brand-text'}`}>Holdings</button>
                        <button onClick={() => setActiveTab('transactions')} className={`pb-2 border-b-2 text-sm font-semibold ${activeTab === 'transactions' ? 'text-brand-accent border-brand-accent' : 'text-brand-text-secondary border-transparent hover:text-brand-text'}`}>Transactions</button>
                     </div>
+                    {activeTab === 'transactions' && (
+                        <select 
+                            value={transactionFilter} 
+                            onChange={(e) => setTransactionFilter(e.target.value as TransactionFilter)}
+                            className="bg-brand-primary border border-brand-border rounded-md px-2 py-1 text-xs"
+                        >
+                            <option value="all">All Types</option>
+                            <option value="buy">Buys</option>
+                            <option value="sell">Sells</option>
+                        </select>
+                    )}
                 </div>
                 {renderContent()}
             </div>

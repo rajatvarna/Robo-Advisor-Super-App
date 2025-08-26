@@ -113,8 +113,8 @@ export const generatePersonalizedNews = async (holdings: Holding[], watchlistTic
             return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
         });
 
-        // Remove duplicates by URL
-        const uniqueNews = Array.from(new Map(allNews.map(item => [item.url, item])).values());
+        // Remove duplicates by URL and add a unique ID
+        const uniqueNews = Array.from(new Map(allNews.map(item => [item.url, { ...item, id: item.url || `news-${Date.now()}-${Math.random()}` }])).values());
         
         const finalNews = uniqueNews.slice(0, 10);
         cacheService.set(cacheKey, finalNews, 6 * 60 * 60 * 1000); // Cache for 6 hours
@@ -144,10 +144,11 @@ export const getTopBusinessNews = async (apiMode: ApiMode): Promise<NewsItem[]> 
                 tools: [{ googleSearch: {} }],
             }
         });
-        const news = parseJsonFromText(response.text, "top business news");
-        if (!Array.isArray(news)) {
+        const newsData = parseJsonFromText(response.text, "top business news");
+        if (!Array.isArray(newsData)) {
             throw new Error("AI response was not a JSON array.");
         }
+        const news = newsData.map((item: any) => ({...item, id: item.url || `news-${Date.now()}-${Math.random()}` }));
         cacheService.set(cacheKey, news, 60 * 60 * 1000); // Cache for 1 hour
         return news;
     } catch(error) {
@@ -495,12 +496,14 @@ export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): P
     3.  **Bear Case**: A paragraph outlining the primary risks and reasons for concern.
     4.  **Financial Health**: A score from 1-10 (10 being best) and a one-sentence summary of its financial stability.
     5.  **Recent News**: Find 2-3 recent, significant news headlines. For each, provide the headline and classify its sentiment as 'Positive', 'Negative', or 'Neutral'.
-    Respond with ONLY a valid JSON object. Do not include markdown. The structure should be: { businessSummary: string, bullCase: string, bearCase: string, financialHealth: { score: number, summary: string }, recentNews: [{ headline: string, sentiment: string, sourceIndex: number }] }.`;
+    Respond with ONLY a valid JSON object. Do not include markdown. The structure should be: { businessSummary: string, bullCase: string, bearCase: string, financialHealth: { score: number, summary: string }, recentNews: [{ headline: string, sentiment: string, sourceIndex: number, url: string, source: string, publishedAt: string }] }. Ensure url is a direct link and publishedAt is an ISO 8601 string.`;
     
     try {
         const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] } });
         const analysis = parseJsonFromText(response.text, "stock analysis");
         
+        analysis.recentNews = analysis.recentNews.map((item: any) => ({...item, id: item.url || `news-${Date.now()}-${Math.random()}` }));
+
         const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
         const sources: GroundingSource[] = groundingSources
             ?.map((s: any, i: number) => ({ uri: s.web?.uri, title: s.web?.title, index: i + 1 }))
