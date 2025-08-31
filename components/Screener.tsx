@@ -89,6 +89,29 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
     const { apiMode, setApiMode } = useApi();
     const [isSectorDropdownOpen, setIsSectorDropdownOpen] = React.useState(false);
     const sectorDropdownRef = React.useRef<HTMLDivElement>(null);
+    
+    const [peRatioRange, setPeRatioRange] = React.useState({ min: 0, max: 101 });
+    const MAX_PE_RATIO = 101; // 101 represents infinity
+
+    const handlePeRatioChange = (type: 'min' | 'max', value: number) => {
+        const newRange = { ...peRatioRange, [type]: value };
+        if (newRange.min > newRange.max) {
+            if (type === 'max') newRange.min = newRange.max;
+            else newRange.max = newRange.min;
+        }
+        setPeRatioRange(newRange);
+        setCriteria(prev => ({
+            ...prev,
+            peRatioMin: newRange.min,
+            peRatioMax: newRange.max >= MAX_PE_RATIO ? Infinity : newRange.max
+        }));
+    };
+
+    const formatPeRatioLabel = (value: number) => {
+        if (value >= MAX_PE_RATIO) return "Any";
+        return value.toString();
+    }
+
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -293,14 +316,64 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                         </div>
                     </div>
                      {/* P/E Ratio */}
-                    <div>
+                    <div className="h-[68px] flex flex-col">
                         <TooltipLabel
-                            label="P/E Ratio"
-                            tooltipText="Price-to-Earnings Ratio. A company's share price relative to its earnings per share. A high P/E can indicate high growth expectations or overvaluation."
+                            label={`P/E Ratio: ${formatPeRatioLabel(peRatioRange.min)} - ${formatPeRatioLabel(peRatioRange.max)}`}
+                            tooltipText="Price-to-Earnings Ratio. A high P/E can indicate high growth expectations or overvaluation."
                         />
-                        <div className="flex gap-2">
-                            <input type="number" name="peRatioMin" placeholder="e.g., 5" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
-                            <input type="number" name="peRatioMax" placeholder="e.g., 30" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                        <div className="relative h-8 pt-4 flex-grow">
+                             {/* These styles are a bit complex to do inline with Tailwind without plugins, but this approach works */}
+                            <style>{`
+                                input[type=range].slider-thumb::-webkit-slider-thumb {
+                                    -webkit-appearance: none;
+                                    appearance: none;
+                                    width: 16px;
+                                    height: 16px;
+                                    background: var(--color-brand-accent);
+                                    border-radius: 50%;
+                                    cursor: pointer;
+                                    margin-top: -6px; /* Center thumb on the track */
+                                    position: relative;
+                                    z-index: 20;
+                                }
+                                input[type=range].slider-thumb::-moz-range-thumb {
+                                    width: 16px;
+                                    height: 16px;
+                                    background: var(--color-brand-accent);
+                                    border-radius: 50%;
+                                    cursor: pointer;
+                                    position: relative;
+                                    z-index: 20;
+                                }
+                            `}</style>
+                            <input
+                                type="range"
+                                min="0"
+                                max={MAX_PE_RATIO}
+                                step="1"
+                                value={peRatioRange.min}
+                                onChange={(e) => handlePeRatioChange('min', parseInt(e.target.value))}
+                                className="absolute w-full h-1 bg-transparent appearance-none pointer-events-none z-10 slider-thumb"
+                            />
+                            <input
+                                type="range"
+                                min="0"
+                                max={MAX_PE_RATIO}
+                                step="1"
+                                value={peRatioRange.max}
+                                onChange={(e) => handlePeRatioChange('max', parseInt(e.target.value))}
+                                className="absolute w-full h-1 bg-transparent appearance-none pointer-events-none z-10 slider-thumb"
+                            />
+                            <div className="absolute w-full h-1.5 top-1/2 -translate-y-1/2">
+                                <div className="h-full rounded-full bg-brand-border"></div>
+                                <div
+                                    className="absolute h-full rounded-full bg-brand-accent top-0"
+                                    style={{
+                                        left: `${(peRatioRange.min / MAX_PE_RATIO) * 100}%`,
+                                        right: `${100 - (peRatioRange.max / MAX_PE_RATIO) * 100}%`
+                                    }}
+                                ></div>
+                            </div>
                         </div>
                     </div>
                     {/* Dividend Yield */}
@@ -381,7 +454,13 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
 
                 <div className="mt-6 pt-6 border-t border-brand-border flex justify-end gap-4">
                      <button 
-                        onClick={() => { setCriteria(INITIAL_CRITERIA); setResults([]); setHasSearched(false); setCurrentPage(1); }}
+                        onClick={() => { 
+                            setCriteria(INITIAL_CRITERIA); 
+                            setPeRatioRange({ min: 0, max: 101 });
+                            setResults([]); 
+                            setHasSearched(false); 
+                            setCurrentPage(1); 
+                        }}
                         className="px-6 py-2 rounded-lg text-sm font-semibold bg-brand-secondary text-brand-text-secondary hover:bg-brand-border transition-colors"
                      >
                         Reset Filters
