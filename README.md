@@ -53,7 +53,7 @@ This application is packed with features that cater to both novice and experienc
 *   **Frontend:** React, TypeScript, Tailwind CSS
 *   **Charting:** Recharts, TradingView Lightweight Charts API
 *   **Primary AI:** **Google Gemini API** (`@google/genai`)
-*   **Financial Data:** **Finnhub API** (for real-time quotes and historical prices)
+*   **Financial Data:** **Finnhub API** (for real-time quotes, news, and fundamentals)
 *   **Module Management:** ES Modules with `importmap` (via esm.sh CDN)
 
 ## 🚀 Getting Started
@@ -116,7 +116,7 @@ This ensures a seamless user experience for demos and development, and provides 
 The application logic is cleanly separated into a `services` directory, abstracting away the data-fetching and AI processing from the UI components.
 
 *   **`geminiService.ts`:** The AI brain of the app. It handles all prompt engineering, API calls to Gemini, and JSON parsing for qualitative data.
-*   **`financialDataService.ts`:** Fetches quantitative market data (prices, history) from Finnhub.
+*   **`financialDataService.ts`:** Fetches quantitative market data (prices, history, fundamentals) from Finnhub.
 *   **`cacheService.ts`:** A simple in-memory cache with a Time-to-Live (TTL) reduces redundant API calls for data that doesn't change frequently (e.g., news, stock analysis), improving performance and saving costs.
 
 ### Data Flow & Polling
@@ -139,7 +139,7 @@ The app stays up-to-date with two primary polling mechanisms initiated in `App.t
 │   ├── ...                 # Other UI components
 ├── contexts/
 │   ├── ApiContext.tsx      # Manages API mode (live vs. fallback)
-│   └── ThemeContext.tsx    # Manages light/dark theme
+│ └── ThemeContext.tsx    # Manages light/dark theme
 ├── services/
 │   ├── geminiService.ts    # All calls to the Google Gemini API
 │   ├── ...                 # Other data and utility services

@@ -1,7 +1,5 @@
-
-
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
-import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, FinancialStatementsData, StockChartDataPoint, ChartTimeframe, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert } from '../types';
+import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert, SecFiling } from '../types';
 import * as FallbackData from './fallbackData';
 import { ALL_ACHIEVEMENTS } from './fallbackData';
 import { cacheService } from './cacheService';
@@ -93,7 +91,7 @@ export const fetchStockDetailsForPortfolio = async (ticker: string, apiMode: Api
 export const generatePersonalizedNews = async (holdings: Holding[], watchlistTickers: string[], apiMode: ApiMode): Promise<NewsItem[]> => {
     const holdingTickersKey = holdings.map(h => h.ticker).sort().join(',');
     const watchlistTickersKey = [...new Set(watchlistTickers)].sort().join(',');
-    const cacheKey = `personalized_news_finnhub_${holdingTickersKey}_${watchlistTickersKey}`;
+    const cacheKey = `personalized_news_fh_${holdingTickersKey}_${watchlistTickersKey}`;
     const cached = cacheService.get<NewsItem[]>(cacheKey);
     if (cached) return cached;
 
@@ -113,63 +111,17 @@ export const generatePersonalizedNews = async (holdings: Holding[], watchlistTic
             return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
         });
 
-        // Remove duplicates by URL and add a unique ID
-        const uniqueNews = Array.from(new Map(allNews.map(item => [item.url, { ...item, id: item.url || `news-${Date.now()}-${Math.random()}` }])).values());
+        // Remove duplicates by URL
+        const uniqueNews = Array.from(new Map(allNews.map(item => [item.url, item])).values());
         
         const finalNews = uniqueNews.slice(0, 10);
-        cacheService.set(cacheKey, finalNews, 6 * 60 * 60 * 1000); // Cache for 6 hours
+        cacheService.set(cacheKey, finalNews, 60 * 60 * 1000); // Cache for 1 hour
         return finalNews;
     } catch (error) {
          console.error("Error fetching personalized news from Finnhub", error);
          return FallbackData.generatePersonalizedNews(holdings.map(h=>h.ticker), watchlistTickers);
     }
 }
-
-export const getTopBusinessNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
-    const cacheKey = 'top_business_news_gemini_agent';
-    const cached = cacheService.get<NewsItem[]>(cacheKey);
-    if (cached) return cached;
-    
-    if (apiMode === 'opensource') return FallbackData.getTopBusinessNews();
-    
-    const prompt = `Act as a top financial news aggregation agent. Use Google Search to find the 5 most important global business and financial news headlines from today from ONLY the following sources: Bloomberg, The Wall Street Journal, Financial Times, and Reuters.
-    For each article, provide the headline, the source name, the URL, a concise one-sentence summary, and the publication date/time in ISO 8601 format.
-    Respond with ONLY a valid JSON array of objects with keys "headline", "url", "source", "summary", and "publishedAt". Ensure the URL is valid and directly links to the article.`;
-    
-    try {
-        const response = await getAiClient().models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt,
-            config: {
-                tools: [{ googleSearch: {} }],
-            }
-        });
-        const newsData = parseJsonFromText(response.text, "top business news");
-        if (!Array.isArray(newsData)) {
-            throw new Error("AI response was not a JSON array.");
-        }
-        const news = newsData.map((item: any) => ({...item, id: item.url || `news-${Date.now()}-${Math.random()}` }));
-        cacheService.set(cacheKey, news, 60 * 60 * 1000); // Cache for 1 hour
-        return news;
-    } catch(error) {
-        throw handleApiError(error, "top business news");
-    }
-};
-
-export const getCryptoNews = async (apiMode: ApiMode): Promise<NewsItem[]> => {
-    const cacheKey = 'crypto_news_finnhub';
-    const cached = cacheService.get<NewsItem[]>(cacheKey);
-    if (cached) return cached;
-    
-    if (apiMode === 'opensource') return FallbackData.getCryptoNews();
-     try {
-        const news = await financialDataService.getMarketNews('crypto', apiMode);
-        cacheService.set(cacheKey, news, 60 * 60 * 1000); // Cache for 1 hour
-        return news;
-    } catch(error) {
-        throw handleApiError(error, "crypto news");
-    }
-};
 
 export const getTopCryptos = async (apiMode: ApiMode): Promise<CryptoData[]> => {
     const cacheKey = 'top_cryptos';
@@ -293,27 +245,33 @@ export const generatePortfolioAlerts = async (dashboardData: DashboardData, apiM
 
 export const generateDividendData = async (holdings: Holding[], apiMode: ApiMode): Promise<Dividend[]> => {
     const holdingsKey = holdings.map(h => h.ticker).sort().join(',');
-    const cacheKey = `dividend_data_finnhub_${holdingsKey}`;
+    const cacheKey = `dividend_data_gemini_${holdingsKey}`;
     const cached = cacheService.get<Dividend[]>(cacheKey);
     if (cached) return cached;
     
     if (apiMode === 'opensource') return FallbackData.generateDividendData(holdings);
 
+    const holdingsInfo = holdings.map(h => ({ ticker: h.ticker, companyName: h.companyName, shares: h.shares }));
+
+    const prompt = `Act as a financial data API. Use Google Search to find upcoming dividend payment information for the following stocks for the next 3 months. For each stock with a confirmed upcoming dividend, provide the ticker, ex-dividend date, payment date, and dividend amount per share.
+    Holdings: ${JSON.stringify(holdingsInfo)}
+    Respond with ONLY a valid JSON array of objects. Each object should have keys: "ticker", "amountPerShare", "payDate", and "exDividendDate". Dates should be in YYYY-MM-DD format. If no upcoming dividends are found for a stock, do not include it in the array.`;
+
     try {
-        const dividendPromises = holdings.map(async h => {
-            const dividends = await financialDataService.getDividendData(h.ticker, apiMode);
-            return dividends.map(d => ({
-                ...d,
-                companyName: h.companyName,
-                totalAmount: d.amountPerShare * h.shares
-            }));
+        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
+        const dividendInfo = parseJsonFromText(response.text, "dividend data");
+
+        const fullDividendData = dividendInfo.map((div: any) => {
+            const holding = holdings.find(h => h.ticker === div.ticker);
+            return {
+                ...div,
+                companyName: holding?.companyName || div.ticker,
+                totalAmount: (holding?.shares || 0) * div.amountPerShare,
+            };
         });
 
-        const allDividends = (await Promise.all(dividendPromises)).flat();
-        const sortedDividends = allDividends.sort((a,b) => new Date(a.payDate).getTime() - new Date(b.payDate).getTime());
-        
-        cacheService.set(cacheKey, sortedDividends, 24 * 60 * 60 * 1000); // 24 hour cache
-        return sortedDividends;
+        cacheService.set(cacheKey, fullDividendData, 24 * 60 * 60 * 1000); // 24 hour cache
+        return fullDividendData;
 
     } catch(error) {
         throw handleApiError(error, "dividend data");
@@ -430,86 +388,60 @@ export const generatePortfolio = async (answers: QuestionnaireAnswers, apiMode: 
     }
 };
 
-export const generateFinancials = async (ticker: string, apiMode: ApiMode): Promise<FinancialStatementsData> => {
-    const cacheKey = `financials_finnhub_${ticker}`;
-    const cached = cacheService.get<FinancialStatementsData>(cacheKey);
-    if (cached) return cached;
-    
-    if (apiMode === 'opensource') return FallbackData.generateFinancials(ticker);
-    
-    try {
-        const data = await financialDataService.getFinancials(ticker, apiMode);
-        cacheService.set(cacheKey, data, 24 * 60 * 60 * 1000); // 24 hour cache
-        return data;
-    } catch(error) {
-        throw handleApiError(error, "financial statements");
-    }
-};
-
 export const generateTranscripts = async (ticker: string, apiMode: ApiMode): Promise<TranscriptsData> => {
-    const cacheKey = `transcripts_hybrid_${ticker}`;
+    const cacheKey = `transcripts_gemini_${ticker}`;
     const cached = cacheService.get<TranscriptsData>(cacheKey);
     if (cached) return cached;
 
     if (apiMode === 'opensource') return FallbackData.generateTranscripts(ticker);
 
-    try {
-        const rawTranscripts = await financialDataService.getTranscripts(ticker, apiMode);
-        if (rawTranscripts.length === 0) return { transcripts: [] };
-
-        const transcriptsForPrompt = rawTranscripts.map(t => ({
-            quarter: t.quarter,
-            year: t.year,
-            date: t.time, // Use 'time' field which contains the date
-            // Combine speaker and speech into a single string for the AI to process
-            transcript: (t.transcript || [])
-                .map((line: { name: string, speech: string[] }) => `${line.name}:\n${(line.speech || []).join('\n')}`)
-                .join('\n\n')
-                .slice(0, 15000) // Truncate for performance
-        }));
-
-        const prompt = `You are a financial analyst specializing in summarizing earnings calls. For each of the following earnings call transcripts, provide a concise one-paragraph summary and extract one single key quote that best represents the tone of the call.
-        Transcripts: ${JSON.stringify(transcriptsForPrompt)}
-        Respond with ONLY a valid JSON object with a single key "transcripts". The value should be an array of objects, each with keys: "quarter", "year", "date", "summary", and "transcript" (this should contain the key quote).`;
+    const prompt = `You are a financial analyst. Use Google Search to find the 4 most recent earnings call transcripts for ${ticker}. For each, provide a concise one-paragraph summary, and extract one single key quote that best represents the tone of the call. Also provide the quarter, year, and date of the call.
+    Respond with ONLY a valid JSON object with a single key "transcripts". The value should be an array of objects, each with keys: "quarter", "year", "date", "summary", and "transcript" (this should contain the key quote). If no transcripts are found, return an empty array for "transcripts".`;
         
-        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt });
+    try {
+        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] }});
         const result = parseJsonFromText(response.text, "transcript summaries");
-
         cacheService.set(cacheKey, result, 24 * 60 * 60 * 1000); // 24 hour cache
         return result;
-
     } catch (error) {
         throw handleApiError(error, "earnings transcripts");
     }
 };
 
 export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): Promise<StockAnalysisData> => {
-    const cacheKey = `stock_analysis_${ticker}`;
+    const cacheKey = `stock_analysis_hybrid_${ticker}`;
     const cached = cacheService.get<StockAnalysisData>(cacheKey);
     if(cached) return cached;
 
     if (apiMode === 'opensource') return FallbackData.generateStockAnalysis(ticker);
 
-    const prompt = `Provide a comprehensive analysis for the stock ticker ${ticker}. Use Google Search to find the latest information.
-    1.  **Business Summary**: A concise paragraph explaining what the company does.
-    2.  **Bull Case**: A paragraph outlining the primary reasons to be optimistic about the stock.
-    3.  **Bear Case**: A paragraph outlining the primary risks and reasons for concern.
-    4.  **Financial Health**: A score from 1-10 (10 being best) and a one-sentence summary of its financial stability.
-    5.  **Recent News**: Find 2-3 recent, significant news headlines. For each, provide the headline and classify its sentiment as 'Positive', 'Negative', or 'Neutral'.
-    Respond with ONLY a valid JSON object. Do not include markdown. The structure should be: { businessSummary: string, bullCase: string, bearCase: string, financialHealth: { score: number, summary: string }, recentNews: [{ headline: string, sentiment: string, sourceIndex: number, url: string, source: string, publishedAt: string }] }. Ensure url is a direct link and publishedAt is an ISO 8601 string.`;
-    
     try {
-        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { tools: [{ googleSearch: {} }] } });
+        const [metrics, news] = await Promise.all([
+            financialDataService.getStockMetrics(ticker, apiMode),
+            financialDataService.getCompanyNews(ticker, apiMode)
+        ]);
+        
+        const prompt = `Provide a comprehensive but concise qualitative analysis for the stock ticker ${ticker}, based on the provided quantitative data.
+        1.  **Business Summary**: A concise paragraph explaining what the company does.
+        2.  **Bull Case**: A paragraph outlining the primary reasons to be optimistic about the stock, referencing the provided metrics if relevant.
+        3.  **Bear Case**: A paragraph outlining the primary risks and reasons for concern.
+        4.  **Financial Health**: A score from 1-10 (10 being best) and a one-sentence summary of its financial stability based on the metrics.
+        
+        Here is the quantitative data:
+        - Company Name: ${metrics.companyName}
+        - Market Cap: ${metrics.marketCap}
+        - P/E Ratio: ${metrics.peRatio}
+        - Dividend Yield: ${metrics.dividendYield}
+        - Analyst Rating: ${metrics.analystRating}
+        - Recent News Headlines: ${news.map(n => n.headline).join('; ')}
+
+        Respond with ONLY a valid JSON object. Do not include markdown. The structure should be: { businessSummary: string, bullCase: string, bearCase: string, financialHealth: { score: number, summary: string } }.`;
+        
+        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt });
         const analysis = parseJsonFromText(response.text, "stock analysis");
         
-        analysis.recentNews = analysis.recentNews.map((item: any) => ({...item, id: item.url || `news-${Date.now()}-${Math.random()}` }));
-
-        const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-        const sources: GroundingSource[] = groundingSources
-            ?.map((s: any, i: number) => ({ uri: s.web?.uri, title: s.web?.title, index: i + 1 }))
-            .filter((s: GroundingSource) => s.uri && s.title);
+        analysis.recentNews = news.slice(0, 3);
         
-        analysis.sources = sources;
         cacheService.set(cacheKey, analysis, 24 * 60 * 60 * 1000); // 24 hour cache
         return analysis;
     } catch(error) {
@@ -520,7 +452,7 @@ export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): P
 
 export const generateStockComparison = async (tickers: string[], apiMode: ApiMode): Promise<StockComparisonData> => {
     const tickersKey = tickers.sort().join(',');
-    const cacheKey = `stock_comparison_hybrid_${tickersKey}`;
+    const cacheKey = `stock_comparison_hybrid_fh_${tickersKey}`;
     const cached = cacheService.get<StockComparisonData>(cacheKey);
     if(cached) return cached;
 
@@ -531,22 +463,22 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
         const metricsData = await Promise.all(metricsPromises);
 
         const prompt = `You are a stock analyst. For the following stocks, I have provided key quantitative metrics. Your job is to provide the qualitative analysis. For each stock, write a concise one-sentence summary of its financial health, a brief bull case, and a brief bear case.
-        Stock Data: ${JSON.stringify(tickers.map((t, i) => ({ ticker: t, ...metricsData[i] })))}
+        Stock Data: ${JSON.stringify(metricsData)}
         Respond with ONLY a valid JSON array of objects. Each object must have keys: "ticker", "financialHealthSummary", "bullCase", and "bearCase".`;
 
-        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt });
+        const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { ticker: { type: Type.STRING }, financialHealthSummary: { type: Type.STRING }, bullCase: { type: Type.STRING }, bearCase: { type: Type.STRING } } } } } });
         const qualitativeAnalysis = parseJsonFromText(response.text, "stock comparison");
 
-        const combinedData = tickers.map((ticker, index) => {
-            const quant = metricsData[index];
+        const combinedData = tickers.map((ticker) => {
+            const quant = metricsData.find(m => m.companyName.toLowerCase().includes(ticker.toLowerCase()) || qualitativeAnalysis.find((q:any) => q.ticker === ticker));
             const qual = qualitativeAnalysis.find((q: any) => q.ticker === ticker);
             return {
                 ticker,
-                companyName: `${ticker} Inc.`, // We might need another call for this, or just use ticker
-                marketCap: quant.marketCap / 1e9, // Convert to Billions
-                peRatio: quant.peRatio,
-                dividendYield: quant.dividendYield,
-                analystRating: quant.analystRating,
+                companyName: quant?.companyName || `${ticker} Inc.`,
+                marketCap: (quant?.marketCap || 0) / 1e9, // Convert to Billions
+                peRatio: quant?.peRatio,
+                dividendYield: quant?.dividendYield,
+                analystRating: quant?.analystRating,
                 bullCase: qual?.bullCase || 'N/A',
                 bearCase: qual?.bearCase || 'N/A',
                 financialHealthSummary: qual?.financialHealthSummary || 'N/A',

@@ -12,8 +12,8 @@ import StarSolidIcon from './icons/StarSolidIcon';
 import StockComparison from './StockComparison';
 import XCircleIcon from './icons/XCircleIcon';
 import AddToWatchlistModal from './AddToWatchlistModal';
-import { getFilings } from '../services/secDataService';
-import { generateFinancials, generateTranscripts, generateStockAnalysis, generateStockComparison } from '../services/geminiService';
+import { generateTranscripts, generateStockAnalysis, generateStockComparison } from '../services/geminiService';
+import * as financialDataService from '../services/financialDataService';
 import type { SecFiling, FinancialStatementsData, TranscriptsData, StockAnalysisData, StockComparisonData, UserWatchlist } from '../types';
 import { useApi } from '../contexts/ApiContext';
 
@@ -156,8 +156,8 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
     const fetchDataForTab = async () => {
         try {
             switch(activeTab) {
-                case 'financials': if (!financials) setFinancials(await generateFinancials(ticker, apiMode)); break;
-                case 'filings': if (!filings) setFilings(await getFilings(ticker, apiMode)); break;
+                case 'financials': if (!financials) setFinancials(await financialDataService.getFinancials(ticker, apiMode)); break;
+                case 'filings': if (!filings) setFilings(await financialDataService.getFilings(ticker, apiMode)); break;
                 case 'transcripts': if (!transcriptsData) setTranscriptsData(await generateTranscripts(ticker, apiMode)); break;
             }
         } catch (err) { handleApiError(err, `data for ${activeTab} tab`); }

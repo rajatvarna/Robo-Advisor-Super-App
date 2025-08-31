@@ -1,7 +1,8 @@
 
 
 import * as React from 'react';
-import { getTopBusinessNews } from '../services/geminiService';
+// FIX: Changed import to use getMarketNews, which replaced getTopBusinessNews.
+import { getMarketNews } from '../services/financialDataService';
 import type { NewsItem } from '../types';
 import Spinner from './icons/Spinner';
 import { useApi } from '../contexts/ApiContext';
@@ -33,7 +34,8 @@ const TopNewsPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const results = await getTopBusinessNews(apiMode);
+            // FIX: Changed function call to getMarketNews with 'general' category.
+            const results = await getMarketNews('general', apiMode);
             setNews(results);
         } catch (err: any) {
              if (err.message.includes('QUOTA_EXCEEDED')) {
@@ -104,7 +106,7 @@ const TopNewsPage: React.FC = () => {
                                 href={item.url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                key={index} 
+                                key={item.id} 
                                 className="block bg-brand-secondary p-4 rounded-lg border border-brand-border hover:bg-brand-border/20 hover:border-brand-border transition-colors duration-200"
                             >
                                 {content}
@@ -114,7 +116,7 @@ const TopNewsPage: React.FC = () => {
 
                     return (
                         <div
-                            key={index} 
+                            key={item.id} 
                             className="block bg-brand-secondary p-4 rounded-lg border border-brand-border"
                         >
                             {content}

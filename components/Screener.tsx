@@ -57,6 +57,27 @@ const SortableHeader: React.FC<{
     );
 };
 
+// --- HELPER UI COMPONENTS ---
+
+const InfoIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+  </svg>
+);
+
+const TooltipLabel: React.FC<{ label: string; tooltipText: string; htmlFor?: string }> = ({ label, tooltipText, htmlFor }) => (
+  <div className="flex items-center gap-1.5">
+    <label htmlFor={htmlFor} className="block text-sm font-medium text-brand-text mb-1">{label}</label>
+    <div className="relative group flex items-center">
+      <InfoIcon className="w-4 h-4 text-brand-text-secondary cursor-help" />
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 p-2 text-xs text-center text-white bg-gray-700 dark:bg-gray-800 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 before:content-[''] before:absolute before:top-full before:left-1/2 before:-translate-x-1/2 before:border-8 before:border-x-transparent before:border-b-transparent before:border-t-gray-700 dark:before:border-t-gray-800">
+        {tooltipText}
+      </div>
+    </div>
+  </div>
+);
+
+
 const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
     const [criteria, setCriteria] = React.useState<ScreenerCriteria>(INITIAL_CRITERIA);
     const [results, setResults] = React.useState<ScreenerResult[]>([]);
@@ -66,6 +87,18 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
     const [currentPage, setCurrentPage] = React.useState(1);
     const [sortConfig, setSortConfig] = React.useState<{ key: SortKey; direction: SortDirection } | null>({ key: 'marketCap', direction: 'descending' });
     const { apiMode, setApiMode } = useApi();
+    const [isSectorDropdownOpen, setIsSectorDropdownOpen] = React.useState(false);
+    const sectorDropdownRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (sectorDropdownRef.current && !sectorDropdownRef.current.contains(event.target as Node)) {
+                setIsSectorDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const handleNumericChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -244,7 +277,10 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Market Cap */}
                     <div>
-                        <label className="block text-sm font-medium text-brand-text mb-1">Market Cap (Billions)</label>
+                        <TooltipLabel
+                            label="Market Cap (Billions)"
+                            tooltipText="The total market value of a company's outstanding shares. Filter by a minimum and/or maximum value in billions of USD."
+                        />
                         <div className="flex gap-2">
                             <input type="number" name="marketCapMin" placeholder="Min" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
                             <input type="number" name="marketCapMax" placeholder="Max" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
@@ -252,7 +288,10 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                     </div>
                      {/* P/E Ratio */}
                     <div>
-                        <label className="block text-sm font-medium text-brand-text mb-1">P/E Ratio</label>
+                        <TooltipLabel
+                            label="P/E Ratio"
+                            tooltipText="Price-to-Earnings Ratio. A company's share price relative to its earnings per share. A high P/E can indicate high growth expectations or overvaluation."
+                        />
                         <div className="flex gap-2">
                             <input type="number" name="peRatioMin" placeholder="Min" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
                             <input type="number" name="peRatioMax" placeholder="Max" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
@@ -260,7 +299,10 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                     </div>
                     {/* Dividend Yield */}
                     <div>
-                        <label className="block text-sm font-medium text-brand-text mb-1">Dividend Yield (%)</label>
+                         <TooltipLabel
+                            label="Dividend Yield (%)"
+                            tooltipText="The annual dividend per share divided by the stock's price, as a percentage. Shows the return from dividends relative to the stock price."
+                        />
                         <div className="flex gap-2">
                             <input type="number" name="dividendYieldMin" placeholder="Min" step="0.1" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
                             <input type="number" name="dividendYieldMax" placeholder="Max" step="0.1" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
@@ -268,7 +310,11 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                     </div>
                      {/* Analyst Rating */}
                     <div>
-                        <label htmlFor="analystRating" className="block text-sm font-medium text-brand-text mb-1">Min. Analyst Rating</label>
+                        <TooltipLabel
+                            htmlFor="analystRating"
+                            label="Min. Analyst Rating"
+                            tooltipText="The consensus rating from financial analysts. The filter will include stocks with this rating or better (e.g., selecting 'Buy' also includes 'Strong Buy')."
+                        />
                         <select
                             id="analystRating"
                             name="analystRating"
@@ -282,21 +328,42 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                 </div>
 
                 <div className="mt-6">
-                    <label className="block text-sm font-medium text-brand-text mb-2">Sectors</label>
-                    <div className="flex flex-wrap gap-2">
-                        {SECTORS.map(sector => (
-                            <button
-                                key={sector}
-                                onClick={() => handleSectorToggle(sector)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors border ${
-                                    criteria.sectors.includes(sector)
-                                        ? 'bg-brand-accent border-brand-accent text-white'
-                                        : 'bg-brand-primary border-brand-border hover:bg-brand-secondary'
-                                }`}
-                            >
-                                {sector}
-                            </button>
-                        ))}
+                    <TooltipLabel
+                        label="Sectors"
+                        tooltipText="Filter stocks by their industry sector. You can select multiple sectors to broaden your search."
+                    />
+                     <div className="relative" ref={sectorDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setIsSectorDropdownOpen(!isSectorDropdownOpen)}
+                        className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm text-left flex justify-between items-center text-brand-text"
+                        aria-haspopup="listbox"
+                        aria-expanded={isSectorDropdownOpen}
+                      >
+                        <span>
+                          {criteria.sectors.length === 0
+                            ? "All Sectors"
+                            : criteria.sectors.length === 1
+                            ? criteria.sectors[0]
+                            : `${criteria.sectors.length} sectors selected`}
+                        </span>
+                        <svg className={`w-4 h-4 text-brand-text-secondary transition-transform ${isSectorDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                      {isSectorDropdownOpen && (
+                        <div className="absolute z-20 w-full mt-1 bg-brand-primary border border-brand-border rounded-lg shadow-lg max-h-60 overflow-y-auto animate-fade-in-up-fast">
+                          {SECTORS.map(sector => (
+                            <label key={sector} className="flex items-center w-full px-3 py-2 text-sm text-brand-text hover:bg-brand-secondary cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={criteria.sectors.includes(sector)}
+                                onChange={() => handleSectorToggle(sector)}
+                                className="h-4 w-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
+                              />
+                              <span className="ml-3 select-none">{sector}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
                     </div>
                 </div>
 

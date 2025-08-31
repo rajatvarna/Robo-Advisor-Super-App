@@ -1,7 +1,9 @@
 
 
 import * as React from 'react';
-import { getTopCryptos, getCryptoNews } from '../services/geminiService';
+import { getTopCryptos } from '../services/geminiService';
+// FIX: Changed import to use getMarketNews, which replaced getCryptoNews.
+import { getMarketNews } from '../services/financialDataService';
 import type { CryptoData, NewsItem } from '../types';
 import Spinner from './icons/Spinner';
 import { useApi } from '../contexts/ApiContext';
@@ -69,7 +71,8 @@ const CryptoPage: React.FC = () => {
         try {
             const [cryptoData, newsData] = await Promise.all([
                 getTopCryptos(apiMode),
-                getCryptoNews(apiMode),
+                // FIX: Changed function call to getMarketNews with 'crypto' category.
+                getMarketNews('crypto', apiMode),
             ]);
             setCryptos(cryptoData);
             setNews(newsData);
@@ -194,13 +197,13 @@ const CryptoPage: React.FC = () => {
 
                             if (item.url) {
                                 return (
-                                    <a href={item.url} target="_blank" rel="noopener noreferrer" key={index} className="block border-b border-brand-border pb-3 last:border-b-0 last:pb-0 group">
+                                    <a href={item.url} target="_blank" rel="noopener noreferrer" key={item.id} className="block border-b border-brand-border pb-3 last:border-b-0 last:pb-0 group">
                                         {content}
                                     </a>
                                 );
                             }
                             return (
-                                <div key={index} className="block border-b border-brand-border pb-3 last:border-b-0 last:pb-0">
+                                <div key={item.id} className="block border-b border-brand-border pb-3 last:border-b-0 last:pb-0">
                                     {content}
                                 </div>
                             );
