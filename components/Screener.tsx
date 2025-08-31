@@ -282,8 +282,14 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                             tooltipText="The total market value of a company's outstanding shares. Filter by a minimum and/or maximum value in billions of USD."
                         />
                         <div className="flex gap-2">
-                            <input type="number" name="marketCapMin" placeholder="Min" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
-                            <input type="number" name="marketCapMax" placeholder="Max" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                            <div className="relative w-full">
+                                <input type="number" name="marketCapMin" placeholder="e.g., 2" onChange={handleNumericChange} className="w-full p-2 pr-6 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary">B</span>
+                            </div>
+                            <div className="relative w-full">
+                                <input type="number" name="marketCapMax" placeholder="e.g., 1000" onChange={handleNumericChange} className="w-full p-2 pr-6 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary">B</span>
+                            </div>
                         </div>
                     </div>
                      {/* P/E Ratio */}
@@ -293,8 +299,8 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                             tooltipText="Price-to-Earnings Ratio. A company's share price relative to its earnings per share. A high P/E can indicate high growth expectations or overvaluation."
                         />
                         <div className="flex gap-2">
-                            <input type="number" name="peRatioMin" placeholder="Min" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
-                            <input type="number" name="peRatioMax" placeholder="Max" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                            <input type="number" name="peRatioMin" placeholder="e.g., 5" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                            <input type="number" name="peRatioMax" placeholder="e.g., 30" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
                         </div>
                     </div>
                     {/* Dividend Yield */}
@@ -304,8 +310,14 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                             tooltipText="The annual dividend per share divided by the stock's price, as a percentage. Shows the return from dividends relative to the stock price."
                         />
                         <div className="flex gap-2">
-                            <input type="number" name="dividendYieldMin" placeholder="Min" step="0.1" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
-                            <input type="number" name="dividendYieldMax" placeholder="Max" step="0.1" onChange={handleNumericChange} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                           <div className="relative w-full">
+                                <input type="number" name="dividendYieldMin" placeholder="e.g., 1.5" step="0.1" onChange={handleNumericChange} className="w-full p-2 pr-6 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary">%</span>
+                            </div>
+                            <div className="relative w-full">
+                                <input type="number" name="dividendYieldMax" placeholder="e.g., 5" step="0.1" onChange={handleNumericChange} className="w-full p-2 pr-6 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
+                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary">%</span>
+                            </div>
                         </div>
                     </div>
                      {/* Analyst Rating */}
