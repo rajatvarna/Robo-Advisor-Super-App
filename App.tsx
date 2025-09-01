@@ -1,10 +1,7 @@
 
 import * as React from 'react';
 import Header from './components/Header';
-import RoboAdvisor from './components/RoboAdvisor';
 import ResearchPage from './components/ResearchPage';
-import EducationHub from './components/EducationHub';
-import Chatbot from './components/Chatbot';
 import Screener from './components/Screener';
 import DashboardPage from './components/DashboardPage';
 import PortfolioPage from './components/PortfolioPage';
@@ -12,26 +9,19 @@ import TopNewsPage from './components/TopNewsPage';
 import AnalyticsPage from './components/AnalyticsPage';
 import CryptoPage from './components/CryptoPage';
 import IntegrationsPage from './components/IntegrationsPage';
-import AlertsPage from './components/AlertsPage';
 import AddHoldingModal from './components/AddHoldingModal';
 import AchievementToast from './components/AchievementToast';
 import Spinner from './components/icons/Spinner';
-import { fetchStockDetailsForPortfolio, generatePersonalizedNews, calculatePortfolioScore, checkForAchievements, generateDashboardInsights, generatePortfolioAlerts } from './services/geminiService';
 import * as financialDataService from './services/financialDataService';
 import * as brokerageService from './services/brokerageService';
-import type { View, DashboardData, Holding, Transaction, AddHoldingData, Achievement, UserWatchlist, InvestmentGoal, Quote, BaseDashboardData, User } from './types';
-import { ApiProvider, useApi } from './contexts/ApiContext';
+import type { View, DashboardData, Holding, Transaction, AddHoldingData, Achievement, UserWatchlist, InvestmentGoal, Quote, User } from './types';
 import { ThemeProvider } from './contexts/ThemeContext';
-import ApiStatusBanner from './components/ApiStatusBanner';
 import DonationPage from './components/DonationPage';
 import { ALL_ACHIEVEMENTS } from './services/fallbackData';
 import OnboardingTour from './components/OnboardingTour';
 import * as FallbackData from './services/fallbackData';
 import GoalSettingModal from './components/GoalSettingModal';
 import SubscriptionPage from './components/SubscriptionPage';
-import UpgradeModal from './components/UpgradeModal';
-import Home from './components/Home';
-import { onAuthStateChangedListener, signOutUser } from './services/firebaseService';
 
 const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSignOut }) => {
   const [view, setView] = React.useState<View>('dashboard');
@@ -40,14 +30,11 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = React.useState(false);
 
   const [achievements, setAchievements] = React.useState<Achievement[]>([]);
   const [lastUnlockedAchievement, setLastUnlockedAchievement] = React.useState<Achievement | null>(null);
   const [runTour, setRunTour] = React.useState(false);
   const [isGoalModalOpen, setIsGoalModalOpen] = React.useState(false);
-
-  const { apiMode, setApiMode } = useApi();
   
   const dataKey = `robo-advisor-data-${user.uid}`;
   const tourKey = `robo-advisor-tour-completed-${user.uid}`;
@@ -123,7 +110,7 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
     const fetchQuotesForTickers = async (tickers: string[], isPortfolio: boolean) => {
         if (tickers.length === 0) return;
         try {
-            const newQuotes = await financialDataService.fetchQuotes(tickers, apiMode);
+            const newQuotes = await financialDataService.fetchQuotes(tickers);
             setQuotes(prevQuotes => {
                 const updatedQuotes: Record<string, Quote> = {};
                 for (const ticker in newQuotes) {
@@ -135,7 +122,6 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
             });
         } catch(err: any) {
              console.error(`Failed to fetch ${isPortfolio ? 'portfolio' : 'watchlist'} price updates:`, err);
-             if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
         }
     };
 
@@ -154,7 +140,7 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
             clearInterval(watchlistInterval);
         };
     }
-  }, [dashboardData?.holdings, dashboardData?.watchlists, apiMode, setApiMode]);
+  }, [dashboardData?.holdings, dashboardData?.watchlists]);
 
   // --- PORTFOLIO RECALCULATION ---
   React.useEffect(() => {
@@ -192,7 +178,7 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
     setDashboardData(prev => {
         if(!prev) return null;
         const unlockedAchievementIds = prev.achievements.filter(a => a.unlocked).map(a => a.id);
-        const newAchievements = checkForAchievements(action, data, unlockedAchievementIds);
+        const newAchievements = FallbackData.checkForAchievements(action, data, unlockedAchievementIds);
 
         if (newAchievements.length > 0) {
             let latestUnlocked: Achievement | null = null;
@@ -221,7 +207,7 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
       try {
         const baseData = await FallbackData.generateDashboardData();
         const allTickers = baseData.holdings.map(h => h.ticker);
-        const liveQuotes = await financialDataService.fetchQuotes(allTickers, apiMode);
+        const liveQuotes = await financialDataService.fetchQuotes(allTickers);
         
         const liveHoldings = recalculateHoldings(baseData.transactions, liveQuotes);
         const netWorth = liveHoldings.reduce((sum, h) => sum + h.totalValue, 0);
@@ -247,11 +233,7 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
             allocation,
             holdings: liveHoldings,
             portfolioPerformance: [{ date: new Date().toISOString().split('T')[0], price: netWorth }],
-            personalizedNews: FallbackData.generatePersonalizedNews(liveHoldings.map(h => h.ticker), []),
-            dashboardInsights: FallbackData.generateDashboardInsights(),
-            portfolioScore: { score: 78, summary: "A well-diversified portfolio with solid holdings." },
             achievements: initializedAchievements,
-            alerts: FallbackData.generatePortfolioAlerts({ holdings: liveHoldings } as DashboardData),
             dismissedNewsIds: [],
             notes: {},
         };
@@ -270,11 +252,11 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
 
       } catch (err: any) {
         setError(err.message || 'Failed to load demo data. Please try again.');
-        handleApiError(err);
+        console.error(err);
       } finally {
         setIsLoading(false);
       }
-  }, [saveData, apiMode, user, recalculateHoldings, tourKey, goalKey]);
+  }, [saveData, user, recalculateHoldings, tourKey, goalKey]);
 
   const handleTourEnd = React.useCallback(() => {
     setRunTour(false);
@@ -282,9 +264,9 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
   }, [tourKey]);
   
   const handleAddHolding = React.useCallback(async (holdingData: AddHoldingData) => {
-      const newQuote = await financialDataService.fetchQuotes([holdingData.ticker], apiMode);
+      const newQuote = await financialDataService.fetchQuotes([holdingData.ticker]);
       setQuotes(q => ({...q, ...newQuote}));
-      const stockDetails = await fetchStockDetailsForPortfolio(holdingData.ticker, apiMode);
+      const stockDetails = await financialDataService.getCompanyProfile(holdingData.ticker);
 
       const newTransaction: Transaction = {
            id: `txn-${Date.now()}`,
@@ -329,7 +311,7 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
           return newData;
       });
 
-  }, [apiMode, quotes, recalculateHoldings, checkAndUnlockAchievements, saveData]);
+  }, [quotes, recalculateHoldings, checkAndUnlockAchievements, saveData]);
   
   const handleRunScreener = React.useCallback(() => {
       checkAndUnlockAchievements('run_screener', {});
@@ -350,9 +332,9 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
       setIsLoading(true);
       setError(null);
       try {
-          const brokeragePortfolio = await brokerageService.syncInteractiveBrokersPortfolio(apiMode);
+          const brokeragePortfolio = await brokerageService.syncInteractiveBrokersPortfolio();
           const allTickers = brokeragePortfolio.holdings.map(h => h.ticker);
-          const liveQuotes = await financialDataService.fetchQuotes(allTickers, apiMode);
+          const liveQuotes = await financialDataService.fetchQuotes(allTickers);
           setQuotes(liveQuotes);
           const liveHoldings = recalculateHoldings(brokeragePortfolio.transactions, liveQuotes);
           const netWorth = liveHoldings.reduce((sum, h) => sum + h.totalValue, 0);
@@ -377,11 +359,11 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
               return newData;
           });
       } catch (err: any) {
-          handleApiError(err);
+          setError(err.message);
       } finally {
           setIsLoading(false);
       }
-  }, [apiMode, recalculateHoldings, saveData]);
+  }, [recalculateHoldings, saveData]);
 
   const handleDisconnectBrokerage = React.useCallback((brokerage: 'Interactive Brokers') => {
     setDashboardData(prev => {
@@ -434,16 +416,6 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
           return newData;
       });
   };
-
-  const handleMarkAllAlertsRead = React.useCallback(() => {
-    setDashboardData(prev => {
-        if (!prev) return null;
-        const updatedAlerts = prev.alerts.map(a => ({ ...a, read: true }));
-        const newData = { ...prev, alerts: updatedAlerts };
-        saveData(newData);
-        return newData;
-    });
-  }, [saveData]);
   
   const handleDismissNews = React.useCallback((newsId: string) => {
       setDashboardData(prev => {
@@ -465,50 +437,6 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
       });
   }, [saveData]);
 
-  const handleApiError = (err: any) => {
-        if (err.message.includes('QUOTA_EXCEEDED')) {
-            setApiMode('opensource');
-            setError("Live AI quota exceeded. Switched to offline fallback mode for this feature.");
-        } else {
-            setError(err.message || "An unexpected error occurred.");
-        }
-    };
-  
-  // --- DATA REFRESHING & POLLING ---
-  React.useEffect(() => {
-    if (dashboardData) {
-        const refreshData = async () => {
-          try {
-            const allWatchlistTickers = dashboardData.watchlists.flatMap(wl => wl.tickers);
-            const [news, score, insights, alerts] = await Promise.all([
-                generatePersonalizedNews(dashboardData.holdings, allWatchlistTickers, apiMode),
-                calculatePortfolioScore(dashboardData.holdings, apiMode),
-                generateDashboardInsights(dashboardData, apiMode),
-                generatePortfolioAlerts(dashboardData, apiMode),
-            ]);
-            setDashboardData(d => {
-                if(!d) return null;
-                const existingAlertIds = new Set(d.alerts.map(a => a.id));
-                const newUniqueAlerts = alerts.filter(a => !existingAlertIds.has(a.id));
-                const updatedAlerts = [...d.alerts, ...newUniqueAlerts];
-                const newData = {...d, personalizedNews: news, portfolioScore: score, dashboardInsights: insights, alerts: updatedAlerts };
-                saveData(newData);
-                return newData;
-            });
-            checkAndUnlockAchievements('portfolio_score', { score: score.score });
-          } catch(err: any) {
-              console.error("Data refresh failed", err);
-              if(err.message.includes('QUOTA_EXCEEDED')) setApiMode('opensource');
-          }
-        };
-        refreshData();
-        const intervalId = setInterval(refreshData, 480 * 60 * 1000); // Refresh every 8 hours
-        return () => clearInterval(intervalId);
-    }
-  }, [dashboardData?.holdings.length, dashboardData?.watchlists.length, apiMode, setApiMode, checkAndUnlockAchievements, saveData]);
-  
-  const unreadAlertsCount = dashboardData?.alerts?.filter(a => !a.read).length ?? 0;
-
   const renderView = () => {
     if (isLoading && !dashboardData) {
       return (
@@ -528,17 +456,6 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
         return <ResearchPage watchlists={dashboardData?.watchlists || []} notes={dashboardData?.notes || {}} onUpdateWatchlistTickers={handleUpdateWatchlistTickers} onAddWatchlist={handleAddWatchlist} onUpdateNote={handleUpdateNote} />;
       case 'screener':
         return <Screener onRunScreener={handleRunScreener} />;
-      case 'advisor':
-        if (user.subscription !== 'premium') {
-            setIsUpgradeModalOpen(true);
-            setView('dashboard'); // Revert view to avoid showing empty page
-            return null;
-        }
-        return dashboardData?.holdings && dashboardData.holdings.length > 0 ? <RoboAdvisor user={user} currentAllocation={dashboardData.allocation} /> : <div className="text-center mt-12 text-brand-text-secondary">Please add holdings or generate demo data to use the AI Advisor.</div>;
-      case 'chatbot':
-        return <Chatbot />;
-      case 'education':
-        return <EducationHub />;
       case 'analytics':
         return <AnalyticsPage data={dashboardData} />;
       case 'news':
@@ -547,8 +464,6 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
         return <CryptoPage />;
        case 'integrations':
         return <IntegrationsPage data={dashboardData} onSync={handleSyncBrokerage} onDisconnect={handleDisconnectBrokerage} />;
-       case 'alerts':
-        return <AlertsPage alerts={dashboardData?.alerts || []} onMarkAllRead={handleMarkAllAlertsRead} />;
       case 'subscription':
         return <SubscriptionPage />;
       case 'support':
@@ -560,14 +475,12 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
 
   return (
     <div className="min-h-screen bg-brand-body-bg text-brand-text font-sans flex flex-col">
-      <ApiStatusBanner />
-      <Header currentView={view} setView={setView} onSignOut={onSignOut} unreadAlertsCount={unreadAlertsCount} />
+      <Header currentView={view} setView={setView} onSignOut={onSignOut} />
       <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full flex-grow">
         {renderView()}
       </main>
       {dashboardData && <OnboardingTour run={runTour} onTourEnd={handleTourEnd} />}
       {isModalOpen && <AddHoldingModal onClose={() => setIsModalOpen(false)} onAddHolding={handleAddHolding} />}
-      {isUpgradeModalOpen && <UpgradeModal onClose={() => setIsUpgradeModalOpen(false)} onUpgrade={() => { setIsUpgradeModalOpen(false); setView('subscription'); }} />}
       {isGoalModalOpen && <GoalSettingModal onClose={() => { setIsGoalModalOpen(false); localStorage.setItem(goalKey, 'true'); }} onSetGoal={handleSetGoal} />}
       {lastUnlockedAchievement && <AchievementToast achievement={lastUnlockedAchievement} onDismiss={() => setLastUnlockedAchievement(null)} />}
        <footer className="text-center p-4 text-brand-text-secondary text-xs border-t border-brand-border mt-auto flex-shrink-0 bg-brand-primary">
@@ -577,38 +490,22 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
   );
 };
 
+const mockUser: User = {
+  uid: 'mock-user-123',
+  name: 'Alex Doe',
+  email: 'alex.doe@example.com',
+  memberSince: '2023-01-01',
+};
+
 const App: React.FC = () => {
-    const [user, setUser] = React.useState<User | null>(null);
-    const [isAuthLoading, setIsAuthLoading] = React.useState(true);
-
-    React.useEffect(() => {
-        const unsubscribe = onAuthStateChangedListener((user) => {
-            setUser(user);
-            setIsAuthLoading(false);
-        });
-        return unsubscribe; // Cleanup subscription on unmount
-    }, []);
-
-    const handleSignOut = async () => {
-        await signOutUser();
-        // The onAuthStateChangedListener will set user to null, triggering re-render to Home.
+    const handleSignOut = () => {
+        alert("You have been signed out. Please refresh the page to sign back in with the mock user.");
     };
-
-    if (isAuthLoading) {
-        return (
-             <div className="flex flex-col items-center justify-center h-screen bg-brand-body-bg text-brand-text">
-                <Spinner />
-                <p className="mt-4 text-brand-text-secondary">Authenticating...</p>
-            </div>
-        );
-    }
     
     return (
-        <ApiProvider>
-            <ThemeProvider>
-                {user ? <MainApp user={user} onSignOut={handleSignOut} /> : <Home />}
-            </ThemeProvider>
-        </ApiProvider>
+        <ThemeProvider>
+            <MainApp user={mockUser} onSignOut={handleSignOut} />
+        </ThemeProvider>
     );
 };
 

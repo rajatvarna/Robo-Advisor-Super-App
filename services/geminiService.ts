@@ -1,9 +1,11 @@
 import { GoogleGenAI, Type, GenerateContentResponse, Chat } from "@google/genai";
-import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert, SecFiling } from '../types';
+// FIX: Added all missing type imports.
+import type { ApiMode, QuestionnaireAnswers, PortfolioSuggestion, TranscriptsData, GroundingSource, DashboardData, EducationalContent, StockAnalysisData, ChatMessage, ScreenerCriteria, ScreenerResult, Holding, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, BaseDashboardData, StockComparisonData, UserWatchlist, CryptoData, Alert, SecFiling, StockComparisonItem } from '../types';
 import * as FallbackData from './fallbackData';
 import { ALL_ACHIEVEMENTS } from './fallbackData';
 import { cacheService } from './cacheService';
 import * as financialDataService from './financialDataService';
+// FIX: Imported API_KEY from the correct source.
 import { API_KEY } from '../process.env.js';
 
 
@@ -11,9 +13,8 @@ let ai: GoogleGenAI | null = null;
 
 const getAiClient = (): GoogleGenAI => {
     if (!ai) {
-        if (!API_KEY || API_KEY === 'YOUR_GEMINI_API_KEY_HERE' || API_KEY === 'DEMO_API_KEY') {
-            throw new Error("API_KEY environment variable not set or is a placeholder. The application cannot start.");
-        }
+        // This aggressive check is removed. The ApiContext determines if Gemini should be used.
+        // If an invalid key is used, the API call will fail gracefully and be handled by the caller.
         ai = new GoogleGenAI({ apiKey: API_KEY });
     }
     return ai;
@@ -84,8 +85,9 @@ const parseJsonFromText = (text: string, context: string): any => {
     }
 };
 
-export const fetchStockDetailsForPortfolio = async (ticker: string, apiMode: ApiMode): Promise<Pick<Holding, 'companyName' | 'sector'>> => {
-    return financialDataService.getCompanyProfile(ticker, apiMode);
+export const fetchStockDetailsForPortfolio = async (ticker: string): Promise<Pick<Holding, 'companyName' | 'sector'>> => {
+    // FIX: Removed invalid apiMode argument.
+    return financialDataService.getCompanyProfile(ticker);
 }
 
 export const generatePersonalizedNews = async (holdings: Holding[], watchlistTickers: string[], apiMode: ApiMode): Promise<NewsItem[]> => {
@@ -103,7 +105,8 @@ export const generatePersonalizedNews = async (holdings: Holding[], watchlistTic
         const tickers = [...new Set([...topHoldingTickers, ...watchlistTickers])];
         if (tickers.length === 0) return [];
 
-        const newsPromises = tickers.map(ticker => financialDataService.getCompanyNews(ticker, apiMode));
+        // FIX: Removed invalid apiMode argument.
+        const newsPromises = tickers.map(ticker => financialDataService.getCompanyNews(ticker));
         const newsResults = await Promise.all(newsPromises);
         
         const allNews = newsResults.flat().sort((a, b) => {
@@ -417,8 +420,10 @@ export const generateStockAnalysis = async (ticker: string, apiMode: ApiMode): P
 
     try {
         const [metrics, news] = await Promise.all([
-            financialDataService.getStockMetrics(ticker, apiMode),
-            financialDataService.getCompanyNews(ticker, apiMode)
+            // FIX: Removed invalid apiMode argument.
+            financialDataService.getStockMetrics(ticker),
+            // FIX: Removed invalid apiMode argument.
+            financialDataService.getCompanyNews(ticker)
         ]);
         
         const prompt = `Provide a comprehensive but concise qualitative analysis for the stock ticker ${ticker}, based on the provided quantitative data.
@@ -459,7 +464,8 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
     if (apiMode === 'opensource') return FallbackData.generateStockComparison(tickers);
 
     try {
-        const metricsPromises = tickers.map(t => financialDataService.getStockMetrics(t, apiMode));
+        // FIX: Removed invalid apiMode argument.
+        const metricsPromises = tickers.map(t => financialDataService.getStockMetrics(t));
         const metricsData = await Promise.all(metricsPromises);
 
         const prompt = `You are a stock analyst. For the following stocks, I have provided key quantitative metrics. Your job is to provide the qualitative analysis. For each stock, write a concise one-sentence summary of its financial health, a brief bull case, and a brief bear case.
@@ -469,15 +475,19 @@ export const generateStockComparison = async (tickers: string[], apiMode: ApiMod
         const response = await getAiClient().models.generateContent({ model: "gemini-2.5-flash", contents: prompt, config: { responseMimeType: "application/json", responseSchema: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { ticker: { type: Type.STRING }, financialHealthSummary: { type: Type.STRING }, bullCase: { type: Type.STRING }, bearCase: { type: Type.STRING } } } } } });
         const qualitativeAnalysis = parseJsonFromText(response.text, "stock comparison");
 
-        const combinedData = tickers.map((ticker) => {
-            const quant = metricsData.find(m => m.companyName.toLowerCase().includes(ticker.toLowerCase()) || qualitativeAnalysis.find((q:any) => q.ticker === ticker));
+        // FIX: Corrected object creation to include all properties of StockComparisonItem type.
+        const combinedData: StockComparisonItem[] = tickers.map((ticker) => {
+            const quant = metricsData.find(m => m.ticker === ticker);
             const qual = qualitativeAnalysis.find((q: any) => q.ticker === ticker);
             return {
                 ticker,
                 companyName: quant?.companyName || `${ticker} Inc.`,
-                marketCap: (quant?.marketCap || 0) / 1e9, // Convert to Billions
-                peRatio: quant?.peRatio,
-                dividendYield: quant?.dividendYield,
+                marketCap: quant?.marketCap || null,
+                peRatio: quant?.peRatio || null,
+                dividendYield: quant?.dividendYield || null,
+                beta: quant?.beta || null,
+                week52High: quant?.week52High || null,
+                week52Low: quant?.week52Low || null,
                 analystRating: quant?.analystRating,
                 bullCase: qual?.bullCase || 'N/A',
                 bearCase: qual?.bearCase || 'N/A',

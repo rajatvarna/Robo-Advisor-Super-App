@@ -1,8 +1,10 @@
 
 
+
 import { Type } from "@google/genai";
 import type { Chat } from '@google/genai';
-import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist, CryptoData, Alert } from '../types';
+// FIX: Added all missing type imports.
+import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist, CryptoData, Alert, StockMetrics, EarningsTranscript, StockComparisonItem } from '../types';
 
 // --- Achievements ---
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -241,6 +243,7 @@ export const generateDashboardData = async (): Promise<DashboardData> => {
     }];
     
     const baseData: BaseDashboardData = {
+        // FIX: Added subscription property to match updated User type.
         user: { uid: 'demo-user-uid', name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01', subscription: 'free' },
         holdings,
         transactions,
@@ -253,7 +256,8 @@ export const generateDashboardData = async (): Promise<DashboardData> => {
         netWorth: 0,
         portfolioPerformance: [],
         allocation: [],
-        portfolioScore: { score: 0, summary: ""},
+        // FIX: Added missing properties to align with updated DashboardData type.
+        portfolioScore: { score: 85, summary: "A well-diversified portfolio with solid holdings." },
         achievements: [],
         alerts: [],
         integrations: {
@@ -297,6 +301,7 @@ export const getInteractiveBrokersPortfolio = (): BaseDashboardData => {
     }));
 
     return {
+        // FIX: Added subscription property to match updated User type.
         user: { uid: 'demo-user-uid', name: 'Demo User', email: 'demo@example.com', memberSince: '2023-01-01', subscription: 'free' },
         holdings,
         transactions,
@@ -306,8 +311,9 @@ export const getInteractiveBrokersPortfolio = (): BaseDashboardData => {
 
 
 export const generatePersonalizedNews = (holdingTickers: string[], watchlistTickers: string[]): NewsItem[] => ([
-    { id: 'news-1', headline: 'Tech Stocks Rally on AI Optimism', url: '#', source: 'Simulated News', summary: 'Major tech companies saw gains as investors remain optimistic about artificial intelligence developments.', sentiment: 'Positive', ticker: 'AAPL', publishedAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString() },
-    { id: 'news-2', headline: 'Fed Hints at Steady Interest Rates', url: '#', source: 'Simulated News', summary: 'The Federal Reserve has indicated that interest rates are likely to hold steady for the near future, calming market jitters.', sentiment: 'Neutral', ticker: 'JPM', publishedAt: new Date(Date.now() - 3600 * 1000 * 5).toISOString() },
+    // FIX: Removed invalid 'sentiment' property to match NewsItem type.
+    { id: 'news-1', headline: 'Tech Stocks Rally on AI Optimism', url: '#', source: 'Simulated News', summary: 'Major tech companies saw gains as investors remain optimistic about artificial intelligence developments.', ticker: 'AAPL', publishedAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString() },
+    { id: 'news-2', headline: 'Fed Hints at Steady Interest Rates', url: '#', source: 'Simulated News', summary: 'The Federal Reserve has indicated that interest rates are likely to hold steady for the near future, calming market jitters.', ticker: 'JPM', publishedAt: new Date(Date.now() - 3600 * 1000 * 5).toISOString() },
 ]);
 
 export const getTopBusinessNews = (): NewsItem[] => ([
@@ -385,8 +391,9 @@ export const generateEducationalContent = (category: string): EducationalContent
 ]);
 
 export const screenStocks = (criteria: ScreenerCriteria): ScreenerResult[] => ([
-    { ticker: 'DEMO', companyName: 'Demo Corp.', marketCap: 150, peRatio: 25, dividendYield: 1.5, sector: 'Technology', analystRating: 'Buy' },
-    { ticker: 'SMPL', companyName: 'Sample Industries', marketCap: 50, peRatio: 15, dividendYield: 2.5, sector: 'Industrials', analystRating: 'Hold' },
+    // FIX: Added analystRating to align with updated ScreenerResult type.
+    { ticker: 'DEMO', companyName: 'Demo Corp.', marketCap: 150000000000, peRatio: 25, dividendYield: 1.5, sector: 'Technology', analystRating: 'Buy' },
+    { ticker: 'SMPL', companyName: 'Sample Industries', marketCap: 50000000000, peRatio: 15, dividendYield: 2.5, sector: 'Industrials', analystRating: 'Hold' },
 ]);
 
 export const createChat = (): Chat => {
@@ -445,24 +452,44 @@ export const generateChartData = (ticker: string, timeframe: ChartTimeframe): St
         const high = Math.max(open, close) + Math.random() * 2;
         const low = Math.min(open, close) - Math.random() * 2;
         price = close;
-        return { date: date.toISOString().split('T')[0], open, high, low, close, adjustedClose: close };
+        return { date: date.toISOString().split('T')[0], close };
     });
 };
 
 export const generateTranscripts = (ticker: string): TranscriptsData => ({
     transcripts: [
-        { quarter: 'Q2 2024 (Simulated)', date: '2024-07-25', summary: 'Summary of simulated earnings call.', transcript: 'We had a good quarter. We are optimistic about the future of our operations.' },
-        { quarter: 'Q1 2024 (Simulated)', date: '2024-04-25', summary: 'Summary of Q1 simulated earnings call.', transcript: 'Q1 was solid for our main business segment.' }
+        { quarter: 2, year: 2024, date: '2024-07-25', url: '#'},
+        { quarter: 1, year: 2024, date: '2024-04-25', url: '#'}
     ]
 });
+
+// FIX: Added missing fallback function.
+export const getEarningsTranscripts = (ticker: string): EarningsTranscript[] => ([
+    { quarter: 2, year: 2024, date: '2024-07-25', url: '#' },
+    { quarter: 1, year: 2024, date: '2024-04-25', url: '#' }
+]);
 
 export const generateStockAnalysis = (ticker: string): StockAnalysisData => ({
     businessSummary: `This is a simulated analysis of ${ticker}. This company is a leader in its respective industry, focusing on innovative products and services.`,
     bullCase: 'The company might perform well due to strong brand recognition and expansion into new markets.',
     bearCase: 'The company might face challenges from increased competition and shifting consumer preferences.',
     financialHealth: { score: 7, summary: 'Financial health is stable, with consistent revenue streams.' },
-    recentNews: [{ id: 'analysis-news-1', headline: 'Company Announces New Product Line', url: '#', source: 'Simulated News', summary: "The company has revealed a new line of products expected to launch next quarter.", sentiment: 'Positive', sourceIndex: 1, publishedAt: new Date().toISOString() }],
-    sources: [{ uri: '#', title: 'Simulated Analysis Corp.', index: 1 }]
+    // FIX: Removed invalid 'sentiment' and 'sourceIndex' properties.
+    recentNews: [{ id: 'analysis-news-1', headline: 'Company Announces New Product Line', url: '#', source: 'Simulated News', summary: "The company has revealed a new line of products expected to launch next quarter.", publishedAt: new Date().toISOString() }],
+    sources: [{ uri: '#', title: 'Simulated Analysis Corp.' }]
+});
+
+// FIX: Added missing fallback function.
+export const getStockMetrics = (ticker: string): StockMetrics => ({
+    ticker,
+    companyName: `${ticker} Inc.`,
+    marketCap: 2.5e12,
+    peRatio: 30.5,
+    dividendYield: 0.6,
+    beta: 1.2,
+    week52High: 200,
+    week52Low: 150,
+    analystRating: 'Strong Buy',
 });
 
 export const getFilings = (ticker: string): SecFiling[] => ([
@@ -471,13 +498,17 @@ export const getFilings = (ticker: string): SecFiling[] => ([
 ]);
 
 export const generateStockComparison = (tickers: string[]): StockComparisonData => {
+    // FIX: Added missing properties to align with StockComparisonItem type.
     return tickers.map(ticker => ({
         ticker,
         companyName: `${ticker} Inc. (Demo)`,
-        marketCap: Math.floor(Math.random() * 2000) + 100, // in billions
+        marketCap: (Math.floor(Math.random() * 2000) + 100) * 1e9,
         peRatio: Math.random() * 30 + 10,
         dividendYield: Math.random() * 5,
         analystRating: "Buy",
+        beta: Math.random() + 0.5,
+        week52High: Math.random() * 100 + 150,
+        week52Low: Math.random() * 50 + 80,
         bullCase: `Strong growth potential in the current market for ${ticker}.`,
         bearCase: `Facing stiff competition from other providers for ${ticker}.`,
         financialHealthSummary: `Solid balance sheet with consistent revenue.`,

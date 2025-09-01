@@ -1,23 +1,18 @@
 
 
-export type View = 'dashboard' | 'portfolio' | 'research' | 'advisor' | 'education' | 'chatbot' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto' | 'integrations' | 'alerts' | 'subscription';
-export type ApiMode = 'gemini' | 'opensource';
 
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-  image?: string | null; // Base64 data URL
-  recommendedQuestions?: string[];
-  isTyping?: boolean;
-}
+export type View = 'dashboard' | 'portfolio' | 'research' | 'screener' | 'analytics' | 'support' | 'news' | 'crypto' | 'integrations' | 'subscription';
+
+// FIX: Added ApiMode type for API switching.
+export type ApiMode = 'gemini' | 'opensource';
 
 export interface User {
   uid: string;
   name: string;
   email: string;
   memberSince: string;
-  subscription: 'free' | 'premium';
+  // FIX: Added optional subscription property.
+  subscription?: string;
 }
 
 export interface AddHoldingData {
@@ -59,38 +54,17 @@ export interface Transaction {
   sector?: string;
 }
 
-export interface EducationalContent {
-  id: string;
-  type: 'Article' | 'Video' | 'Podcast';
-  title: string;
-  summary: string;
-  url: string;
-  sourceName: string;
-}
-
 export interface NewsItem {
     headline: string;
     url: string | null;
     source: string;
-    summary?: string; // AI generated summary
+    summary?: string;
     publishedAt: string | null; // ISO 8601 format
-    sentiment?: 'Positive' | 'Negative' | 'Neutral';
     ticker?: string; // Ticker it relates to
-    sourceIndex?: number;
     id: string; // Unique ID for dismissal
+    // FIX: Added optional sentiment property.
+    sentiment?: string;
 }
-
-export interface Alert {
-    id: string;
-    timestamp: string; // ISO 8601 format
-    type: 'Price' | 'News' | 'Portfolio' | 'Goal';
-    severity: 'Info' | 'Warning' | 'Critical';
-    title: string;
-    description: string;
-    ticker?: string;
-    read: boolean;
-}
-
 
 export interface Achievement {
     id: string;
@@ -98,11 +72,6 @@ export interface Achievement {
     description: string;
     unlocked: boolean;
     unlockedAt?: string;
-}
-
-export interface PortfolioScore {
-    score: number; // 1-100
-    summary: string;
 }
 
 export interface InvestmentGoal {
@@ -129,40 +98,7 @@ export interface BaseDashboardData {
     watchlists: UserWatchlist[];
 }
 
-export interface DashboardData extends BaseDashboardData {
-    netWorth: number;
-    portfolioPerformance: { date: string; price: number }[];
-    allocation: { name: string; value: number }[];
-    personalizedNews?: NewsItem[];
-    dashboardInsights?: string[];
-    portfolioScore: PortfolioScore;
-    achievements: Achievement[];
-    alerts: Alert[];
-    goal?: InvestmentGoal;
-    integrations: {
-        interactiveBrokers: BrokerageIntegration;
-    };
-    dismissedNewsIds?: string[];
-    notes?: Record<string, string>; // ticker -> note content
-}
-
-export type ChartTimeframe = '1Y' | '5Y' | '10Y';
-export type ChartType = 'line' | 'area' | 'candlestick';
-
-export interface PortfolioAllocation {
-  stocks: number;
-  bonds: number;
-  cash: number;
-  commodities: number;
-  realEstate: number;
-}
-
-export interface PortfolioSuggestion {
-  allocation: PortfolioAllocation;
-  explanation: string;
-  riskProfile: string;
-}
-
+// FIX: Added new types for various features.
 export interface QuestionnaireAnswers {
   age: string;
   horizon: string;
@@ -171,14 +107,110 @@ export interface QuestionnaireAnswers {
   liquidity: string;
 }
 
+export interface PortfolioAllocation {
+    stocks: number;
+    bonds: number;
+    cash: number;
+    commodities: number;
+    realEstate: number;
+}
+
+export interface PortfolioSuggestion {
+  riskProfile: string;
+  allocation: PortfolioAllocation;
+  explanation: string;
+}
+
+export interface TranscriptsData {
+    transcripts: EarningsTranscript[];
+}
+
+export interface GroundingSource {
+  uri: string;
+  title: string;
+  index?: number;
+}
+
+export interface EducationalContent {
+    id: string;
+    type: 'Article' | 'Video' | 'Podcast';
+    title: string;
+    summary: string;
+    url: string;
+    sourceName: string;
+}
+
+export interface StockAnalysisData {
+    businessSummary: string;
+    bullCase: string;
+    bearCase: string;
+    financialHealth: { score: number; summary: string };
+    recentNews: NewsItem[];
+    sources: GroundingSource[];
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  text: string;
+  image?: string | null;
+  isTyping?: boolean;
+  recommendedQuestions?: string[];
+}
+
+export interface PortfolioScore {
+    score: number;
+    summary: string;
+}
+
+export interface TaxLossOpportunity {
+    ticker: string;
+    companyName: string;
+    sharesToSell: number;
+    estimatedLoss: number;
+    costBasis: number;
+    currentValue: number;
+    explanation: string;
+}
+
+export interface Alert {
+    id: string;
+    timestamp: string;
+    type: 'Price' | 'News' | 'Portfolio' | 'Goal';
+    severity: 'Info' | 'Warning' | 'Critical';
+    title: string;
+    description: string;
+    ticker?: string;
+    read: boolean;
+}
+
+export type ChartTimeframe = '6M' | '1Y' | '5Y';
+
+
+export interface DashboardData extends BaseDashboardData {
+    netWorth: number;
+    portfolioPerformance: { date: string; price: number }[];
+    allocation: { name: string; value: number }[];
+    achievements: Achievement[];
+    goal?: InvestmentGoal;
+    integrations: {
+        interactiveBrokers: BrokerageIntegration;
+    };
+    dismissedNewsIds?: string[];
+    notes?: Record<string, string>; // ticker -> note content
+    // FIX: Added optional properties for new features.
+    portfolioScore?: PortfolioScore;
+    alerts?: Alert[];
+}
+
 export interface SecFiling {
   accessionNumber: string;
   filingDate: string;
   reportDate: string;
   form: string;
+  url: string;
   primaryDocument: string;
   primaryDocDescription: string;
-  url: string;
 }
 
 export interface StockChartDataPoint {
@@ -186,32 +218,23 @@ export interface StockChartDataPoint {
     close: number;
 }
 
-export interface GroundingSource {
-    uri: string;
-    title: string;
-    index: number;
+export interface EarningsTranscript {
+    quarter: number;
+    year: number;
+    date: string;
+    url: string;
 }
 
-export interface TranscriptsData {
-    transcripts: {
-        quarter: string;
-        year?: number;
-        date: string;
-        summary: string;
-        transcript: string;
-    }[];
-}
-
-export interface StockAnalysisData {
-    businessSummary: string;
-    bullCase: string;
-    bearCase: string;
-    financialHealth: {
-        score: number;
-        summary: string;
-    };
-    recentNews: NewsItem[];
-    sources?: GroundingSource[];
+export interface StockMetrics {
+    ticker: string;
+    companyName: string;
+    marketCap: number | null;
+    peRatio: number | null;
+    dividendYield: number | null;
+    beta: number | null;
+    week52High: number | null;
+    week52Low: number | null;
+    analystRating?: string;
 }
 
 export interface ScreenerCriteria {
@@ -222,7 +245,8 @@ export interface ScreenerCriteria {
   dividendYieldMin: number;
   dividendYieldMax: number;
   sectors: string[];
-  analystRating: string;
+  // FIX: Added optional analystRating property.
+  analystRating?: string;
 }
 
 export interface ScreenerResult {
@@ -232,7 +256,8 @@ export interface ScreenerResult {
   peRatio: number | null;
   dividendYield: number | null;
   sector: string;
-  analystRating: string;
+  // FIX: Added optional analystRating property.
+  analystRating?: string;
 }
 
 export interface FinancialStatementItem {
@@ -259,16 +284,6 @@ export interface Dividend {
     exDividendDate: string;
 }
 
-export interface TaxLossOpportunity {
-    ticker: string;
-    companyName: string;
-    sharesToSell: number;
-    estimatedLoss: number;
-    costBasis: number;
-    currentValue: number;
-    explanation: string;
-}
-
 export interface PortfolioHistoryPoint {
     date: string;
     portfolioValue: number;
@@ -276,18 +291,12 @@ export interface PortfolioHistoryPoint {
 }
 
 // --- RESEARCH PAGE ---
-export interface StockComparisonItem {
-    ticker: string;
-    companyName: string;
-    marketCap: number;
-    peRatio: number | null;
-    dividendYield: number | null;
-    analystRating: string;
+// FIX: Defined a more specific type for stock comparison data.
+export type StockComparisonItem = StockMetrics & {
     bullCase: string;
     bearCase: string;
     financialHealthSummary: string;
-}
-
+};
 export type StockComparisonData = StockComparisonItem[];
 
 // --- CRYPTO PAGE ---

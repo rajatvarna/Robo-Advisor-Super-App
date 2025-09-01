@@ -1,4 +1,6 @@
 
+
+// FIX: Imported missing ApiMode type.
 import type { ApiMode, BaseDashboardData } from '../types';
 import * as FallbackData from './fallbackData';
 

@@ -2,12 +2,10 @@
 
 import * as React from 'react';
 import DividendTracker from './DividendTracker';
-import TaxLossHarvester from './TaxLossHarvester';
 import PerformanceChart from './PerformanceChart';
-import WhatIfScenario from './WhatIfScenario';
 import type { DashboardData } from '../types';
 
-type AnalyticsTab = 'performance' | 'dividends' | 'tax';
+type AnalyticsTab = 'performance' | 'dividends';
 
 interface AnalyticsPageProps {
     data: DashboardData | null;
@@ -49,20 +47,9 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ data }) => {
         
         switch (activeTab) {
             case 'performance':
-                return (
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                        <div className="lg:col-span-3">
-                            <PerformanceChart transactions={data.transactions} />
-                        </div>
-                        <div className="lg:col-span-2">
-                             <WhatIfScenario holdings={data.holdings} />
-                        </div>
-                    </div>
-                );
+                return <PerformanceChart transactions={data.transactions} />;
             case 'dividends':
                 return <DividendTracker holdings={data.holdings} />;
-            case 'tax':
-                return <TaxLossHarvester holdings={data.holdings} />;
             default:
                 return null;
         }
@@ -72,13 +59,12 @@ const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ data }) => {
         <div className="space-y-6 animate-fade-in">
             <div>
                 <h1 className="text-3xl font-bold text-brand-text">Portfolio Analytics</h1>
-                <p className="mt-2 text-brand-text-secondary">Deeper insights into your investments, powered by AI.</p>
+                <p className="mt-2 text-brand-text-secondary">Deeper insights into your investments.</p>
             </div>
             <div className="border-b border-brand-border">
                 <nav className="-mb-px flex space-x-4" aria-label="Tabs">
                     <TabButton label="Performance" isActive={activeTab === 'performance'} onClick={() => setActiveTab('performance')} />
                     <TabButton label="Dividend Tracker" isActive={activeTab === 'dividends'} onClick={() => setActiveTab('dividends')} />
-                    <TabButton label="Tax-Loss Harvester" isActive={activeTab === 'tax'} onClick={() => setActiveTab('tax')} />
                 </nav>
             </div>
 

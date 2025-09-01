@@ -1,8 +1,10 @@
 
 
+
 import * as React from 'react';
 import type { Chat } from '@google/genai';
 import { createChat, generateFollowUpQuestions } from '../services/geminiService';
+// FIX: Imported missing ChatMessage type.
 import type { ChatMessage } from '../types';
 import Spinner from './icons/Spinner';
 import SendIcon from './icons/SendIcon';

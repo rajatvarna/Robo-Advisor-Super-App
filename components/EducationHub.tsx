@@ -1,7 +1,9 @@
 
 
+
 import * as React from 'react';
 import { generateEducationalContent } from '../services/geminiService';
+// FIX: Imported missing EducationalContent type.
 import type { EducationalContent } from '../types';
 import Spinner from './icons/Spinner';
 import { useApi } from '../contexts/ApiContext';

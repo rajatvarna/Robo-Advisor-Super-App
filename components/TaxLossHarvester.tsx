@@ -1,7 +1,9 @@
 
 
+
 import * as React from 'react';
 import { generateTaxLossOpportunities } from '../services/geminiService';
+// FIX: Imported missing TaxLossOpportunity type.
 import type { Holding, TaxLossOpportunity } from '../types';
 import Spinner from './icons/Spinner';
 import { useApi } from '../contexts/ApiContext';

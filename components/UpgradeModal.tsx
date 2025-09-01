@@ -28,8 +28,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose, onUpgrade }) => {
                 <div className="w-16 h-16 mx-auto bg-brand-accent/20 text-brand-accent rounded-full flex items-center justify-center">
                     <CrownIcon className="w-10 h-10" />
                 </div>
-                <h2 className="text-2xl font-bold text-brand-text mt-4">Upgrade to Premium</h2>
-                <p className="text-brand-text-secondary mt-2">This feature is exclusively available for our Premium members. Unlock the AI Robo Advisor and more advanced tools to elevate your investment strategy.</p>
+                <h2 className="text-2xl font-bold text-brand-text mt-4">Upgrade to Pro</h2>
+                <p className="text-brand-text-secondary mt-2">This feature is part of our upcoming Pro plan. Explore our subscription options to see what's next.</p>
                 <div className="mt-6 flex flex-col sm:flex-row gap-3">
                     <button
                         onClick={onClose}

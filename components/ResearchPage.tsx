@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import TickerInput from './TickerInput';
 import SecFilings from './SecFilings';
@@ -6,16 +7,14 @@ import FinancialStatements from './FinancialStatements';
 import StockChart from './StockChart';
 import EarningsTranscripts from './EarningsTranscripts';
 import Spinner from './icons/Spinner';
-import StockAnalysis from './StockAnalysis';
+import StockMetrics from './StockAnalysis'; // Renamed component, but file name stays for simplicity
 import StarIcon from './icons/StarIcon';
 import StarSolidIcon from './icons/StarSolidIcon';
 import StockComparison from './StockComparison';
 import XCircleIcon from './icons/XCircleIcon';
 import AddToWatchlistModal from './AddToWatchlistModal';
-import { generateTranscripts, generateStockAnalysis, generateStockComparison } from '../services/geminiService';
 import * as financialDataService from '../services/financialDataService';
-import type { SecFiling, FinancialStatementsData, TranscriptsData, StockAnalysisData, StockComparisonData, UserWatchlist } from '../types';
-import { useApi } from '../contexts/ApiContext';
+import type { SecFiling, FinancialStatementsData, EarningsTranscript, StockMetrics as StockMetricsType, StockComparisonData, UserWatchlist } from '../types';
 
 type DashboardTab = 'overview' | 'financials' | 'filings' | 'transcripts';
 
@@ -99,8 +98,7 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
   
   const [filings, setFilings] = React.useState<SecFiling[] | null>(null);
   const [financials, setFinancials] = React.useState<FinancialStatementsData | null>(null);
-  const [transcriptsData, setTranscriptsData] = React.useState<TranscriptsData | null>(null);
-  const [analysis, setAnalysis] = React.useState<StockAnalysisData | null>(null);
+  const [transcripts, setTranscripts] = React.useState<EarningsTranscript[] | null>(null);
   
   const [comparisonTickers, setComparisonTickers] = React.useState<string[]>([]);
   const [comparisonData, setComparisonData] = React.useState<StockComparisonData | null>(null);
@@ -110,67 +108,41 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
   
   const [isWatchlistModalOpen, setIsWatchlistModalOpen] = React.useState(false);
 
-  const { apiMode, setApiMode } = useApi();
-
   const handleApiError = (err: any, context?: string) => {
       const errorMessage = err.message || `An unexpected error occurred while fetching ${context || 'data'}.`;
-      if (err.message.includes('QUOTA_EXCEEDED')) {
-          setApiMode('opensource');
-          setError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
-      } else {
-          setError(errorMessage);
-      }
-      if (context === 'initial') {
-          setIsLoading(false);
-      }
+      setError(errorMessage);
   };
 
   const handleTickerSubmit = (newTicker: string) => {
-    setIsLoading(true);
+    setIsLoading(false); // No initial loading needed as child components load their own data
     setError(null);
     setTicker(newTicker.toUpperCase());
     setActiveTab('overview');
-    setAnalysis(null);
     setFinancials(null);
     setFilings(null);
-    setTranscriptsData(null);
+    setTranscripts(null);
   };
-
-  React.useEffect(() => {
-    if (!ticker) return;
-    const fetchInitialData = async () => {
-      try {
-        setAnalysis(await generateStockAnalysis(ticker, apiMode));
-      } catch (err) {
-        handleApiError(err, 'initial');
-        setTicker(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchInitialData();
-  }, [ticker, apiMode]);
 
   React.useEffect(() => {
     if (!ticker) return;
     const fetchDataForTab = async () => {
         try {
             switch(activeTab) {
-                case 'financials': if (!financials) setFinancials(await financialDataService.getFinancials(ticker, apiMode)); break;
-                case 'filings': if (!filings) setFilings(await financialDataService.getFilings(ticker, apiMode)); break;
-                case 'transcripts': if (!transcriptsData) setTranscriptsData(await generateTranscripts(ticker, apiMode)); break;
+                case 'financials': if (!financials) setFinancials(await financialDataService.getFinancials(ticker)); break;
+                case 'filings': if (!filings) setFilings(await financialDataService.getFilings(ticker)); break;
+                case 'transcripts': if (!transcripts) setTranscripts(await financialDataService.getEarningsTranscripts(ticker)); break;
             }
         } catch (err) { handleApiError(err, `data for ${activeTab} tab`); }
     };
     fetchDataForTab();
-  }, [activeTab, ticker, apiMode, financials, filings, transcriptsData]);
+  }, [activeTab, ticker, financials, filings, transcripts]);
 
   const renderContent = () => {
     switch(activeTab) {
-      case 'overview': return <StockAnalysis analysis={analysis} />;
+      case 'overview': return <StockMetrics ticker={ticker} />;
       case 'financials': return <FinancialStatements data={financials} />;
       case 'filings': return <SecFilings filings={filings} />;
-      case 'transcripts': return <EarningsTranscripts transcriptsData={transcriptsData} />;
+      case 'transcripts': return <EarningsTranscripts transcripts={transcripts} />;
       default: return <div className="flex items-center justify-center h-64"><Spinner/></div>;
     }
   }
@@ -196,15 +168,11 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
       setComparisonError(null);
       setComparisonData(null);
       try {
-          const data = await generateStockComparison(comparisonTickers, apiMode);
+          const metricsPromises = comparisonTickers.map(t => financialDataService.getStockMetrics(t));
+          const data = await Promise.all(metricsPromises);
           setComparisonData(data);
       } catch (err: any) {
-          if (err.message.includes('QUOTA_EXCEEDED')) {
-              setApiMode('opensource');
-              setComparisonError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
-          } else {
-              setComparisonError(err.message || 'An unexpected error occurred while fetching comparison data.');
-          }
+          setComparisonError(err.message || 'An unexpected error occurred while fetching comparison data.');
       } finally {
           setIsComparing(false);
       }
@@ -220,14 +188,6 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
             <div className="text-center my-8 text-red-400 p-4 bg-red-900/20 rounded-lg max-w-2xl mx-auto">
                 <p className="font-bold">An Error Occurred</p>
                 <p className="mb-4">{error}</p>
-                {ticker && (
-                    <button
-                        onClick={() => handleTickerSubmit(ticker)}
-                        className="px-6 py-2 rounded-md bg-brand-accent text-white hover:bg-brand-accent-hover transition-colors"
-                    >
-                        Try Again
-                    </button>
-                )}
             </div>
         )}
 
@@ -277,7 +237,7 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
 
       <div className="mt-12 pt-8 border-t border-brand-border">
           <h2 className="text-2xl font-bold text-brand-text">Compare Stocks</h2>
-          <p className="mt-1 text-brand-text-secondary">Add up to 5 tickers to generate a side-by-side analysis powered by AI.</p>
+          <p className="mt-1 text-brand-text-secondary">Add up to 5 tickers to generate a side-by-side analysis.</p>
           <div className="mt-4 bg-brand-secondary p-4 rounded-lg border border-brand-border">
               <form onSubmit={handleAddComparisonTicker} className="flex items-center gap-2">
                   <input type="text" value={comparisonInput} onChange={(e) => setComparisonInput(e.target.value)} placeholder="Enter Ticker to Add" className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition" disabled={isComparing || comparisonTickers.length >= 5} />

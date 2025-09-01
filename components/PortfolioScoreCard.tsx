@@ -1,5 +1,7 @@
 
+
 import * as React from 'react';
+// FIX: Imported missing PortfolioScore type.
 import type { PortfolioScore } from '../types';
 
 const HealthGauge: React.FC<{ score: number }> = ({ score }) => {

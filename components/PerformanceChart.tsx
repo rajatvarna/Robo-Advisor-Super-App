@@ -1,5 +1,6 @@
 
 
+
 import * as React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import type { Transaction, PortfolioHistoryPoint } from '../types';
@@ -33,7 +34,8 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ transactions }) => 
                 const startDate = sortedTxns[0].date;
                 
                 // For simplicity, we'll use SPY as the benchmark
-                const benchmarkHistory = await financialDataService.fetchHistoricalData('SPY', startDate, apiMode);
+                // FIX: Removed invalid apiMode argument.
+                const benchmarkHistory = await financialDataService.fetchHistoricalData('SPY', startDate);
 
                 if (benchmarkHistory.length === 0) {
                     throw new Error("Could not fetch benchmark historical data.");
@@ -42,7 +44,8 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ transactions }) => 
                 const uniqueTickers = [...new Set(sortedTxns.map(tx => tx.ticker))];
                 const priceHistories: Record<string, {date: string, price: number}[]> = {};
                 await Promise.all(uniqueTickers.map(async ticker => {
-                    priceHistories[ticker] = await financialDataService.fetchHistoricalData(ticker, startDate, apiMode);
+                    // FIX: Removed invalid apiMode argument.
+                    priceHistories[ticker] = await financialDataService.fetchHistoricalData(ticker, startDate);
                 }));
 
                 const normalizedData: PortfolioHistoryPoint[] = [];

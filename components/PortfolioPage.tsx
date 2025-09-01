@@ -62,77 +62,67 @@ const PortfolioPage: React.FC<{ data: DashboardData | null; onGenerateDemo: () =
   const [activeTab, setActiveTab] = React.useState<PortfolioTab>('holdings');
   const [transactionFilter, setTransactionFilter] = React.useState<TransactionFilter>('all');
 
-  if (!data || data.holdings.length === 0) {
-    return <EmptyState onPrimaryClick={onAddHolding} onSecondaryClick={onGenerateDemo} />;
-  }
-
-  const { holdings, allocation, transactions } = data;
-  
-  const filteredTransactions = React.useMemo(() => {
-    if (transactionFilter === 'all') return transactions;
-    return transactions.filter(tx => tx.type.toLowerCase() === transactionFilter);
-  }, [transactions, transactionFilter]);
-
-  const renderContent = () => {
-    if (activeTab === 'holdings') {
-        return (
-             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-brand-text-secondary uppercase bg-brand-primary">
-                        <tr>
-                            <th className="py-3 px-4">Symbol</th>
-                            <th className="py-3 px-4 hidden md:table-cell">Company</th>
-                            <th className="py-3 px-4 text-right">Shares</th>
-                            <th className="py-3 px-4 text-right hidden lg:table-cell">Cost/Share</th>
-                            <th className="py-3 px-4 text-right">Price</th>
-                            <th className="py-3 px-4 text-right hidden sm:table-cell">Today's Gain</th>
-                            <th className="py-3 px-4 text-right">Total Value</th>
-                            <th className="py-3 px-4 text-right hidden lg:table-cell">Total Gain</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-brand-border">
-                        {holdings.map(h => <HoldingRow key={h.ticker} h={h} />)}
-                    </tbody>
-                </table>
-            </div>
-        );
+  const renderPortfolioContent = () => {
+    if (!data || data.holdings.length === 0) {
+      return <EmptyState onPrimaryClick={onAddHolding} onSecondaryClick={onGenerateDemo} />;
     }
-    if (activeTab === 'transactions') {
-        return (
-             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-brand-text-secondary uppercase bg-brand-primary">
-                        <tr>
-                            <th className="py-3 px-4">Date</th>
-                            <th className="py-3 px-4">Type</th>
-                            <th className="py-3 px-4">Symbol</th>
-                            <th className="py-3 px-4 text-right">Shares</th>
-                            <th className="py-3 px-4 text-right">Price</th>
-                            <th className="py-3 px-4 text-right">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-brand-border">
-                        {filteredTransactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
-                    </tbody>
-                </table>
-            </div>
-        );
-    }
-  };
+    
+    const { holdings, allocation, transactions } = data;
+    
+    const filteredTransactions = React.useMemo(() => {
+      if (transactionFilter === 'all') return transactions;
+      return transactions.filter(tx => tx.type.toLowerCase() === transactionFilter);
+    }, [transactions, transactionFilter]);
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-        <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-brand-text">My Portfolio</h1>
-            <button 
-                onClick={onAddHolding}
-                className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white font-semibold rounded-lg hover:bg-brand-accent-hover transition-colors"
-            >
-                <PlusIcon className="w-5 h-5" />
-                Add Holding
-            </button>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    const renderTabContent = () => {
+      if (activeTab === 'holdings') {
+          return (
+               <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-brand-text-secondary uppercase bg-brand-primary">
+                          <tr>
+                              <th className="py-3 px-4">Symbol</th>
+                              <th className="py-3 px-4 hidden md:table-cell">Company</th>
+                              <th className="py-3 px-4 text-right">Shares</th>
+                              <th className="py-3 px-4 text-right hidden lg:table-cell">Cost/Share</th>
+                              <th className="py-3 px-4 text-right">Price</th>
+                              <th className="py-3 px-4 text-right hidden sm:table-cell">Today's Gain</th>
+                              <th className="py-3 px-4 text-right">Total Value</th>
+                              <th className="py-3 px-4 text-right hidden lg:table-cell">Total Gain</th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-brand-border">
+                          {holdings.map(h => <HoldingRow key={h.ticker} h={h} />)}
+                      </tbody>
+                  </table>
+              </div>
+          );
+      }
+      if (activeTab === 'transactions') {
+          return (
+               <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-brand-text-secondary uppercase bg-brand-primary">
+                          <tr>
+                              <th className="py-3 px-4">Date</th>
+                              <th className="py-3 px-4">Type</th>
+                              <th className="py-3 px-4">Symbol</th>
+                              <th className="py-3 px-4 text-right">Shares</th>
+                              <th className="py-3 px-4 text-right">Price</th>
+                              <th className="py-3 px-4 text-right">Total</th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-brand-border">
+                          {filteredTransactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
+                      </tbody>
+                  </table>
+              </div>
+          );
+      }
+    };
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-brand-secondary rounded-lg border border-brand-border shadow-lg overflow-hidden transition-shadow duration-300 hover:shadow-xl">
                  <div className="p-4 border-b border-brand-border flex justify-between items-center">
                     <div className="flex gap-4">
@@ -151,7 +141,7 @@ const PortfolioPage: React.FC<{ data: DashboardData | null; onGenerateDemo: () =
                         </select>
                     )}
                 </div>
-                {renderContent()}
+                {renderTabContent()}
             </div>
             <div className="bg-brand-secondary p-6 rounded-lg border border-brand-border shadow-lg transition-shadow duration-300 hover:shadow-xl">
                 <h2 className="text-xl font-bold mb-4">Sector Allocation</h2>
@@ -168,6 +158,22 @@ const PortfolioPage: React.FC<{ data: DashboardData | null; onGenerateDemo: () =
                 </div>
             </div>
         </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+        <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold text-brand-text">My Portfolio</h1>
+            <button 
+                onClick={onAddHolding}
+                className="flex items-center gap-2 px-4 py-2 bg-brand-accent text-white font-semibold rounded-lg hover:bg-brand-accent-hover transition-colors"
+            >
+                <PlusIcon className="w-5 h-5" />
+                Add Holding
+            </button>
+        </div>
+        {renderPortfolioContent()}
     </div>
   );
 };

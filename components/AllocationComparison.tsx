@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+// FIX: Imported missing PortfolioAllocation type.
 import type { PortfolioAllocation } from '../types';
 import { useTheme } from '../contexts/ThemeContext';
 

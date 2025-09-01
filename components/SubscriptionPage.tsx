@@ -20,35 +20,34 @@ const SubscriptionPage: React.FC = () => {
                 {/* Free Plan */}
                 <div className="bg-brand-secondary p-8 rounded-lg border-2 border-brand-accent shadow-lg relative">
                     <span className="absolute top-4 right-4 text-xs font-bold bg-brand-accent text-white px-3 py-1 rounded-full">Current Plan</span>
-                    <h2 className="text-2xl font-bold text-brand-text">Free</h2>
-                    <p className="text-brand-text-secondary mt-2">Essential tools to get started.</p>
+                    <h2 className="text-2xl font-bold text-brand-text">Standard</h2>
+                    <p className="text-brand-text-secondary mt-2">All essential tools included.</p>
                     <p className="text-4xl font-extrabold text-brand-text mt-6">$0<span className="text-lg font-medium text-brand-text-secondary">/month</span></p>
                     <ul className="mt-8 space-y-3 text-brand-text-secondary">
                         <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-green-500" />Portfolio Tracking</li>
-                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-green-500" />Basic Stock Research</li>
+                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-green-500" />In-Depth Stock Research</li>
                         <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-green-500" />Personalized News Feed</li>
-                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-green-500" />Limited AI Chatbot Access</li>
+                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-green-500" />Stock Screener</li>
+                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-green-500" />Advanced Analytics</li>
                     </ul>
                 </div>
 
-                {/* Premium Plan */}
+                {/* Pro Plan */}
                 <div className="bg-brand-secondary p-8 rounded-lg border-2 border-brand-border shadow-lg">
-                    <h2 className="text-2xl font-bold text-brand-accent">Premium</h2>
-                    <p className="text-brand-text-secondary mt-2">Advanced AI for serious investors.</p>
-                    <p className="text-4xl font-extrabold text-brand-text mt-6">$29<span className="text-lg font-medium text-brand-text-secondary">/month</span></p>
+                    <h2 className="text-2xl font-bold text-brand-accent">Pro (Coming Soon)</h2>
+                    <p className="text-brand-text-secondary mt-2">For professional investors.</p>
+                    <p className="text-4xl font-extrabold text-brand-text mt-6">$49<span className="text-lg font-medium text-brand-text-secondary">/month</span></p>
                      <ul className="mt-8 space-y-3 text-brand-text-secondary">
-                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" />Everything in Free, plus:</li>
-                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" /><strong>AI Robo Advisor</strong></li>
-                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" />Advanced Analytics Suite</li>
-                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" />Unlimited AI Chatbot Access</li>
-                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" />"What-If" Scenario Tool</li>
-                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" />Smart Alerts & Notifications</li>
+                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" />Everything in Standard, plus:</li>
+                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" />Advanced API Access</li>
+                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" />Automated Strategy Backtesting</li>
+                        <li className="flex items-center gap-3"><CheckCircleIcon className="w-5 h-5 text-brand-accent" />Priority Support</li>
                     </ul>
                     <button 
-                        onClick={handleUpgrade}
-                        className="w-full mt-8 p-3 font-semibold rounded-lg bg-brand-accent hover:bg-brand-accent-hover text-white transition-colors"
+                        disabled
+                        className="w-full mt-8 p-3 font-semibold rounded-lg bg-brand-accent hover:bg-brand-accent-hover text-white transition-colors disabled:bg-brand-secondary disabled:text-brand-text-secondary disabled:cursor-not-allowed"
                     >
-                        Upgrade to Premium
+                        Coming Soon
                     </button>
                 </div>
             </div>

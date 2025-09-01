@@ -1,5 +1,7 @@
 
+
 import * as React from 'react';
+// FIX: Imported missing PortfolioScore type.
 import type { Holding, PortfolioScore } from '../types';
 import { calculatePortfolioScore } from '../services/geminiService';
 import { useApi } from '../contexts/ApiContext';

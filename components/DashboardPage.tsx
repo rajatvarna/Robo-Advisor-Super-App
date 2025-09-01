@@ -1,15 +1,13 @@
 
 
 import * as React from 'react';
-import type { DashboardData, Quote, UserWatchlist } from '../types';
+import type { DashboardData, Quote } from '../types';
 import EmptyState from './EmptyState';
 import StatCard from './StatCard';
-import PortfolioScoreCard from './PortfolioScoreCard';
 import AchievementsList from './AchievementsList';
 import Watchlist from './Watchlist';
 import PersonalizedNewsFeed from './PersonalizedNewsFeed';
 import GoalProgress from './GoalProgress';
-import DashboardInsights from './DashboardInsights';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
@@ -40,20 +38,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, quotes, onGenerateD
     );
   }
 
-  const { user, netWorth, holdings, portfolioScore, achievements, personalizedNews, watchlists, goal, dashboardInsights, dismissedNewsIds } = data;
+  const { user, netWorth, holdings, achievements, watchlists, goal, dismissedNewsIds } = data;
   
   const dayGain = holdings.reduce((acc, h) => acc + (h.dayChange * h.shares), 0);
   const totalOriginalValue = holdings.reduce((acc, h) => acc + ((h.currentPrice - h.dayChange) * h.shares), 0);
   const dayGainPercent = totalOriginalValue > 0 ? (dayGain / totalOriginalValue) * 100 : 0;
+  const totalGain = holdings.reduce((acc, h) => acc + h.unrealizedGain, 0);
+  const totalCostBasis = holdings.reduce((acc, h) => acc + h.costBasis, 0);
+  const totalGainPercent = totalCostBasis > 0 ? (totalGain / totalCostBasis) * 100 : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
         <h1 className="text-3xl font-bold text-brand-text">Welcome back, {user.name.split(' ')[0]}!</h1>
-        
-        <div id="dashboard-insights">
-            <DashboardInsights insights={dashboardInsights} />
-        </div>
-        
+                
         {goal && <GoalProgress goal={goal} netWorth={netWorth} />}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -61,19 +58,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ data, quotes, onGenerateD
               <StatCard title="Net Worth" value={formatCurrency(netWorth)} />
             </div>
             <StatCard title="Day's Gain / Loss" value={formatCurrency(dayGain)} change={dayGainPercent} />
-            <StatCard title="Holdings" value={holdings.length.toString()} />
-            <div id="portfolio-score-card">
-              <PortfolioScoreCard score={portfolioScore} />
+             <div id="total-gain-card">
+              <StatCard title="Total Gain / Loss" value={formatCurrency(totalGain)} change={totalGainPercent} />
             </div>
+            <StatCard title="Holdings" value={holdings.length.toString()} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
                 <div id="personalized-news-feed">
                   <PersonalizedNewsFeed 
-                    news={personalizedNews || []} 
                     holdings={holdings} 
-                    watchlists={watchlists}
                     dismissedNewsIds={dismissedNewsIds || []}
                     onDismissNews={onDismissNews}
                   />

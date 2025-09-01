@@ -1,12 +1,9 @@
 
 
 import * as React from 'react';
-import { getTopCryptos } from '../services/geminiService';
-// FIX: Changed import to use getMarketNews, which replaced getCryptoNews.
-import { getMarketNews } from '../services/financialDataService';
+import { getTopCryptos, getMarketNews } from '../services/financialDataService';
 import type { CryptoData, NewsItem } from '../types';
 import Spinner from './icons/Spinner';
-import { useApi } from '../contexts/ApiContext';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
@@ -63,30 +60,23 @@ const CryptoPage: React.FC = () => {
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
     const [sortConfig, setSortConfig] = React.useState<{ key: SortKey; direction: SortDirection } | null>({ key: 'marketCap', direction: 'descending' });
-    const { apiMode, setApiMode } = useApi();
 
     const fetchData = React.useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
             const [cryptoData, newsData] = await Promise.all([
-                getTopCryptos(apiMode),
-                // FIX: Changed function call to getMarketNews with 'crypto' category.
-                getMarketNews('crypto', apiMode),
+                getTopCryptos(),
+                getMarketNews('crypto'),
             ]);
             setCryptos(cryptoData);
             setNews(newsData);
         } catch (err: any) {
-            if (err.message.includes('QUOTA_EXCEEDED')) {
-                setApiMode('opensource');
-                setError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
-            } else {
-                setError(err.message || 'Failed to load crypto data.');
-            }
+            setError(err.message || 'Failed to load crypto data.');
         } finally {
             setIsLoading(false);
         }
-    }, [apiMode, setApiMode]);
+    }, []);
 
     React.useEffect(() => {
         fetchData();
@@ -129,7 +119,7 @@ const CryptoPage: React.FC = () => {
             return (
                 <div className="flex flex-col items-center justify-center h-96">
                     <Spinner />
-                    <p className="mt-4 text-brand-text-secondary">AI is retrieving the latest crypto data...</p>
+                    <p className="mt-4 text-brand-text-secondary">Retrieving the latest crypto data...</p>
                 </div>
             );
         }
@@ -184,7 +174,7 @@ const CryptoPage: React.FC = () => {
                 <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg">
                      <h3 className="text-lg font-bold text-brand-text mb-3">Crypto News</h3>
                      <div className="space-y-4">
-                        {news.map((item, index) => {
+                        {news.slice(0, 10).map((item, index) => {
                             const content = (
                                 <>
                                     <p className="font-semibold text-brand-text group-hover:text-brand-accent transition-colors">{item.headline}</p>
@@ -219,7 +209,7 @@ const CryptoPage: React.FC = () => {
             <div className="flex justify-between items-start">
                 <div>
                     <h1 className="text-3xl font-bold text-brand-text">Crypto Dashboard</h1>
-                    <p className="mt-2 text-brand-text-secondary">The latest market data and news for the crypto world, powered by AI.</p>
+                    <p className="mt-2 text-brand-text-secondary">The latest market data and news for the crypto world.</p>
                 </div>
                  <button 
                     onClick={() => fetchData()}

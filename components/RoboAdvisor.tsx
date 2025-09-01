@@ -1,7 +1,9 @@
 
+
 import * as React from 'react';
 import { questionnaire } from '../constants';
 import { generatePortfolio } from '../services/geminiService';
+// FIX: Imported missing types.
 import type { QuestionnaireAnswers, PortfolioSuggestion, User } from '../types';
 import Spinner from './icons/Spinner';
 import AllocationComparison from './AllocationComparison';

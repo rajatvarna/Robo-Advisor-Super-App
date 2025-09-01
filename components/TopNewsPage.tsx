@@ -1,5 +1,6 @@
 
 
+
 import * as React from 'react';
 // FIX: Changed import to use getMarketNews, which replaced getTopBusinessNews.
 import { getMarketNews } from '../services/financialDataService';
@@ -34,8 +35,8 @@ const TopNewsPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         try {
-            // FIX: Changed function call to getMarketNews with 'general' category.
-            const results = await getMarketNews('general', apiMode);
+            // FIX: Removed invalid apiMode argument.
+            const results = await getMarketNews('general');
             setNews(results);
         } catch (err: any) {
              if (err.message.includes('QUOTA_EXCEEDED')) {

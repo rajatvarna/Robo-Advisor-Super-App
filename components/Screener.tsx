@@ -1,10 +1,9 @@
 
 
 import * as React from 'react';
-import { screenStocks } from '../services/geminiService';
+import { screenStocks } from '../services/financialDataService';
 import type { ScreenerCriteria, ScreenerResult } from '../types';
 import Spinner from './icons/Spinner';
-import { useApi } from '../contexts/ApiContext';
 
 const SECTORS = [
   'Technology', 'Healthcare', 'Financial Services', 'Consumer Cyclical', 
@@ -12,7 +11,6 @@ const SECTORS = [
   'Utilities', 'Communication Services', 'Basic Materials'
 ];
 
-const ANALYST_RATINGS = ['Any', 'Hold', 'Buy', 'Strong Buy'];
 const RESULTS_PER_PAGE = 15;
 
 const INITIAL_CRITERIA: ScreenerCriteria = {
@@ -23,7 +21,6 @@ const INITIAL_CRITERIA: ScreenerCriteria = {
   dividendYieldMin: 0,
   dividendYieldMax: Infinity,
   sectors: [],
-  analystRating: 'Any',
 };
 
 interface ScreenerProps {
@@ -31,8 +28,9 @@ interface ScreenerProps {
 }
 
 const formatMarketCap = (value: number) => {
-    if (value >= 1000) return `$${(value / 1000).toFixed(2)}T`;
-    return `$${value}B`;
+    if (value >= 1000000000000) return `$${(value / 1000000000000).toFixed(2)}T`;
+    if (value >= 1000000000) return `$${(value / 1000000000).toFixed(2)}B`;
+    return `$${(value / 1000000).toFixed(2)}M`;
 }
 
 type SortKey = keyof ScreenerResult;
@@ -126,23 +124,22 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
     const [hasSearched, setHasSearched] = React.useState(false);
     const [currentPage, setCurrentPage] = React.useState(1);
     const [sortConfig, setSortConfig] = React.useState<{ key: SortKey; direction: SortDirection } | null>({ key: 'marketCap', direction: 'descending' });
-    const { apiMode, setApiMode } = useApi();
     const [isSectorDropdownOpen, setIsSectorDropdownOpen] = React.useState(false);
     const sectorDropdownRef = React.useRef<HTMLDivElement>(null);
     
     // --- State & Handlers for Market Cap ---
     const [marketCapRange, setMarketCapRange] = React.useState({ min: 0, max: 5001 });
-    const MAX_MARKET_CAP = 5001; // Represents "Any" or Infinity
+    const MAX_MARKET_CAP_SLIDER = 5001; // Represents "Any" or Infinity
     const handleMarketCapChange = (type: 'min' | 'max', value: number) => {
         const newRange = { ...marketCapRange, [type]: value };
         if (newRange.min > newRange.max) {
             if (type === 'max') newRange.min = newRange.max; else newRange.max = newRange.min;
         }
         setMarketCapRange(newRange);
-        setCriteria(prev => ({ ...prev, marketCapMin: newRange.min, marketCapMax: newRange.max >= MAX_MARKET_CAP ? Infinity : newRange.max }));
+        setCriteria(prev => ({ ...prev, marketCapMin: newRange.min * 1_000_000_000, marketCapMax: newRange.max >= MAX_MARKET_CAP_SLIDER ? Infinity : newRange.max * 1_000_000_000 }));
     };
     const formatMarketCapLabel = (value: number) => {
-        if (value >= MAX_MARKET_CAP) return "Any";
+        if (value >= MAX_MARKET_CAP_SLIDER) return "Any";
         if (value >= 1000) return `$${(value / 1000).toFixed(1)}T`;
         return `$${value}B`;
     };
@@ -194,15 +191,10 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
         setResults([]);
         onRunScreener();
         try {
-            const data = await screenStocks(criteria, apiMode);
+            const data = await screenStocks(criteria);
             setResults(data);
         } catch (err: any) {
-            if (err.message.includes('QUOTA_EXCEEDED')) {
-                setApiMode('opensource');
-                setError("Live AI quota exceeded. Switched to offline fallback mode for this feature.");
-            } else {
-                setError(err.message || 'An unexpected error occurred.');
-            }
+            setError(err.message || 'An unexpected error occurred.');
         } finally {
             setIsLoading(false);
         }
@@ -240,7 +232,7 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
             return (
                 <div className="flex flex-col items-center justify-center h-64">
                     <Spinner />
-                    <p className="mt-4 text-brand-text-secondary">AI is screening thousands of stocks for you...</p>
+                    <p className="mt-4 text-brand-text-secondary">Screening thousands of stocks...</p>
                 </div>
             );
         }
@@ -275,7 +267,6 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                             <SortableHeader label="Market Cap" sortKey="marketCap" sortConfig={sortConfig} onClick={requestSort} className="text-right" />
                             <SortableHeader label="P/E Ratio" sortKey="peRatio" sortConfig={sortConfig} onClick={requestSort} className="text-right" />
                             <SortableHeader label="Div. Yield" sortKey="dividendYield" sortConfig={sortConfig} onClick={requestSort} className="text-right" />
-                            <SortableHeader label="Analyst Rating" sortKey="analystRating" sortConfig={sortConfig} onClick={requestSort} />
                             <SortableHeader label="Sector" sortKey="sector" sortConfig={sortConfig} onClick={requestSort} />
                         </tr>
                     </thead>
@@ -286,8 +277,7 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                                 <td className="py-3 px-4 text-brand-text">{stock.companyName}</td>
                                 <td className="py-3 px-4 text-right tabular-nums text-brand-text">{formatMarketCap(stock.marketCap)}</td>
                                 <td className="py-3 px-4 text-right tabular-nums text-brand-text">{stock.peRatio?.toFixed(2) ?? 'N/A'}</td>
-                                <td className="py-3 px-4 text-right tabular-nums text-brand-text">{stock.dividendYield?.toFixed(2) ?? 'N/A'}%</td>
-                                <td className="py-3 px-4 text-brand-text">{stock.analystRating}</td>
+                                <td className="py-3 px-4 text-right tabular-nums text-brand-text">{stock.dividendYield ? `${stock.dividendYield.toFixed(2)}%` : 'N/A'}</td>
                                 <td className="py-3 px-4 text-brand-text-secondary">{stock.sector}</td>
                             </tr>
                         ))}
@@ -307,7 +297,7 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
     return (
         <div className="space-y-8 animate-fade-in">
             <div>
-                <h1 className="text-3xl font-bold text-brand-text">AI Stock Screener</h1>
+                <h1 className="text-3xl font-bold text-brand-text">Stock Screener</h1>
                 <p className="mt-2 text-brand-text-secondary">Discover investment opportunities by filtering stocks with your custom criteria.</p>
             </div>
 
@@ -315,10 +305,10 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
                      <div>
                         <TooltipLabel
-                            label="Market Cap (in Billions)"
+                            label="Market Cap"
                             tooltipText="The total value of a company's shares. Filter by size, from small-cap to mega-cap."
                         />
-                         <RangeSlider min={0} max={MAX_MARKET_CAP} step={10} minValue={marketCapRange.min} maxValue={marketCapRange.max} onChange={handleMarketCapChange} formatLabel={formatMarketCapLabel} />
+                         <RangeSlider min={0} max={MAX_MARKET_CAP_SLIDER} step={10} minValue={marketCapRange.min} maxValue={marketCapRange.max} onChange={handleMarketCapChange} formatLabel={formatMarketCapLabel} />
                     </div>
                      <div>
                         <TooltipLabel
@@ -329,19 +319,21 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4 pt-4 border-t border-brand-border">
-                    <div>
-                        <TooltipLabel label="Dividend Yield (Min %)" tooltipText="The minimum annual dividend payout as a percentage of the stock's price." htmlFor="dividendYieldMin"/>
-                         <div className="relative">
-                            <input type="number" name="dividendYieldMin" id="dividendYieldMin" value={criteria.dividendYieldMin} onChange={handleNumericChange} placeholder="e.g., 2.5" step="0.1" className="w-full p-2 pl-3 pr-8 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition"/>
-                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary pointer-events-none">%</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4 pt-4 border-t border-brand-border">
+                    <div className="flex items-center gap-4">
+                         <div className="flex-1">
+                            <TooltipLabel label="Dividend Yield (Min %)" tooltipText="The minimum annual dividend payout as a percentage of the stock's price." htmlFor="dividendYieldMin"/>
+                             <div className="relative">
+                                <input type="number" name="dividendYieldMin" id="dividendYieldMin" value={criteria.dividendYieldMin} onChange={handleNumericChange} placeholder="e.g., 2.5" step="0.1" className="w-full p-2 pl-3 pr-8 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition"/>
+                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary pointer-events-none">%</span>
+                            </div>
                         </div>
-                    </div>
-                     <div>
-                        <TooltipLabel label="Dividend Yield (Max %)" tooltipText="The maximum annual dividend payout as a percentage of the stock's price." htmlFor="dividendYieldMax"/>
-                         <div className="relative">
-                            <input type="number" name="dividendYieldMax" id="dividendYieldMax" value={isFinite(criteria.dividendYieldMax) ? criteria.dividendYieldMax : ''} onChange={handleNumericChange} placeholder="Any" step="0.1" className="w-full p-2 pl-3 pr-8 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition"/>
-                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary pointer-events-none">%</span>
+                         <div className="flex-1">
+                            <TooltipLabel label="Dividend Yield (Max %)" tooltipText="The maximum annual dividend payout as a percentage of the stock's price." htmlFor="dividendYieldMax"/>
+                             <div className="relative">
+                                <input type="number" name="dividendYieldMax" id="dividendYieldMax" value={isFinite(criteria.dividendYieldMax) ? criteria.dividendYieldMax : ''} onChange={handleNumericChange} placeholder="Any" step="0.1" className="w-full p-2 pl-3 pr-8 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition"/>
+                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary pointer-events-none">%</span>
+                            </div>
                         </div>
                     </div>
                      <div className="lg:col-span-2">
@@ -361,14 +353,6 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
                                 </div>
                             )}
                         </div>
-                    </div>
-                    <div>
-                        <TooltipLabel label="Analyst Rating" tooltipText="Filter stocks based on the consensus rating from professional analysts. 'Strong Buy' is the highest rating." htmlFor="analystRating" />
-                        <select id="analystRating" name="analystRating" value={criteria.analystRating} onChange={(e) => setCriteria(prev => ({ ...prev, analystRating: e.target.value }))} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition">
-                            {ANALYST_RATINGS.map(rating => (
-                                <option key={rating} value={rating}>{rating}</option>
-                            ))}
-                        </select>
                     </div>
                 </div>
 

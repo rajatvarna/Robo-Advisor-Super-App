@@ -1,6 +1,8 @@
 
 
+
 import * as React from 'react';
+// FIX: Imported missing Alert type.
 import type { Alert } from '../types';
 import BellIcon from './icons/BellIcon';
 

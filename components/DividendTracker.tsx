@@ -1,10 +1,9 @@
 
 
 import * as React from 'react';
-import { generateDividendData } from '../services/geminiService';
+import { getDividends } from '../services/financialDataService';
 import type { Holding, Dividend } from '../types';
 import Spinner from './icons/Spinner';
-import { useApi } from '../contexts/ApiContext';
 
 interface DividendTrackerProps {
     holdings: Holding[];
@@ -16,22 +15,27 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ holdings }) => {
     const [dividends, setDividends] = React.useState<Dividend[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
-    const { apiMode, setApiMode } = useApi();
 
     React.useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
             setError(null);
             try {
-                const data = await generateDividendData(holdings, apiMode);
-                setDividends(data);
+                const dividendPromises = holdings.map(async (h) => {
+                    const upcomingDividends = await getDividends(h.ticker);
+                    return upcomingDividends.map(div => ({
+                        ...div,
+                        companyName: h.companyName,
+                        totalAmount: h.shares * div.amountPerShare,
+                    }));
+                });
+                
+                const allDividends = await Promise.all(dividendPromises);
+                const flattenedDividends = allDividends.flat().sort((a,b) => new Date(a.payDate).getTime() - new Date(b.payDate).getTime());
+                setDividends(flattenedDividends);
+
             } catch (err: any) {
-                if(err.message.includes('QUOTA_EXCEEDED')) {
-                    setApiMode('opensource');
-                     setError('Live AI quota exceeded. Switched to offline fallback mode for this feature.');
-                } else {
-                    setError(err.message || 'Failed to load dividend data.');
-                }
+                setError(err.message || 'Failed to load dividend data.');
             } finally {
                 setIsLoading(false);
             }
@@ -43,13 +47,13 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ holdings }) => {
             setIsLoading(false);
             setDividends([]);
         }
-    }, [holdings, apiMode, setApiMode]);
+    }, [holdings]);
     
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center h-64">
                 <Spinner />
-                <p className="mt-4 text-brand-text-secondary">AI is forecasting your dividend income...</p>
+                <p className="mt-4 text-brand-text-secondary">Forecasting your dividend income...</p>
             </div>
         );
     }
@@ -59,7 +63,7 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ holdings }) => {
     }
 
     if (dividends.length === 0) {
-        return <div className="text-center my-8 text-brand-text-secondary">No upcoming dividends found for your current holdings.</div>;
+        return <div className="text-center my-8 text-brand-text-secondary">No upcoming dividends found for your current holdings in the next year.</div>;
     }
 
     const totalDividendIncome = dividends.reduce((sum, div) => sum + div.totalAmount, 0);
@@ -67,7 +71,7 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ holdings }) => {
     return (
         <div className="bg-brand-secondary rounded-lg border border-brand-border shadow-lg overflow-hidden animate-fade-in">
              <div className="p-4 border-b border-brand-border flex justify-between items-baseline">
-                <h3 className="text-lg font-bold text-brand-text">Upcoming Dividends (Next 3 Months)</h3>
+                <h3 className="text-lg font-bold text-brand-text">Upcoming Dividends (Next 12 Months)</h3>
                 <p className="text-brand-text-secondary">Total Projected Income: <span className="font-bold text-green-400">{formatCurrency(totalDividendIncome)}</span></p>
             </div>
             <div className="overflow-x-auto">

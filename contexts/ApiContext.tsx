@@ -1,6 +1,9 @@
 
+
 import * as React from 'react';
+// FIX: Added ApiMode to import list.
 import type { ApiMode } from '../types';
+// FIX: Imported API_KEY from the correct source.
 import { API_KEY } from '../process.env.js';
 
 interface ApiContextType {

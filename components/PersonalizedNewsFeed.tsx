@@ -1,12 +1,13 @@
 
+
 import * as React from 'react';
-import type { NewsItem, Holding, UserWatchlist } from '../types';
+import type { NewsItem, Holding } from '../types';
+import * as financialDataService from '../services/financialDataService';
 import XCircleIcon from './icons/XCircleIcon';
+import Spinner from './icons/Spinner';
 
 interface PersonalizedNewsFeedProps {
-    news: NewsItem[];
     holdings: Holding[];
-    watchlists: UserWatchlist[];
     dismissedNewsIds: string[];
     onDismissNews: (newsId: string) => void;
 }
@@ -59,18 +60,47 @@ const NewsItemCard: React.FC<{ item: NewsItem; onDismiss: (id: string) => void; 
             </div>
         </>
     );
-
-    return (
-        <div className="border-b border-brand-border pb-3 last:border-b-0 last:pb-0">
-            {content}
-        </div>
-    );
+    // FIX: Added return statement to the component. It was implicitly returning void.
+    // Also wrapped in a div to ensure proper spacing in the parent's flex/grid layout.
+    return <div className="bg-brand-primary p-3 rounded-md border border-brand-border">{content}</div>;
 };
 
 
-const PersonalizedNewsFeed: React.FC<PersonalizedNewsFeedProps> = ({ news, holdings, watchlists, dismissedNewsIds, onDismissNews }) => {
-    const hasItemsToTrack = holdings.length > 0 || watchlists.some(wl => wl.tickers.length > 0);
+const PersonalizedNewsFeed: React.FC<PersonalizedNewsFeedProps> = ({ holdings, dismissedNewsIds, onDismissNews }) => {
+    const [news, setNews] = React.useState<NewsItem[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
     const [visibleCount, setVisibleCount] = React.useState(5);
+    
+    React.useEffect(() => {
+        const fetchNews = async () => {
+            if (holdings.length === 0) {
+                setIsLoading(false);
+                setNews([]);
+                return;
+            };
+            
+            setIsLoading(true);
+            try {
+                const top5Holdings = [...holdings].sort((a,b) => b.totalValue - a.totalValue).slice(0, 5);
+                const newsPromises = top5Holdings.map(h => financialDataService.getCompanyNews(h.ticker));
+                const newsResults = await Promise.all(newsPromises);
+
+                const allNews = newsResults.flat().sort((a,b) => {
+                    if (!a.publishedAt || !b.publishedAt) return 0;
+                    return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+                });
+                const uniqueNews = Array.from(new Map(allNews.map(item => [item.url, item])).values());
+                setNews(uniqueNews);
+            } catch (error) {
+                console.error("Failed to fetch personalized news", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchNews();
+    }, [holdings]);
+
 
     const filteredNews = React.useMemo(() => 
         news.filter(item => !dismissedNewsIds.includes(item.id))
@@ -81,7 +111,12 @@ const PersonalizedNewsFeed: React.FC<PersonalizedNewsFeedProps> = ({ news, holdi
     return (
         <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border shadow-lg transition-shadow duration-300 hover:shadow-xl">
             <h3 className="text-lg font-bold text-brand-text mb-3">For You</h3>
-            {filteredNews.length > 0 ? (
+            {isLoading ? (
+                <div className="flex items-center justify-center h-24">
+                    <Spinner />
+                    <p className="ml-3 text-sm text-brand-text-secondary">Searching for relevant news...</p>
+                </div>
+            ) : filteredNews.length > 0 ? (
                 <div className="space-y-4">
                     {visibleNews.map((item) => (
                         <NewsItemCard key={item.id} item={item} onDismiss={onDismissNews} />
@@ -97,9 +132,9 @@ const PersonalizedNewsFeed: React.FC<PersonalizedNewsFeedProps> = ({ news, holdi
                 </div>
             ) : (
                  <p className="text-sm text-brand-text-secondary text-center py-4">
-                    {hasItemsToTrack 
-                        ? (news.length > 0 ? "All news dismissed. New stories will appear as they are published." : "AI is searching for relevant news...")
-                        : "Add holdings or watchlist items to see personalized news."
+                    {holdings.length > 0
+                        ? (news.length > 0 ? "All news dismissed. New stories will appear as they are published." : "No recent news found for your top holdings.")
+                        : "Add holdings to see personalized news."
                     }
                 </p>
             )}
