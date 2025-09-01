@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import { screenStocks } from '../services/geminiService';
 import type { ScreenerCriteria, ScreenerResult } from '../types';
@@ -43,13 +44,13 @@ const SortableHeader: React.FC<{
     sortConfig: { key: SortKey; direction: SortDirection } | null;
     onClick: (key: SortKey) => void;
     className?: string;
-}> = ({ label, sortKey, sortConfig, onClick, className }) => {
+}> = ({ label, sortKey, sortConfig, onClick, className = '' }) => {
     const isSorting = sortConfig?.key === sortKey;
     const directionIcon = isSorting ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : '';
     
     return (
         <th className={`py-3 px-4 cursor-pointer hover:bg-brand-primary ${className}`} onClick={() => onClick(sortKey)}>
-            <div className="flex items-center gap-1">
+            <div className={`flex items-center gap-1 ${className.includes('text-right') ? 'justify-end' : ''}`}>
                 <span>{label}</span>
                 <span className="text-brand-accent w-2">{directionIcon}</span>
             </div>
@@ -70,12 +71,51 @@ const TooltipLabel: React.FC<{ label: string; tooltipText: string; htmlFor?: str
     <label htmlFor={htmlFor} className="block text-sm font-medium text-brand-text mb-1">{label}</label>
     <div className="relative group flex items-center">
       <InfoIcon className="w-4 h-4 text-brand-text-secondary cursor-help" />
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 p-2 text-xs text-center text-white bg-gray-700 dark:bg-gray-800 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 before:content-[''] before:absolute before:top-full before:left-1/2 before:-translate-x-1/2 before:border-8 before:border-x-transparent before:border-b-transparent before:border-t-gray-700 dark:before:border-t-gray-800">
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 text-xs text-center text-white bg-gray-700 dark:bg-gray-800 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 before:content-[''] before:absolute before:top-full before:left-1/2 before:-translate-x-1/2 before:border-8 before:border-x-transparent before:border-b-transparent before:border-t-gray-700 dark:before:border-t-gray-800">
         {tooltipText}
       </div>
     </div>
   </div>
 );
+
+const RangeSlider: React.FC<{
+    min: number;
+    max: number;
+    step: number;
+    minValue: number;
+    maxValue: number;
+    onChange: (type: 'min' | 'max', value: number) => void;
+    formatLabel: (value: number) => string;
+}> = ({ min, max, step, minValue, maxValue, onChange, formatLabel }) => {
+    return (
+        <div className="relative h-12">
+            <div className="relative h-1 bg-brand-border rounded-full mt-4">
+                <input
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={minValue}
+                    onChange={(e) => onChange('min', parseFloat(e.target.value))}
+                    className="absolute w-full h-1 bg-transparent appearance-none pointer-events-none top-0"
+                />
+                <input
+                    type="range"
+                    min={min}
+                    max={max}
+                    step={step}
+                    value={maxValue}
+                    onChange={(e) => onChange('max', parseFloat(e.target.value))}
+                    className="absolute w-full h-1 bg-transparent appearance-none pointer-events-none top-0"
+                />
+            </div>
+            <div className="flex justify-between text-xs text-brand-text-secondary mt-2">
+                <span>{formatLabel(minValue)}</span>
+                <span>{formatLabel(maxValue)}</span>
+            </div>
+        </div>
+    );
+};
 
 
 const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
@@ -90,28 +130,35 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
     const [isSectorDropdownOpen, setIsSectorDropdownOpen] = React.useState(false);
     const sectorDropdownRef = React.useRef<HTMLDivElement>(null);
     
+    // --- State & Handlers for Market Cap ---
+    const [marketCapRange, setMarketCapRange] = React.useState({ min: 0, max: 5001 });
+    const MAX_MARKET_CAP = 5001; // Represents "Any" or Infinity
+    const handleMarketCapChange = (type: 'min' | 'max', value: number) => {
+        const newRange = { ...marketCapRange, [type]: value };
+        if (newRange.min > newRange.max) {
+            if (type === 'max') newRange.min = newRange.max; else newRange.max = newRange.min;
+        }
+        setMarketCapRange(newRange);
+        setCriteria(prev => ({ ...prev, marketCapMin: newRange.min, marketCapMax: newRange.max >= MAX_MARKET_CAP ? Infinity : newRange.max }));
+    };
+    const formatMarketCapLabel = (value: number) => {
+        if (value >= MAX_MARKET_CAP) return "Any";
+        if (value >= 1000) return `$${(value / 1000).toFixed(1)}T`;
+        return `$${value}B`;
+    };
+    
+    // --- State & Handlers for P/E Ratio ---
     const [peRatioRange, setPeRatioRange] = React.useState({ min: 0, max: 101 });
-    const MAX_PE_RATIO = 101; // 101 represents infinity
-
+    const MAX_PE_RATIO = 101; // Represents "Any" or Infinity
     const handlePeRatioChange = (type: 'min' | 'max', value: number) => {
         const newRange = { ...peRatioRange, [type]: value };
         if (newRange.min > newRange.max) {
-            if (type === 'max') newRange.min = newRange.max;
-            else newRange.max = newRange.min;
+            if (type === 'max') newRange.min = newRange.max; else newRange.max = newRange.min;
         }
         setPeRatioRange(newRange);
-        setCriteria(prev => ({
-            ...prev,
-            peRatioMin: newRange.min,
-            peRatioMax: newRange.max >= MAX_PE_RATIO ? Infinity : newRange.max
-        }));
+        setCriteria(prev => ({ ...prev, peRatioMin: newRange.min, peRatioMax: newRange.max >= MAX_PE_RATIO ? Infinity : newRange.max }));
     };
-
-    const formatPeRatioLabel = (value: number) => {
-        if (value >= MAX_PE_RATIO) return "Any";
-        return value.toString();
-    }
-
+    const formatPeRatioLabel = (value: number) => (value >= MAX_PE_RATIO ? "Any" : value.toString());
 
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -176,19 +223,17 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
             sortableItems.sort((a, b) => {
                 const aValue = a[sortConfig.key];
                 const bValue = b[sortConfig.key];
-                if (typeof aValue === 'number' && typeof bValue === 'number') {
-                     return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
-                }
-                if (typeof aValue === 'string' && typeof bValue === 'string') {
-                     return sortConfig.direction === 'ascending' 
-                        ? aValue.localeCompare(bValue) 
-                        : bValue.localeCompare(aValue);
-                }
+                if (aValue === null) return 1; if (bValue === null) return -1;
+                if (typeof aValue === 'number' && typeof bValue === 'number') { return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue; }
+                if (typeof aValue === 'string' && typeof bValue === 'string') { return sortConfig.direction === 'ascending' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue); }
                 return 0;
             });
         }
         return sortableItems;
     }, [results, sortConfig]);
+
+    const paginatedResults = sortedResults.slice((currentPage - 1) * RESULTS_PER_PAGE, currentPage * RESULTS_PER_PAGE);
+    const totalPages = Math.ceil(sortedResults.length / RESULTS_PER_PAGE);
 
     const renderResults = () => {
         if (isLoading) {
@@ -208,275 +253,135 @@ const Screener: React.FC<ScreenerProps> = ({ onRunScreener }) => {
             return (
                 <div className="text-center mt-12 text-brand-text-secondary">
                     <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-16 w-16 text-brand-text-secondary opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1h-6a1 1 0 01-1-1v-6z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    <h3 className="text-2xl font-bold text-brand-text mt-4">Discover Your Next Investment</h3>
-                    <p className="text-lg mt-2 max-w-lg mx-auto">Set your criteria above and run the screener to find stocks that match your strategy.</p>
+                    <h2 className="text-xl font-bold text-brand-text mt-4">Set your criteria</h2>
+                    <p>Adjust the filters above and run the screener to find your next investment.</p>
                 </div>
             );
         }
-        
-        if (sortedResults.length === 0) {
-            return <div className="text-center mt-12 text-brand-text-secondary">No stocks found matching your criteria. Try broadening your search.</div>;
+
+        if (paginatedResults.length === 0) {
+            return <div className="text-center my-8 text-brand-text-secondary">No stocks found matching your criteria. Try broadening your search.</div>;
         }
 
-        const totalPages = Math.ceil(sortedResults.length / RESULTS_PER_PAGE);
-        const paginatedResults = sortedResults.slice(
-            (currentPage - 1) * RESULTS_PER_PAGE,
-            currentPage * RESULTS_PER_PAGE
-        );
-
-
         return (
-            <>
-                 <div className="mt-6 bg-brand-secondary rounded-lg border border-brand-border shadow-lg overflow-hidden animate-fade-in">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-brand-text-secondary uppercase bg-brand-primary">
-                                <tr>
-                                    <SortableHeader label="Ticker" sortKey="ticker" sortConfig={sortConfig} onClick={requestSort} />
-                                    <SortableHeader label="Company Name" sortKey="companyName" sortConfig={sortConfig} onClick={requestSort} />
-                                    <SortableHeader label="Sector" sortKey="sector" sortConfig={sortConfig} onClick={requestSort} />
-                                    <SortableHeader label="Market Cap" sortKey="marketCap" sortConfig={sortConfig} onClick={requestSort} className="text-right justify-end" />
-                                    <SortableHeader label="P/E Ratio" sortKey="peRatio" sortConfig={sortConfig} onClick={requestSort} className="text-right justify-end" />
-                                    <SortableHeader label="Div. Yield" sortKey="dividendYield" sortConfig={sortConfig} onClick={requestSort} className="text-right justify-end" />
-                                    <SortableHeader label="Analyst Rating" sortKey="analystRating" sortConfig={sortConfig} onClick={requestSort} />
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-brand-border">
-                                {paginatedResults.map(stock => (
-                                    <tr key={stock.ticker} className="hover:bg-brand-border/20 transition-colors">
-                                        <td className="py-4 px-4 font-bold text-brand-accent">{stock.ticker}</td>
-                                        <td className="py-4 px-4 text-brand-text">{stock.companyName}</td>
-                                        <td className="py-4 px-4 text-brand-text-secondary">{stock.sector}</td>
-                                        <td className="py-4 px-4 text-right tabular-nums text-brand-text">{formatMarketCap(stock.marketCap)}</td>
-                                        <td className="py-4 px-4 text-right tabular-nums text-brand-text">
-                                            {(stock.peRatio !== null && stock.peRatio !== undefined) ? stock.peRatio.toFixed(2) : 'N/A'}
-                                        </td>
-                                        <td className="py-4 px-4 text-right tabular-nums text-brand-text">
-                                            {(stock.dividendYield !== null && stock.dividendYield !== undefined) ? stock.dividendYield.toFixed(2) + '%' : 'N/A'}
-                                        </td>
-                                        <td className="py-4 px-4 text-brand-text-secondary">{stock.analystRating}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {totalPages > 1 && (
-                    <div className="flex justify-between items-center mt-4 p-2">
-                        <button
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                            className="px-4 py-2 text-sm font-semibold rounded-md bg-brand-secondary text-brand-text hover:bg-brand-border disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            Previous
-                        </button>
-                        <span className="text-sm text-brand-text-secondary">
-                            Page {currentPage} of {totalPages}
-                        </span>
-                        <button
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                            className="px-4 py-2 text-sm font-semibold rounded-md bg-brand-secondary text-brand-text hover:bg-brand-border disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            Next
-                        </button>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-brand-text-secondary uppercase bg-brand-primary">
+                        <tr>
+                            <SortableHeader label="Ticker" sortKey="ticker" sortConfig={sortConfig} onClick={requestSort} />
+                            <SortableHeader label="Company Name" sortKey="companyName" sortConfig={sortConfig} onClick={requestSort} />
+                            <SortableHeader label="Market Cap" sortKey="marketCap" sortConfig={sortConfig} onClick={requestSort} className="text-right" />
+                            <SortableHeader label="P/E Ratio" sortKey="peRatio" sortConfig={sortConfig} onClick={requestSort} className="text-right" />
+                            <SortableHeader label="Div. Yield" sortKey="dividendYield" sortConfig={sortConfig} onClick={requestSort} className="text-right" />
+                            <SortableHeader label="Analyst Rating" sortKey="analystRating" sortConfig={sortConfig} onClick={requestSort} />
+                            <SortableHeader label="Sector" sortKey="sector" sortConfig={sortConfig} onClick={requestSort} />
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-brand-border">
+                        {paginatedResults.map(stock => (
+                            <tr key={stock.ticker} className="hover:bg-brand-border/20 transition-colors">
+                                <td className="py-3 px-4 font-bold text-brand-accent">{stock.ticker}</td>
+                                <td className="py-3 px-4 text-brand-text">{stock.companyName}</td>
+                                <td className="py-3 px-4 text-right tabular-nums text-brand-text">{formatMarketCap(stock.marketCap)}</td>
+                                <td className="py-3 px-4 text-right tabular-nums text-brand-text">{stock.peRatio?.toFixed(2) ?? 'N/A'}</td>
+                                <td className="py-3 px-4 text-right tabular-nums text-brand-text">{stock.dividendYield?.toFixed(2) ?? 'N/A'}%</td>
+                                <td className="py-3 px-4 text-brand-text">{stock.analystRating}</td>
+                                <td className="py-3 px-4 text-brand-text-secondary">{stock.sector}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                 {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-4">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                            <button key={page} onClick={() => setCurrentPage(page)} className={`w-8 h-8 rounded-md text-sm ${currentPage === page ? 'bg-brand-accent text-white' : 'bg-brand-primary'}`}>{page}</button>
+                        ))}
                     </div>
                 )}
-            </>
+            </div>
         );
     };
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-8 animate-fade-in">
             <div>
-                <h1 className="text-3xl font-bold text-brand-text">US Stock Screener</h1>
-                <p className="mt-2 text-brand-text-secondary">Find your next investment opportunity with our AI-powered screener.</p>
+                <h1 className="text-3xl font-bold text-brand-text">AI Stock Screener</h1>
+                <p className="mt-2 text-brand-text-secondary">Discover investment opportunities by filtering stocks with your custom criteria.</p>
             </div>
 
-            <div className="bg-brand-secondary p-6 rounded-lg border border-brand-border">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Market Cap */}
-                    <div>
+            <div className="bg-brand-secondary p-4 rounded-lg border border-brand-border">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+                     <div>
                         <TooltipLabel
-                            label="Market Cap (Billions)"
-                            tooltipText="The total market value of a company's outstanding shares. Filter by a minimum and/or maximum value in billions of USD."
+                            label="Market Cap (in Billions)"
+                            tooltipText="The total value of a company's shares. Filter by size, from small-cap to mega-cap."
                         />
-                        <div className="flex gap-2">
-                            <div className="relative w-full">
-                                <input type="number" name="marketCapMin" placeholder="e.g., 2" onChange={handleNumericChange} className="w-full p-2 pr-6 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
-                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary">B</span>
-                            </div>
-                            <div className="relative w-full">
-                                <input type="number" name="marketCapMax" placeholder="e.g., 1000" onChange={handleNumericChange} className="w-full p-2 pr-6 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
-                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary">B</span>
-                            </div>
+                         <RangeSlider min={0} max={MAX_MARKET_CAP} step={10} minValue={marketCapRange.min} maxValue={marketCapRange.max} onChange={handleMarketCapChange} formatLabel={formatMarketCapLabel} />
+                    </div>
+                     <div>
+                        <TooltipLabel
+                            label="P/E Ratio"
+                            tooltipText="Price-to-Earnings ratio. A common metric for valuation. Lower can mean undervalued, higher can mean overvalued."
+                        />
+                         <RangeSlider min={0} max={MAX_PE_RATIO} step={1} minValue={peRatioRange.min} maxValue={peRatioRange.max} onChange={handlePeRatioChange} formatLabel={formatPeRatioLabel} />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4 pt-4 border-t border-brand-border">
+                    <div>
+                        <TooltipLabel label="Dividend Yield (Min %)" tooltipText="The minimum annual dividend payout as a percentage of the stock's price." htmlFor="dividendYieldMin"/>
+                         <div className="relative">
+                            <input type="number" name="dividendYieldMin" id="dividendYieldMin" value={criteria.dividendYieldMin} onChange={handleNumericChange} placeholder="e.g., 2.5" step="0.1" className="w-full p-2 pl-3 pr-8 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition"/>
+                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary pointer-events-none">%</span>
                         </div>
                     </div>
-                     {/* P/E Ratio */}
-                    <div className="h-[68px] flex flex-col">
-                        <TooltipLabel
-                            label={`P/E Ratio: ${formatPeRatioLabel(peRatioRange.min)} - ${formatPeRatioLabel(peRatioRange.max)}`}
-                            tooltipText="Price-to-Earnings Ratio. A high P/E can indicate high growth expectations or overvaluation."
-                        />
-                        <div className="relative h-8 pt-4 flex-grow">
-                             {/* These styles are a bit complex to do inline with Tailwind without plugins, but this approach works */}
-                            <style>{`
-                                input[type=range].slider-thumb::-webkit-slider-thumb {
-                                    -webkit-appearance: none;
-                                    appearance: none;
-                                    width: 16px;
-                                    height: 16px;
-                                    background: var(--color-brand-accent);
-                                    border-radius: 50%;
-                                    cursor: pointer;
-                                    margin-top: -6px; /* Center thumb on the track */
-                                    position: relative;
-                                    z-index: 20;
-                                }
-                                input[type=range].slider-thumb::-moz-range-thumb {
-                                    width: 16px;
-                                    height: 16px;
-                                    background: var(--color-brand-accent);
-                                    border-radius: 50%;
-                                    cursor: pointer;
-                                    position: relative;
-                                    z-index: 20;
-                                }
-                            `}</style>
-                            <input
-                                type="range"
-                                min="0"
-                                max={MAX_PE_RATIO}
-                                step="1"
-                                value={peRatioRange.min}
-                                onChange={(e) => handlePeRatioChange('min', parseInt(e.target.value))}
-                                className="absolute w-full h-1 bg-transparent appearance-none pointer-events-none z-10 slider-thumb"
-                            />
-                            <input
-                                type="range"
-                                min="0"
-                                max={MAX_PE_RATIO}
-                                step="1"
-                                value={peRatioRange.max}
-                                onChange={(e) => handlePeRatioChange('max', parseInt(e.target.value))}
-                                className="absolute w-full h-1 bg-transparent appearance-none pointer-events-none z-10 slider-thumb"
-                            />
-                            <div className="absolute w-full h-1.5 top-1/2 -translate-y-1/2">
-                                <div className="h-full rounded-full bg-brand-border"></div>
-                                <div
-                                    className="absolute h-full rounded-full bg-brand-accent top-0"
-                                    style={{
-                                        left: `${(peRatioRange.min / MAX_PE_RATIO) * 100}%`,
-                                        right: `${100 - (peRatioRange.max / MAX_PE_RATIO) * 100}%`
-                                    }}
-                                ></div>
-                            </div>
+                     <div>
+                        <TooltipLabel label="Dividend Yield (Max %)" tooltipText="The maximum annual dividend payout as a percentage of the stock's price." htmlFor="dividendYieldMax"/>
+                         <div className="relative">
+                            <input type="number" name="dividendYieldMax" id="dividendYieldMax" value={isFinite(criteria.dividendYieldMax) ? criteria.dividendYieldMax : ''} onChange={handleNumericChange} placeholder="Any" step="0.1" className="w-full p-2 pl-3 pr-8 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition"/>
+                            <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary pointer-events-none">%</span>
                         </div>
                     </div>
-                    {/* Dividend Yield */}
-                    <div>
-                         <TooltipLabel
-                            label="Dividend Yield (%)"
-                            tooltipText="The annual dividend per share divided by the stock's price, as a percentage. Shows the return from dividends relative to the stock price."
-                        />
-                        <div className="flex gap-2">
-                           <div className="relative w-full">
-                                <input type="number" name="dividendYieldMin" placeholder="e.g., 1.5" step="0.1" onChange={handleNumericChange} className="w-full p-2 pr-6 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
-                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary">%</span>
-                            </div>
-                            <div className="relative w-full">
-                                <input type="number" name="dividendYieldMax" placeholder="e.g., 5" step="0.1" onChange={handleNumericChange} className="w-full p-2 pr-6 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none" />
-                                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-brand-text-secondary">%</span>
-                            </div>
+                     <div className="lg:col-span-2">
+                        <TooltipLabel label="Sectors" tooltipText="Filter by industry sector. Select one or more to narrow your search." />
+                         <div className="relative" ref={sectorDropdownRef}>
+                            <button onClick={() => setIsSectorDropdownOpen(!isSectorDropdownOpen)} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-left truncate">
+                                {criteria.sectors.length > 0 ? `${criteria.sectors.length} selected` : 'Any Sector'}
+                            </button>
+                             {isSectorDropdownOpen && (
+                                <div className="absolute z-10 w-full mt-1 bg-brand-primary border border-brand-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    {SECTORS.map(sector => (
+                                        <label key={sector} className="flex items-center px-3 py-2 cursor-pointer hover:bg-brand-secondary">
+                                            <input type="checkbox" checked={criteria.sectors.includes(sector)} onChange={() => handleSectorToggle(sector)} className="h-4 w-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent"/>
+                                            <span className="ml-2 text-sm text-brand-text">{sector}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
-                     {/* Analyst Rating */}
                     <div>
-                        <TooltipLabel
-                            htmlFor="analystRating"
-                            label="Min. Analyst Rating"
-                            tooltipText="The consensus rating from financial analysts. The filter will include stocks with this rating or better (e.g., selecting 'Buy' also includes 'Strong Buy')."
-                        />
-                        <select
-                            id="analystRating"
-                            name="analystRating"
-                            value={criteria.analystRating}
-                            onChange={(e) => setCriteria(prev => ({ ...prev, analystRating: e.target.value }))}
-                            className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm focus:ring-2 focus:ring-brand-accent/50 focus:outline-none"
-                        >
-                            {ANALYST_RATINGS.map(r => <option key={r} value={r}>{r}</option>)}
+                        <TooltipLabel label="Analyst Rating" tooltipText="Filter stocks based on the consensus rating from professional analysts. 'Strong Buy' is the highest rating." htmlFor="analystRating" />
+                        <select id="analystRating" name="analystRating" value={criteria.analystRating} onChange={(e) => setCriteria(prev => ({ ...prev, analystRating: e.target.value }))} className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-brand-text placeholder-brand-text-secondary focus:outline-none focus:ring-2 focus:ring-brand-accent/50 transition">
+                            {ANALYST_RATINGS.map(rating => (
+                                <option key={rating} value={rating}>{rating}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
 
-                <div className="mt-6">
-                    <TooltipLabel
-                        label="Sectors"
-                        tooltipText="Filter stocks by their industry sector. You can select multiple sectors to broaden your search."
-                    />
-                     <div className="relative" ref={sectorDropdownRef}>
-                      <button
-                        type="button"
-                        onClick={() => setIsSectorDropdownOpen(!isSectorDropdownOpen)}
-                        className="w-full p-2 bg-brand-primary border border-brand-border rounded-lg text-sm text-left flex justify-between items-center text-brand-text"
-                        aria-haspopup="listbox"
-                        aria-expanded={isSectorDropdownOpen}
-                      >
-                        <span>
-                          {criteria.sectors.length === 0
-                            ? "All Sectors"
-                            : criteria.sectors.length === 1
-                            ? criteria.sectors[0]
-                            : `${criteria.sectors.length} sectors selected`}
-                        </span>
-                        <svg className={`w-4 h-4 text-brand-text-secondary transition-transform ${isSectorDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                      </button>
-                      {isSectorDropdownOpen && (
-                        <div className="absolute z-20 w-full mt-1 bg-brand-primary border border-brand-border rounded-lg shadow-lg max-h-60 overflow-y-auto animate-fade-in-up-fast">
-                          {SECTORS.map(sector => (
-                            <label key={sector} className="flex items-center w-full px-3 py-2 text-sm text-brand-text hover:bg-brand-secondary cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={criteria.sectors.includes(sector)}
-                                onChange={() => handleSectorToggle(sector)}
-                                className="h-4 w-4 rounded border-brand-border text-brand-accent focus:ring-brand-accent focus:ring-offset-0"
-                              />
-                              <span className="ml-3 select-none">{sector}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-brand-border flex justify-end gap-4">
-                     <button 
-                        onClick={() => { 
-                            setCriteria(INITIAL_CRITERIA); 
-                            setPeRatioRange({ min: 0, max: 101 });
-                            setResults([]); 
-                            setHasSearched(false); 
-                            setCurrentPage(1); 
-                        }}
-                        className="px-6 py-2 rounded-lg text-sm font-semibold bg-brand-secondary text-brand-text-secondary hover:bg-brand-border transition-colors"
-                     >
-                        Reset Filters
-                    </button>
-                    <button 
-                        onClick={handleRunScreener}
-                        disabled={isLoading}
-                        className="px-8 py-2 rounded-lg text-sm font-semibold bg-brand-accent hover:bg-brand-accent-hover text-white transition-colors disabled:bg-brand-accent/50 flex items-center gap-2"
-                    >
-                        {isLoading && <Spinner />}
-                        Run Screener
+                <div className="mt-4 pt-4 border-t border-brand-border flex justify-end">
+                    <button onClick={handleRunScreener} disabled={isLoading} className="px-8 py-2.5 font-semibold rounded-lg bg-brand-accent hover:bg-brand-accent-hover text-white transition-colors flex items-center justify-center disabled:bg-brand-accent/50">
+                        {isLoading ? <><Spinner /> <span className="ml-2">Screening...</span></> : 'Run Screener'}
                     </button>
                 </div>
             </div>
 
-            {renderResults()}
+            <div className="mt-8">
+                {renderResults()}
+            </div>
         </div>
     );
 };
