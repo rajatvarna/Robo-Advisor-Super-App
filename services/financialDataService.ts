@@ -1,7 +1,3 @@
-
-
-
-
 import type { Quote, NewsItem, FinancialStatementsData, SecFiling, ScreenerCriteria, ScreenerResult, CryptoData, Dividend, StockMetrics } from '../types';
 import * as FallbackData from './fallbackData';
 import { cacheService } from './cacheService';
@@ -39,11 +35,12 @@ export const fetchQuotes = async (tickers: string[]): Promise<Record<string, Quo
             let quoteData = cacheService.get<Quote>(cacheKey);
             
             if (!quoteData) {
-                // Alpha Vantage free tier is very limited, so we add a delay.
-                await sleep(1200); // Delay between requests to avoid hitting rate limits.
+                // Alpha Vantage free tier is 5 calls/min. We'll set a delay of ~12.1s between requests to stay under the limit.
+                await sleep(12100);
                 const data = await apiFetch(`${ALPHAVANTAGE_URL}/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${ALPHAVANTAGE_API_KEY}`);
                 const globalQuote = data['Global Quote'];
                 if (!globalQuote || Object.keys(globalQuote).length === 0) {
+                     // This could be due to an invalid ticker or hitting an API limit that returns an empty object.
                      throw new Error(`No quote data for ${ticker}`);
                 }
 
@@ -111,6 +108,9 @@ export const getCompanyNews = async (ticker: string): Promise<NewsItem[]> => {
     try {
         const data = await apiFetch(`${ALPHAVANTAGE_URL}/query?function=NEWS_SENTIMENT&tickers=${ticker}&limit=5&apikey=${ALPHAVANTAGE_API_KEY}`);
         
+        if (!data.feed || !Array.isArray(data.feed)) {
+            return []; // Return empty array if feed is missing or not an array
+        }
         return data.feed.map((item: any): NewsItem => ({
             id: item.url,
             headline: item.title,
@@ -136,6 +136,9 @@ export const getMarketNews = async (category: 'general' | 'crypto'): Promise<New
     try {
         const data = await apiFetch(url);
         
+        if (!data.feed || !Array.isArray(data.feed)) {
+            return [];
+        }
         return data.feed.map((item: any): NewsItem => ({
             id: item.url,
             headline: item.title,
