@@ -1,4 +1,5 @@
 
+
 import * as React from 'react';
 import Header from './components/Header';
 import ResearchPage from './components/ResearchPage';
@@ -22,6 +23,8 @@ import OnboardingTour from './components/OnboardingTour';
 import * as FallbackData from './services/fallbackData';
 import GoalSettingModal from './components/GoalSettingModal';
 import SubscriptionPage from './components/SubscriptionPage';
+// FIX: Add ApiProvider and useApi imports to manage API mode context.
+import { ApiProvider, useApi } from './contexts/ApiContext';
 
 const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSignOut }) => {
   const [view, setView] = React.useState<View>('dashboard');
@@ -35,6 +38,9 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
   const [lastUnlockedAchievement, setLastUnlockedAchievement] = React.useState<Achievement | null>(null);
   const [runTour, setRunTour] = React.useState(false);
   const [isGoalModalOpen, setIsGoalModalOpen] = React.useState(false);
+  
+  // FIX: Get apiMode from context to pass to service functions.
+  const { apiMode } = useApi();
   
   const dataKey = `robo-advisor-data-${user.uid}`;
   const tourKey = `robo-advisor-tour-completed-${user.uid}`;
@@ -332,7 +338,8 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
       setIsLoading(true);
       setError(null);
       try {
-          const brokeragePortfolio = await brokerageService.syncInteractiveBrokersPortfolio();
+          // FIX: Pass apiMode to the brokerage service function.
+          const brokeragePortfolio = await brokerageService.syncInteractiveBrokersPortfolio(apiMode);
           const allTickers = brokeragePortfolio.holdings.map(h => h.ticker);
           const liveQuotes = await financialDataService.fetchQuotes(allTickers);
           setQuotes(liveQuotes);
@@ -363,7 +370,7 @@ const MainApp: React.FC<{ user: User, onSignOut: () => void; }> = ({ user, onSig
       } finally {
           setIsLoading(false);
       }
-  }, [recalculateHoldings, saveData]);
+  }, [recalculateHoldings, saveData, apiMode]);
 
   const handleDisconnectBrokerage = React.useCallback((brokerage: 'Interactive Brokers') => {
     setDashboardData(prev => {
@@ -504,7 +511,10 @@ const App: React.FC = () => {
     
     return (
         <ThemeProvider>
-            <MainApp user={mockUser} onSignOut={handleSignOut} />
+            {/* FIX: Wrap MainApp in ApiProvider so child components can access API context. */}
+            <ApiProvider>
+                <MainApp user={mockUser} onSignOut={handleSignOut} />
+            </ApiProvider>
         </ThemeProvider>
     );
 };

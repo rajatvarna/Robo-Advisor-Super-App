@@ -1,8 +1,8 @@
 
 
 
+
 import * as React from 'react';
-// FIX: Changed import to use getMarketNews, which replaced getTopBusinessNews.
 import { getMarketNews } from '../services/financialDataService';
 import type { NewsItem } from '../types';
 import Spinner from './icons/Spinner';
@@ -35,7 +35,6 @@ const TopNewsPage: React.FC = () => {
         setIsLoading(true);
         setError(null);
         try {
-            // FIX: Removed invalid apiMode argument.
             const results = await getMarketNews('general');
             setNews(results);
         } catch (err: any) {
@@ -59,7 +58,7 @@ const TopNewsPage: React.FC = () => {
             return (
                 <div className="flex flex-col items-center justify-center h-96">
                     <Spinner />
-                    <p className="mt-4 text-brand-text-secondary">AI is curating the latest top news stories...</p>
+                    <p className="mt-4 text-brand-text-secondary">Curating the latest top news stories...</p>
                 </div>
             );
         }
@@ -132,7 +131,7 @@ const TopNewsPage: React.FC = () => {
         <div className="space-y-6 animate-fade-in">
             <div>
                 <h1 className="text-3xl font-bold text-brand-text">Top Business News</h1>
-                <p className="mt-2 text-brand-text-secondary">The latest stories from trusted financial sources, curated by AI.</p>
+                <p className="mt-2 text-brand-text-secondary">The latest stories from trusted financial sources.</p>
             </div>
             {renderContent()}
         </div>

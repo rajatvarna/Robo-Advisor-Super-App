@@ -1,11 +1,12 @@
 
 
+
+
 import * as React from 'react';
 import TickerInput from './TickerInput';
 import SecFilings from './SecFilings';
 import FinancialStatements from './FinancialStatements';
 import StockChart from './StockChart';
-import EarningsTranscripts from './EarningsTranscripts';
 import Spinner from './icons/Spinner';
 import StockMetrics from './StockAnalysis'; // Renamed component, but file name stays for simplicity
 import StarIcon from './icons/StarIcon';
@@ -14,9 +15,13 @@ import StockComparison from './StockComparison';
 import XCircleIcon from './icons/XCircleIcon';
 import AddToWatchlistModal from './AddToWatchlistModal';
 import * as financialDataService from '../services/financialDataService';
-import type { SecFiling, FinancialStatementsData, EarningsTranscript, StockMetrics as StockMetricsType, StockComparisonData, UserWatchlist } from '../types';
+// FIX: Import generateStockComparison service and useApi hook.
+import { generateStockComparison } from '../services/geminiService';
+import { useApi } from '../contexts/ApiContext';
+// FIX: Remove unused StockMetricsType alias.
+import type { SecFiling, FinancialStatementsData, StockComparisonData, UserWatchlist } from '../types';
 
-type DashboardTab = 'overview' | 'financials' | 'filings' | 'transcripts';
+type DashboardTab = 'overview' | 'financials' | 'filings';
 
 interface ResearchNotesProps {
     note: string;
@@ -98,7 +103,6 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
   
   const [filings, setFilings] = React.useState<SecFiling[] | null>(null);
   const [financials, setFinancials] = React.useState<FinancialStatementsData | null>(null);
-  const [transcripts, setTranscripts] = React.useState<EarningsTranscript[] | null>(null);
   
   const [comparisonTickers, setComparisonTickers] = React.useState<string[]>([]);
   const [comparisonData, setComparisonData] = React.useState<StockComparisonData | null>(null);
@@ -107,6 +111,9 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
   const [comparisonInput, setComparisonInput] = React.useState('');
   
   const [isWatchlistModalOpen, setIsWatchlistModalOpen] = React.useState(false);
+  
+  // FIX: Get apiMode from context to use in AI service calls.
+  const { apiMode } = useApi();
 
   const handleApiError = (err: any, context?: string) => {
       const errorMessage = err.message || `An unexpected error occurred while fetching ${context || 'data'}.`;
@@ -120,7 +127,6 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
     setActiveTab('overview');
     setFinancials(null);
     setFilings(null);
-    setTranscripts(null);
   };
 
   React.useEffect(() => {
@@ -130,19 +136,17 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
             switch(activeTab) {
                 case 'financials': if (!financials) setFinancials(await financialDataService.getFinancials(ticker)); break;
                 case 'filings': if (!filings) setFilings(await financialDataService.getFilings(ticker)); break;
-                case 'transcripts': if (!transcripts) setTranscripts(await financialDataService.getEarningsTranscripts(ticker)); break;
             }
         } catch (err) { handleApiError(err, `data for ${activeTab} tab`); }
     };
     fetchDataForTab();
-  }, [activeTab, ticker, financials, filings, transcripts]);
+  }, [activeTab, ticker, financials, filings]);
 
   const renderContent = () => {
     switch(activeTab) {
       case 'overview': return <StockMetrics ticker={ticker} />;
       case 'financials': return <FinancialStatements data={financials} />;
       case 'filings': return <SecFilings filings={filings} />;
-      case 'transcripts': return <EarningsTranscripts transcripts={transcripts} />;
       default: return <div className="flex items-center justify-center h-64"><Spinner/></div>;
     }
   }
@@ -168,8 +172,8 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
       setComparisonError(null);
       setComparisonData(null);
       try {
-          const metricsPromises = comparisonTickers.map(t => financialDataService.getStockMetrics(t));
-          const data = await Promise.all(metricsPromises);
+          // FIX: Call generateStockComparison to get full data including qualitative analysis.
+          const data = await generateStockComparison(comparisonTickers, apiMode);
           setComparisonData(data);
       } catch (err: any) {
           setComparisonError(err.message || 'An unexpected error occurred while fetching comparison data.');
@@ -218,7 +222,6 @@ const ResearchPage: React.FC<ResearchPageProps> = ({ watchlists, notes, onUpdate
               <TabButton label="Overview" isActive={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
               <TabButton label="Financials" isActive={activeTab === 'financials'} onClick={() => setActiveTab('financials')} />
               <TabButton label="SEC Filings" isActive={activeTab === 'filings'} onClick={() => setActiveTab('filings')} />
-              <TabButton label="Transcripts" isActive={activeTab === 'transcripts'} onClick={() => setActiveTab('transcripts')} />
           </nav></div>
 
           <div className="mt-4 min-h-[300px]">{renderContent()}</div>

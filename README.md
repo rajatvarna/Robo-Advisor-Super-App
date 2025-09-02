@@ -24,12 +24,12 @@ This application is packed with features that cater to both novice and experienc
     *   Analyze any stock to view key metrics like P/E ratio, market cap, and 52-week range.
     *   View interactive historical price charts via the TradingView integration.
     *   Access 10 years of financial statements (Income, Balance Sheet, Cash Flow).
-    *   Review recent SEC filings and links to earnings call transcripts.
+    *   Review recent SEC filings.
     *   Compare up to 5 stocks side-by-side with a detailed quantitative analysis.
 
 *   **🌐 Market & Analytics Suite:**
-    *   **Stock Screener:** Find new investment opportunities using a powerful screener with multiple criteria (Market Cap, P/E, Dividend Yield, Sector).
-    *   **Crypto Dashboard:** Track the top 25 cryptocurrencies and stay updated with the latest crypto news.
+    *   **Stock Screener:** Find new investment opportunities using a powerful, interactive screener widget from TradingView.
+    *   **Crypto Dashboard:** Track the cryptocurrency market and stay updated with the latest crypto news using TradingView widgets.
     *   **Advanced Analytics:**
         *   Compare your portfolio's performance against the S&P 500 benchmark.
         *   Forecast upcoming dividend income for your holdings.
@@ -43,10 +43,10 @@ This application is packed with features that cater to both novice and experienc
 ## 🛠️ Tech Stack
 
 *   **Frontend:** React, TypeScript, Tailwind CSS
-*   **Charting:** Recharts, TradingView Widgets
+*   **Charting & Widgets:** Recharts, TradingView Widgets
 *   **Financial Data:**
-    *   **Finnhub API:** Real-time quotes, news, company profiles, financials, and filings.
-    *   **Polygon.io API:** Stock screener, historical dividends, and cryptocurrency data.
+    *   **Alpha Vantage API:** Quotes, historical data, company profiles, financials, news, and key metrics.
+    *   **SEC EDGAR API:** Official SEC filings data.
 *   **Module Management:** ES Modules with `importmap` (via esm.sh CDN)
 
 ## 🚀 Getting Started
@@ -55,12 +55,11 @@ This project is a static web application and does not require a complex build pr
 
 ### Prerequisites
 
-To run the application with live data, you will need API keys from two services:
+To run the application with live data, you will need a free API key from Alpha Vantage.
 
-1.  **Finnhub API Key:** Get a free key from [Finnhub.io](https://finnhub.io/).
-2.  **Polygon.io API Key:** Get a free key from [Polygon.io](https://polygon.io/).
+1.  **Alpha Vantage API Key:** Get a free key from [Alpha Vantage](https://www.alphavantage.co/).
 
-> The app will function in a robust offline "fallback mode" with simulated data if keys are not provided.
+> The app will function in a robust offline "fallback mode" with simulated data if a key is not provided.
 
 ### Installation & Configuration
 
@@ -70,19 +69,13 @@ To run the application with live data, you will need API keys from two services:
     cd robo-advisor-super-app
     ```
 
-2.  **Configure API Keys:**
+2.  **Configure API Key:**
     *   Open the `process.env.js` file in the root directory.
-    *   Replace the placeholder values for `FINNHUB_API_KEY` and `POLYGON_API_KEY` with your actual keys.
+    *   Replace the placeholder value for `ALPHAVANTAGE_API_KEY` with your actual key.
     ```javascript
     // process.env.js
     
-    // Replace with your Finnhub API Key
-    export const FINNHUB_API_KEY = 'YOUR_FINNHUB_API_KEY_HERE';
-        
-    // Replace with your Polygon.io API Key
-    export const POLYGON_API_KEY = 'YOUR_POLYGON_API_KEY_HERE';
-
-    // (Optional) Alpha Vantage API Key
+    // Replace with your Alpha Vantage API Key
     export const ALPHAVANTAGE_API_KEY = 'YOUR_ALPHAVANTAGE_API_KEY_HERE';
     ```
 
@@ -99,9 +92,9 @@ The application should now be running in your browser!
 
 The application logic is cleanly separated into a `services` directory, abstracting away the data-fetching from the UI components.
 
-*   **`financialDataService.ts`:** The data hub of the app. It handles all API calls to Finnhub and Polygon.io for fetching market data.
-*   **`fallbackData.ts`:** This service provides realistic, simulated data for every API call in the application. It is used automatically if API keys are not provided, ensuring a seamless user experience for demos and development.
-*   **`cacheService.ts`:** A simple in-memory cache with a Time-to-Live (TTL) reduces redundant API calls for data that doesn't change frequently (e.g., news, stock analysis), improving performance and saving costs.
+*   **`financialDataService.ts`:** The data hub of the app. It handles all API calls to Alpha Vantage and the SEC for fetching market data.
+*   **`fallbackData.ts`:** This service provides realistic, simulated data for every API call in the application. It is used automatically if an API key is not provided, ensuring a seamless user experience for demos and development.
+*   **`cacheService.ts`:** A simple in-memory cache with a Time-to-Live (TTL) reduces redundant API calls for data that doesn't change frequently (e.g., news, stock analysis), improving performance and saving API quota.
 
 ### Data Flow & Polling
 
@@ -120,7 +113,7 @@ The app stays up-to-date with a smart polling mechanism initiated in `App.tsx` w
 ├── contexts/
 │ └── ThemeContext.tsx    # Manages light/dark theme
 ├── services/
-│   ├── financialDataService.ts # All calls to Finnhub & Polygon.io
+│   ├── financialDataService.ts # All calls to Alpha Vantage & SEC
 │   ├── ...                 # Other data and utility services
 ├── types.ts                # All TypeScript interfaces and type definitions
 ├── process.env.js          # API key configuration (user-provided)
@@ -141,4 +134,4 @@ Contributions are welcome! Please feel free to fork the repository, make changes
 
 ## 📜 License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License.

@@ -31,7 +31,7 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ holdings }) => {
                 });
                 
                 const allDividends = await Promise.all(dividendPromises);
-                const flattenedDividends = allDividends.flat().sort((a,b) => new Date(a.payDate).getTime() - new Date(b.payDate).getTime());
+                const flattenedDividends = allDividends.flat().sort((a,b) => new Date(a.exDividendDate).getTime() - new Date(b.exDividendDate).getTime());
                 setDividends(flattenedDividends);
 
             } catch (err: any) {
@@ -63,7 +63,7 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ holdings }) => {
     }
 
     if (dividends.length === 0) {
-        return <div className="text-center my-8 text-brand-text-secondary">No upcoming dividends found for your current holdings in the next year.</div>;
+        return <div className="text-center my-8 text-brand-text-secondary">No upcoming dividends found for your current holdings based on available data.</div>;
     }
 
     const totalDividendIncome = dividends.reduce((sum, div) => sum + div.totalAmount, 0);
@@ -71,7 +71,7 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ holdings }) => {
     return (
         <div className="bg-brand-secondary rounded-lg border border-brand-border shadow-lg overflow-hidden animate-fade-in">
              <div className="p-4 border-b border-brand-border flex justify-between items-baseline">
-                <h3 className="text-lg font-bold text-brand-text">Upcoming Dividends (Next 12 Months)</h3>
+                <h3 className="text-lg font-bold text-brand-text">Upcoming Dividends</h3>
                 <p className="text-brand-text-secondary">Total Projected Income: <span className="font-bold text-green-400">{formatCurrency(totalDividendIncome)}</span></p>
             </div>
             <div className="overflow-x-auto">
@@ -80,14 +80,14 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ holdings }) => {
                         <tr>
                             <th className="py-3 px-4">Ticker</th>
                             <th className="py-3 px-4">Ex-Dividend Date</th>
-                            <th className="py-3 px-4">Payment Date</th>
+                            <th className="py-3 px-4">Est. Payment Date</th>
                             <th className="py-3 px-4 text-right">Amount / Share</th>
                             <th className="py-3 px-4 text-right">Total Payout</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-brand-border">
                         {dividends.map((div) => (
-                            <tr key={`${div.ticker}-${div.payDate}`}>
+                            <tr key={`${div.ticker}-${div.exDividendDate}`}>
                                 <td className="py-4 px-4 font-bold text-brand-accent">{div.ticker}</td>
                                 <td className="py-4 px-4 text-brand-text-secondary">{div.exDividendDate}</td>
                                 <td className="py-4 px-4 text-brand-text-secondary">{div.payDate}</td>
@@ -97,6 +97,9 @@ const DividendTracker: React.FC<DividendTrackerProps> = ({ holdings }) => {
                         ))}
                     </tbody>
                 </table>
+                 <div className="p-4 border-t border-brand-border text-xs text-brand-text-secondary">
+                    Dividend data from Alpha Vantage provides the next ex-dividend date. Payment dates are estimated.
+                </div>
             </div>
         </div>
     );

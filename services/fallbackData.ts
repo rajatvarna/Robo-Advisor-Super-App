@@ -1,10 +1,13 @@
 
 
 
+
+
+
 import { Type } from "@google/genai";
 import type { Chat } from '@google/genai';
 // FIX: Added all missing type imports.
-import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, TranscriptsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist, CryptoData, Alert, StockMetrics, EarningsTranscript, StockComparisonItem } from '../types';
+import type { Holding, ScreenerResult, ScreenerCriteria, PortfolioSuggestion, QuestionnaireAnswers, StockChartDataPoint, ChartTimeframe, FinancialStatementsData, StockAnalysisData, EducationalContent, DashboardData, NewsItem, PortfolioScore, Achievement, Dividend, TaxLossOpportunity, SecFiling, ChatMessage, BaseDashboardData, GroundingSource, StockComparisonData, Quote, UserWatchlist, CryptoData, Alert, StockMetrics, EarningsTranscript, StockComparisonItem, TranscriptsData } from '../types';
 
 // --- Achievements ---
 export const ALL_ACHIEVEMENTS: Achievement[] = [
@@ -456,19 +459,6 @@ export const generateChartData = (ticker: string, timeframe: ChartTimeframe): St
     });
 };
 
-export const generateTranscripts = (ticker: string): TranscriptsData => ({
-    transcripts: [
-        { quarter: 2, year: 2024, date: '2024-07-25', url: '#'},
-        { quarter: 1, year: 2024, date: '2024-04-25', url: '#'}
-    ]
-});
-
-// FIX: Added missing fallback function.
-export const getEarningsTranscripts = (ticker: string): EarningsTranscript[] => ([
-    { quarter: 2, year: 2024, date: '2024-07-25', url: '#' },
-    { quarter: 1, year: 2024, date: '2024-04-25', url: '#' }
-]);
-
 export const generateStockAnalysis = (ticker: string): StockAnalysisData => ({
     businessSummary: `This is a simulated analysis of ${ticker}. This company is a leader in its respective industry, focusing on innovative products and services.`,
     bullCase: 'The company might perform well due to strong brand recognition and expansion into new markets.',
@@ -514,3 +504,13 @@ export const generateStockComparison = (tickers: string[]): StockComparisonData 
         financialHealthSummary: `Solid balance sheet with consistent revenue.`,
     }));
 };
+
+// FIX: Added missing fallback function for earnings transcripts.
+export const generateTranscripts = (ticker: string): TranscriptsData => ({
+    transcripts: [
+        { quarter: 2, year: 2024, date: '2024-07-28', url: '#' },
+        { quarter: 1, year: 2024, date: '2024-04-26', url: '#' },
+        { quarter: 4, year: 2023, date: '2024-01-25', url: '#' },
+        { quarter: 3, year: 2023, date: '2023-10-27', url: '#' },
+    ]
+});
